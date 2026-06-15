@@ -43,6 +43,12 @@
       </g>
     </svg>
     <button type="button" class="proc-reset" title="Reset view">⤢</button>
+    <script type="application/json" class="proc-replay">{{.ReplayJSON}}</script>
+    <div class="proc-timeline">
+      <button type="button" class="tl-play" title="Replay the event stream">▶ Replay</button>
+      <input class="tl-range" type="range" min="0" max="{{.Events}}" value="{{.Events}}" step="1">
+      <span class="tl-label"></span>
+    </div>
   </div>
 
   <div class="proc-legend">
