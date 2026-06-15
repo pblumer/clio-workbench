@@ -68,6 +68,19 @@ button re-probes on demand. A non-blocking probe also runs at startup and is
 logged (`clio connection check`); it never fails the server, so offline drafting
 stays possible even when Clio is down.
 
+### Picking a server in the GUI
+
+You can start the Workbench with no configuration and **choose a Clio server at
+runtime** from the *Clio server* panel: enter the URL and (optionally) a token
+and press **Connect**; **Disconnect** clears it. The target is held in memory
+and applies to both the status probe and the `/api` proxy. `CLIO_URL` /
+`CLIO_API_TOKEN` (below) merely **seed** the initial target, so the env-based
+flow keeps working.
+
+The token is posted once to the local backend and kept **server-side** — it is
+never rendered back into the page or stored in browser JS. The selection is not
+persisted across restarts (re-pick after a restart).
+
 > The probe uses an authenticated read op rather than Clio's unauthenticated
 > health endpoint (`GET /api/v1/ping`), because `ping` would not exercise the
 > token.

@@ -195,6 +195,28 @@ html, body {
 
 .draft-empty { color: var(--text-dim); font-style: italic; list-style: none; }
 
+/* Clio server connect panel */
+.connect-panel { grid-column: 1 / -1; }
+.connect-form {
+  display: grid;
+  grid-template-columns: 2fr 2fr auto;
+  gap: 14px;
+  align-items: end;
+}
+.connect-form label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-dim); letter-spacing: 1px; }
+.connect-form input {
+  background: rgba(5, 10, 20, 0.8);
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  padding: 9px 11px;
+  color: var(--text);
+  font: inherit;
+}
+.connect-form input:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
+.connect-actions { display: flex; align-items: center; gap: 14px; }
+.connect-actions .btn-primary { margin-top: 0; }
+@media (max-width: 760px) { .connect-form { grid-template-columns: 1fr; } }
+
 /* Events panel — rudimentary BPMN send-task view (read-event-types) */
 .events-panel { grid-column: 1 / -1; }
 .events-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }

@@ -60,6 +60,8 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
 	s.mux.HandleFunc("GET /connection", s.handleConnection)
+	s.mux.HandleFunc("POST /connect", s.handleConnect)
+	s.mux.HandleFunc("POST /disconnect", s.handleDisconnect)
 	s.mux.HandleFunc("GET /events", s.handleEvents)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
@@ -67,17 +69,10 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("DELETE /drafts/{id}", s.handleDeleteDraft)
 
 	// /api reverse proxy to the upstream Clio (token injected server-side).
-	if s.cfg.ProxyEnabled() {
-		proxy, err := newProxy(s.cfg)
-		if err != nil {
-			return err
-		}
-		s.mux.Handle("/api/", proxy)
-		s.log.Info("api proxy enabled", "upstream", s.cfg.ClioURL, "token", s.cfg.ClioToken != "")
-	} else {
-		s.mux.Handle("/api/", proxyDisabledHandler())
-		s.log.Info("api proxy disabled (no CLIO_URL); running offline")
-	}
+	// The target is dynamic: it follows the server picked in the GUI, and
+	// 503s when none is selected. Seeded from CLIO_URL at startup.
+	s.mux.Handle("/api/", newProxy(s.clio))
+	s.log.Info("api proxy ready (dynamic target)", "seed", s.cfg.ClioURL, "configured", s.clio.Configured())
 	return nil
 }
 
