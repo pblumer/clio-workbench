@@ -1,0 +1,72 @@
+{{define "process.html" -}}
+<div class="events-head">
+  <h2 class="panel-title">Process
+    {{- if eq .State "ok"}} <span class="proc-stat">{{.Subjects}} subjects · {{.Events}} events</span>{{end -}}
+  </h2>
+  <button class="reconnect" type="button"
+          hx-get="/process"
+          hx-target="#process-slot"
+          hx-swap="innerHTML"
+          title="Re-discover the process from Clio"
+          aria-label="Refresh">⟳</button>
+</div>
+
+{{if eq .State "ok"}}
+  <div class="proc-graph">
+    <svg viewBox="0 0 {{.W}} {{.H}}" role="img" aria-label="Discovered directly-follows graph">
+      <defs>
+        <marker id="proc-arrow" viewBox="0 0 10 10" refX="9" refY="5"
+                markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="proc-arrowhead"/>
+        </marker>
+      </defs>
+      {{range .Groups}}
+      <g class="proc-group">
+        <rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="14"/>
+        <text class="proc-group-label" x="{{.X}}" y="{{.Y}}" dx="10" dy="13">{{.Label}}</text>
+      </g>
+      {{end}}
+      {{range .Edges}}
+      <path class="proc-edge" d="{{.D}}" fill="none" stroke-width="{{.Width}}" marker-end="url(#proc-arrow)"/>
+      <text class="proc-edge-label" x="{{.LabelX}}" y="{{.LabelY}}" text-anchor="middle">{{.Count}}</text>
+      {{end}}
+      {{range .Nodes}}
+      <g class="proc-node phase-{{.Phase}}">
+        {{if .Start}}<circle class="proc-startevt" cx="{{.StartMX}}" cy="{{.Y}}" r="5"><title>starts sequences</title></circle>{{end}}
+        {{if .End}}<circle class="proc-endevt" cx="{{.EndMX}}" cy="{{.Y}}" r="6"><title>ends sequences</title></circle>{{end}}
+        <circle class="proc-orb" cx="{{.X}}" cy="{{.Y}}" r="{{.R}}"/>
+        <text class="proc-count" x="{{.X}}" y="{{.Y}}" text-anchor="middle" dominant-baseline="central">{{.Count}}</text>
+        <text class="proc-label" x="{{.X}}" y="{{.LabelY}}" text-anchor="middle" title="{{.Type}}">{{.Type}}</text>
+      </g>
+      {{end}}
+    </svg>
+  </div>
+
+  <div class="proc-legend">
+    <span class="lg phase-active">● active</span>
+    <span class="lg phase-complete">● complete</span>
+    <span class="lg phase-error">● error</span>
+    <span class="lg phase-info">● info</span>
+    <span class="lg lg-start">▸ start</span>
+    <span class="lg lg-end">◉ end</span>
+    <span class="lg lg-flow">→ directly-follows (count)</span>
+  </div>
+
+  <h3 class="proc-sub">Top variants</h3>
+  <ol class="variants">
+    {{range .Variants}}
+    <li class="variant">
+      <span class="variant-count">{{.Count}}×</span>
+      <span class="variant-pct">{{.Pct}}%</span>
+      <span class="variant-seq">
+        {{- range $i, $t := .Sequence}}{{if $i}} <span class="variant-arrow">→</span> {{end}}<span class="variant-step">{{$t}}</span>{{end -}}
+      </span>
+    </li>
+    {{end}}
+  </ol>
+{{else if eq .State "empty"}}
+  <p class="panel-hint">{{.Message}}</p>
+{{else}}
+  <p class="panel-hint bpmn-state bpmn-state-{{.State}}">{{.Message}}</p>
+{{end}}
+{{- end}}

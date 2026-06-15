@@ -289,6 +289,75 @@ func (c *Client) ReadEventTypes(ctx context.Context) ([]EventType, error) {
 	return types, nil
 }
 
+// Event is a minimal projection of a Clio event: enough to reconstruct the
+// per-subject type sequences for process discovery. Clio returns events in
+// append (monotone-id) order, so the stream order is the chronological order.
+type Event struct {
+	ID      string `json:"id"`
+	Subject string `json:"subject"`
+	Type    string `json:"type"`
+	Time    string `json:"time"`
+}
+
+// eventsPath is Clio's convenient root read route (all events as NDJSON).
+const eventsPath = "/api/v1/events"
+
+// ReadEvents streams up to limit events from Clio (root, recursive) as NDJSON.
+// A limit <= 0 reads all available events. The token is injected server-side;
+// ErrOffline / ErrUnauthorized are returned for those states.
+func (c *Client) ReadEvents(ctx context.Context, limit int) ([]Event, error) {
+	base, token := c.Snapshot()
+	if base == "" {
+		return nil, ErrOffline
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+eventsPath+"?recursive=true", nil)
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	req.Header.Set("Accept", "application/x-ndjson")
+
+	resp, err := c.httpc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		// parse below
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		return nil, ErrUnauthorized
+	default:
+		return nil, fmt.Errorf("clio: unexpected HTTP %d", resp.StatusCode)
+	}
+
+	var events []Event
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 0, 64<<10), 4<<20)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+		var ev Event
+		if err := json.Unmarshal([]byte(line), &ev); err != nil {
+			return nil, fmt.Errorf("clio: decode event: %w", err)
+		}
+		events = append(events, ev)
+		if limit > 0 && len(events) >= limit {
+			break
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("clio: read events: %w", err)
+	}
+	return events, nil
+}
+
 // transportDetail produces a concise, token-free message for a transport-level
 // failure, distinguishing the common timeout/cancellation cases.
 func transportDetail(err error) string {

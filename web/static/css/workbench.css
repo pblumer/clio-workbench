@@ -265,15 +265,77 @@ html, body {
   text-shadow: 0 0 8px rgba(124, 92, 255, 0.6);
 }
 
-.bpmn-flow {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 16px;
-}
-.bpmn-card { margin: 0; display: flex; flex-direction: column; align-items: center; }
 .bpmn-card svg { width: 100%; height: auto; overflow: visible; }
 
-.bpmn-task { fill: rgba(8, 14, 28, 0.7); stroke: var(--neon-dim); stroke-width: 1.5; }
+/* Event space: cards orbiting a glowing core, tethered by neon filaments. */
+.event-space {
+  position: relative;
+  min-height: 460px;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(56, 225, 255, 0.07), transparent 60%),
+    radial-gradient(1px 1px at 18% 24%, #fff, transparent),
+    radial-gradient(1px 1px at 76% 68%, #cfe9ff, transparent),
+    radial-gradient(1.4px 1.4px at 42% 82%, #9fd8ff, transparent),
+    radial-gradient(1px 1px at 88% 30%, #fff, transparent),
+    rgba(3, 6, 14, 0.45);
+  overflow: hidden;
+}
+
+/* No-JS fallback: a plain centred grid of cards. */
+.space-bodies { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; padding: 16px; }
+.bpmn-card { margin: 0; display: flex; flex-direction: column; align-items: center; }
+
+/* Filaments + core only make sense once JS has laid out the orbit. */
+.space-links, .space-core { display: none; }
+.event-space.is-space .space-links, .event-space.is-space .space-core { display: block; }
+
+.event-space.is-space .space-bodies { position: absolute; inset: 0; display: block; padding: 0; }
+.event-space.is-space .bpmn-card {
+  position: absolute;
+  width: 150px;
+  transform: translate(-50%, -50%);
+  animation: bob var(--bob-dur, 6s) ease-in-out infinite;
+  animation-delay: var(--bob-delay, 0s);
+  transition: opacity .2s ease, filter .2s ease;
+}
+@keyframes bob {
+  0%, 100% { transform: translate(-50%, -50%); }
+  50% { transform: translate(-50%, calc(-50% - 9px)); }
+}
+/* Hover: spotlight one body, dim the rest. */
+.event-space.is-space .space-bodies:hover .bpmn-card { opacity: 0.4; }
+.event-space.is-space .space-bodies .bpmn-card:hover { opacity: 1; filter: drop-shadow(0 0 10px rgba(56, 225, 255, 0.5)); z-index: 3; }
+
+.space-links { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.space-link { stroke: var(--neon-dim); stroke-width: 1; opacity: 0.28; }
+
+.space-core {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 40%, rgba(124, 92, 255, 0.5), rgba(124, 92, 255, 0.12) 60%, transparent 72%);
+  border: 1px solid rgba(124, 92, 255, 0.5);
+  box-shadow: 0 0 28px rgba(124, 92, 255, 0.45), inset 0 0 18px rgba(124, 92, 255, 0.35);
+  animation: core-pulse 4s ease-in-out infinite;
+  z-index: 1;
+}
+@keyframes core-pulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(124, 92, 255, 0.4), inset 0 0 16px rgba(124, 92, 255, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(124, 92, 255, 0.65), inset 0 0 22px rgba(124, 92, 255, 0.45); }
+}
+.space-core-num { font-size: 24px; font-weight: 700; color: #e6ddff; text-shadow: 0 0 10px rgba(124, 92, 255, 0.8); }
+.space-core-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); }
+
+
 .bpmn-envelope { fill: var(--neon-dim); stroke: var(--bg); stroke-width: 1; }   /* filled = send */
 .bpmn-envelope-flap { fill: none; stroke: var(--bg); stroke-width: 1.2; }
 .bpmn-assoc { stroke: var(--text-dim); stroke-width: 1.2; stroke-dasharray: 3 3; }
@@ -282,6 +344,16 @@ html, body {
 .bpmn-bubble { fill: var(--accent); }
 .bpmn-bubble-text { fill: #fff; font: 600 13px/1 ui-monospace, monospace; }
 .bpmn-noschema { fill: var(--warn); }
+
+/* lifecycle phase tint for the orbiting cards */
+.phase-active   .bpmn-bubble { fill: var(--neon); }
+.phase-complete .bpmn-bubble { fill: var(--good); }
+.phase-error    .bpmn-bubble { fill: #ff5a6e; }
+.phase-info     .bpmn-bubble { fill: #9fb0c4; }
+.phase-active   .bpmn-task { stroke: var(--neon); }
+.phase-complete .bpmn-task { stroke: var(--good); }
+.phase-error    .bpmn-task { stroke: #ff5a6e; }
+.phase-info     .bpmn-task { stroke: #9fb0c4; }
 
 .bpmn-label {
   margin-top: 6px;
@@ -296,6 +368,75 @@ html, body {
 
 .bpmn-state-unauthorized { color: var(--warn); }
 .bpmn-state-error { color: #ff7a8a; }
+
+/* Process panel — discovered directly-follows graph + variants */
+.proc-stat { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; font-weight: 400; }
+.proc-graph {
+  overflow-x: auto;
+  border-radius: 12px;
+  padding: 8px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(56, 225, 255, 0.06), transparent 60%),
+    rgba(3, 6, 14, 0.45);
+}
+.proc-graph svg { width: 100%; height: auto; min-width: 360px; overflow: visible; }
+
+.proc-edge { stroke: var(--neon-dim); opacity: 0.55; }
+.proc-arrowhead { fill: var(--neon-dim); }
+.proc-edge-label {
+  fill: var(--text-dim);
+  font: 600 11px/1 ui-monospace, monospace;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+}
+
+/* task grouping backdrop */
+.proc-group rect { fill: rgba(56, 225, 255, 0.04); stroke: rgba(56, 225, 255, 0.22); stroke-width: 1; stroke-dasharray: 5 4; }
+.proc-group-label { fill: var(--text-dim); font: 11px/1 ui-monospace, monospace; letter-spacing: 1px; }
+
+/* nodes coloured by lifecycle phase */
+.proc-orb { fill: rgba(8, 14, 28, 0.92); stroke: var(--neon-dim); stroke-width: 1.8; }
+.phase-active   .proc-orb { stroke: var(--neon);  fill: rgba(56, 225, 255, 0.16); }
+.phase-complete .proc-orb { stroke: var(--good);  fill: rgba(70, 240, 160, 0.15); }
+.phase-error    .proc-orb { stroke: #ff5a6e;      fill: rgba(255, 90, 110, 0.18); }
+.phase-info     .proc-orb { stroke: #9fb0c4;      fill: rgba(159, 176, 196, 0.14); }
+.proc-startevt { fill: var(--good); }
+.proc-endevt { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+.proc-count { fill: var(--text); font: 700 14px/1 ui-monospace, monospace; }
+.proc-label {
+  fill: var(--text);
+  font: 12px/1 ui-monospace, monospace;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+}
+
+.proc-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 2px 0; font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.proc-legend .phase-active { color: var(--neon); }
+.proc-legend .phase-complete { color: var(--good); }
+.proc-legend .phase-error { color: #ff5a6e; }
+.proc-legend .phase-info { color: #9fb0c4; }
+.lg-start { color: var(--good); }
+.lg-end { color: var(--accent); }
+
+.proc-sub { margin: 18px 0 8px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--neon); text-shadow: var(--glow); }
+.variants { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.variant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: rgba(8, 14, 28, 0.6);
+  flex-wrap: wrap;
+}
+.variant-count { color: var(--neon); font-weight: 700; min-width: 34px; }
+.variant-pct { color: var(--text-dim); font-size: 11px; min-width: 36px; }
+.variant-seq { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.variant-step { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--edge); color: var(--text); font-size: 12px; }
+.variant-arrow { color: var(--neon-dim); }
 
 /* Footer */
 .hud-foot {

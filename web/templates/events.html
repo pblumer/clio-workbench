@@ -1,6 +1,6 @@
 {{define "events.html" -}}
 <div class="events-head">
-  <h2 class="panel-title">Events
+  <h2 class="panel-title">Event space
     {{- if eq .State "ok"}} <span class="total-bubble" title="total occurring events">{{.Total}}</span>{{end -}}
   </h2>
   <button class="reconnect" type="button"
@@ -13,28 +13,37 @@
 
 {{if eq .State "ok"}}
   {{if .Types}}
-  <div class="bpmn-flow">
-    {{range .Types}}
-    <figure class="bpmn-card">
-      <svg viewBox="0 0 200 120" role="img" aria-label="Send task {{.Type}}, {{.Count}} events">
-        <!-- BPMN send task -->
-        <rect class="bpmn-task" x="8" y="30" width="118" height="72" rx="10"/>
-        <!-- send marker: filled envelope, top-left -->
-        <rect class="bpmn-envelope" x="16" y="40" width="22" height="14"/>
-        <polyline class="bpmn-envelope-flap" points="16,40 27,49 38,40"/>
-        <!-- association to the attached data object -->
-        <line class="bpmn-assoc" x1="126" y1="66" x2="156" y2="64"/>
-        <!-- BPMN data object (folded-corner page) = the event -->
-        <path class="bpmn-dataobj" d="M156,44 H176 L186,54 V84 H156 Z"/>
-        <polyline class="bpmn-dataobj-fold" points="176,44 176,54 186,54"/>
-        <!-- count bubble -->
-        <circle class="bpmn-bubble" cx="126" cy="30" r="15"/>
-        <text class="bpmn-bubble-text" x="126" y="35" text-anchor="middle">{{.Count}}</text>
-        {{if not .HasSchema}}<circle class="bpmn-noschema" cx="20" cy="94" r="4"><title>no schema registered</title></circle>{{end}}
-      </svg>
-      <figcaption class="bpmn-label" title="{{.Type}}">{{.Type}}</figcaption>
-    </figure>
-    {{end}}
+  <div class="event-space" data-count="{{len .Types}}">
+    <svg class="space-links" aria-hidden="true"></svg>
+    <div class="space-core" title="total occurring events">
+      <span class="space-core-num">{{.Total}}</span>
+      <span class="space-core-label">events</span>
+    </div>
+    <div class="space-bodies">
+      {{range .Types}}
+      <figure class="bpmn-card phase-{{.Phase}}" data-type="{{.Type}}" data-count="{{.Count}}">
+        <div class="bpmn-card-float">
+          <svg viewBox="0 0 200 120" role="img" aria-label="Send task {{.Type}}, {{.Count}} events">
+            <!-- BPMN send task -->
+            <rect class="bpmn-task" x="8" y="30" width="118" height="72" rx="10"/>
+            <!-- send marker: filled envelope, top-left -->
+            <rect class="bpmn-envelope" x="16" y="40" width="22" height="14"/>
+            <polyline class="bpmn-envelope-flap" points="16,40 27,49 38,40"/>
+            <!-- association to the attached data object -->
+            <line class="bpmn-assoc" x1="126" y1="66" x2="156" y2="64"/>
+            <!-- BPMN data object (folded-corner page) = the event -->
+            <path class="bpmn-dataobj" d="M156,44 H176 L186,54 V84 H156 Z"/>
+            <polyline class="bpmn-dataobj-fold" points="176,44 176,54 186,54"/>
+            <!-- count bubble -->
+            <circle class="bpmn-bubble" cx="126" cy="30" r="15"/>
+            <text class="bpmn-bubble-text" x="126" y="35" text-anchor="middle">{{.Count}}</text>
+            {{if not .HasSchema}}<circle class="bpmn-noschema" cx="20" cy="94" r="4"><title>no schema registered</title></circle>{{end}}
+          </svg>
+          <figcaption class="bpmn-label" title="{{.Type}}">{{.Type}}</figcaption>
+        </div>
+      </figure>
+      {{end}}
+    </div>
   </div>
   {{else}}
   <p class="panel-hint">Clio is connected, but no events have been written yet.</p>
