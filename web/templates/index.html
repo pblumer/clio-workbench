@@ -16,12 +16,12 @@
       <span class="brand-name">CLIO&nbsp;WORKBENCH</span>
       <span class="brand-sub">event-model drafting board</span>
     </div>
-    <div class="status">
-      {{if .ProxyEnabled}}
-        <span class="pill pill-on" title="{{.ClioURL}}">UPLINK · {{.ClioURL}}</span>
-      {{else}}
-        <span class="pill pill-off" title="set CLIO_URL to enable push &amp; Gegenprobe">OFFLINE</span>
-      {{end}}
+    <div class="status" id="connection-slot"
+         hx-get="/connection"
+         hx-trigger="load"
+         hx-target="this"
+         hx-swap="innerHTML">
+      <span class="pill pill-checking"><span class="pill-dot" aria-hidden="true"></span>CHECKING…</span>
     </div>
   </header>
 
@@ -60,6 +60,15 @@
     <section class="panel">
       <h2 class="panel-title">Drafts</h2>
       {{template "drafts.html" .Drafts}}
+    </section>
+
+    <section class="panel events-panel" id="events-slot"
+             hx-get="/events"
+             hx-trigger="load"
+             hx-target="this"
+             hx-swap="innerHTML">
+      <div class="events-head"><h2 class="panel-title">Events</h2></div>
+      <p class="panel-hint">loading…</p>
     </section>
   </main>
 

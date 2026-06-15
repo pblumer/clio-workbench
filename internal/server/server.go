@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/config"
 	"github.com/pblumer/clio-workbench/internal/store"
 	"github.com/pblumer/clio-workbench/web"
@@ -18,6 +19,7 @@ import (
 type Server struct {
 	cfg   config.Config
 	store *store.Store
+	clio  *clio.Client
 	log   *slog.Logger
 	tmpl  *template.Template
 	mux   *http.ServeMux
@@ -29,7 +31,14 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger) (*Server, error) 
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
-	s := &Server{cfg: cfg, store: st, log: log, tmpl: tmpl, mux: http.NewServeMux()}
+	s := &Server{
+		cfg:   cfg,
+		store: st,
+		clio:  clio.New(cfg.ClioURL, cfg.ClioToken),
+		log:   log,
+		tmpl:  tmpl,
+		mux:   http.NewServeMux(),
+	}
 	if err := s.routes(); err != nil {
 		return nil, err
 	}
@@ -50,6 +59,8 @@ func (s *Server) routes() error {
 	// Pages and draft handlers.
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
+	s.mux.HandleFunc("GET /connection", s.handleConnection)
+	s.mux.HandleFunc("GET /events", s.handleEvents)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)

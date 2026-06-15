@@ -1,0 +1,12 @@
+{{define "connection.html" -}}
+<span class="pill pill-{{.Status}}"
+      title="{{.Detail}}{{if .ClioURL}} · {{.ClioURL}}{{end}}{{if .LatencyMS}} · {{.LatencyMS}}ms{{end}}">
+  <span class="pill-dot" aria-hidden="true"></span>{{.Label}}{{if .ClioURL}} · {{.ClioURL}}{{end}}
+</span>
+<button class="reconnect" type="button"
+        hx-get="/connection"
+        hx-target="#connection-slot"
+        hx-swap="innerHTML"
+        title="Re-check connection to Clio"
+        aria-label="Reconnect">⟳</button>
+{{- end}}
