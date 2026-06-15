@@ -586,6 +586,29 @@ html, body {
 .variant-step { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--edge); color: var(--text); font-size: 12px; }
 .variant-arrow { color: var(--neon-dim); }
 
+/* Relationships — subject-hierarchy tree (1:n) */
+.rel-tree { list-style: none; margin: 0; padding: 0; }
+.rel-tree .rel-tree { margin-left: 18px; border-left: 1px solid var(--edge); padding-left: 12px; }
+.rel-item { margin: 3px 0; }
+.rel-item summary, .rel-leaf { cursor: default; display: flex; align-items: baseline; gap: 8px; padding: 3px 0; }
+.rel-item summary { cursor: pointer; list-style: none; }
+.rel-item summary::-webkit-details-marker { display: none; }
+.rel-item summary::before { content: "▸"; color: var(--text-dim); font-size: 10px; }
+.rel-item details[open] > summary::before { content: "▾"; }
+.rel-seg { color: var(--text); }
+.rel-id > details > summary .rel-seg, .rel-id > .rel-leaf .rel-seg { color: var(--accent); }
+.rel-card {
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: #cdbcff;
+  border: 1px solid rgba(124, 92, 255, 0.5);
+  background: rgba(124, 92, 255, 0.12);
+}
+.rel-count { font-size: 11px; color: var(--text-dim); }
+.rel-legend { margin-top: 14px; }
+
 /* Node inspector drawer (click a process node) */
 .inspector {
   position: fixed;
