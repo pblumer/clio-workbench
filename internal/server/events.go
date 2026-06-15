@@ -6,14 +6,24 @@ import (
 	"net/http"
 
 	"github.com/pblumer/clio-workbench/internal/clio"
+	"github.com/pblumer/clio-workbench/internal/process"
 )
+
+// eventTypeView is one event type plus its inferred lifecycle phase, for
+// colour-coding the orbits.
+type eventTypeView struct {
+	Type      string
+	Count     int
+	HasSchema bool
+	Phase     string
+}
 
 // eventsView is the view model for the BPMN events fragment.
 type eventsView struct {
 	// State is one of: ok, offline, unauthorized, error.
 	State   string
 	Message string
-	Types   []clio.EventType
+	Types   []eventTypeView
 	// Total is the sum of all occurrence counts across event types — the
 	// number shown in the header bubble.
 	Total int
@@ -31,8 +41,14 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case err == nil:
 		v.State = "ok"
-		v.Types = types
 		for _, t := range types {
+			_, phase := process.Classify(t.Type)
+			v.Types = append(v.Types, eventTypeView{
+				Type:      t.Type,
+				Count:     t.Count,
+				HasSchema: t.HasSchema,
+				Phase:     string(phase),
+			})
 			v.Total += t.Count
 		}
 	case errors.Is(err, clio.ErrOffline):

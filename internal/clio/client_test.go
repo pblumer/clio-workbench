@@ -188,6 +188,47 @@ func TestReadEventTypes_Unauthorized(t *testing.T) {
 	}
 }
 
+func TestReadEvents_ParsesAndLimits(t *testing.T) {
+	const body = `{"id":"1","subject":"/o/1","type":"placed","time":"t1"}
+{"id":"2","subject":"/o/1","type":"paid","time":"t2"}
+{"id":"3","subject":"/o/2","type":"placed","time":"t3"}
+`
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path + "?" + r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "tok", WithHTTPClient(srv.Client()))
+	evs, err := c.ReadEvents(context.Background(), 0)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotPath != "/api/v1/events?recursive=true" {
+		t.Errorf("probed %q, want /api/v1/events?recursive=true", gotPath)
+	}
+	if len(evs) != 3 || evs[1].Type != "paid" || evs[2].Subject != "/o/2" {
+		t.Fatalf("parsed events wrong: %+v", evs)
+	}
+
+	limited, err := c.ReadEvents(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(limited) != 2 {
+		t.Errorf("limit not honoured: got %d, want 2", len(limited))
+	}
+}
+
+func TestReadEvents_Offline(t *testing.T) {
+	c := New("", "")
+	if _, err := c.ReadEvents(context.Background(), 0); !errors.Is(err, ErrOffline) {
+		t.Fatalf("err = %v, want ErrOffline", err)
+	}
+}
+
 func TestSetTargetSwitchesState(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
