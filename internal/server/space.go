@@ -3,45 +3,73 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/process"
 )
 
-// Layout constants for the bipartite subject↔type space.
+// Dotted-chart layout (server-side; the SVG is then pan/zoomed client-side).
 const (
-	sRowH   = 92.0
-	sPadY   = 60.0
-	sLeftX  = 150.0
-	sRightX = 760.0
+	dMaxRows = 70
+	dW       = 940.0
+	dRowH    = 20.0
+	dTop     = 44.0
+	dBottom  = 34.0
+	dGutter  = 180.0 // left space for subject labels
+	dRight   = 28.0
+	dDotR    = 3.4
 )
 
-type spaceView struct {
-	State        string // ok, empty, offline, unauthorized, error
-	Message      string
-	W, H         float64
-	Nodes        []procNode // subjects and types share the node shape
-	Edges        []procEdge
-	SubjectCount int
-	TypeCount    int
-	Events       int
+type dotPoint struct {
+	X, Y    float64
+	Phase   string
+	Subject string
+	Type    string
+	Time    string
 }
 
-// handleSpace reads real events and renders the "event space": the bipartite
-// graph where subjects (grouped to their top-level prefix) meet the event types
-// that occur on them. It emits the same .proc-graph structure as the process
-// view, so the shared force engine (process.js) gives it zoom/pan/drag/hover.
+type dotRow struct {
+	Label string
+	BandY float64
+	TextY float64
+	Count int
+}
+
+type gridLine struct{ X float64 }
+
+type dottedView struct {
+	State            string // ok, empty, offline, unauthorized, error
+	Message          string
+	W, H             float64
+	PlotL, PlotW     float64
+	LabelX           float64
+	GridTop, GridBot float64
+	AxisX, AxisY     float64
+	Rows             []dotRow
+	Dots             []dotPoint
+	Grid             []gridLine
+	Axis             string
+	Shown            int
+	Total            int
+	Events           int
+	Capped           bool
+}
+
+// handleSpace renders the "event space" as a dotted chart: one row per subject,
+// X = time (or sequence), each event a dot coloured by lifecycle phase. It
+// reveals bursts, gaps, variants and outliers across all subjects at a glance.
 func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
 	defer cancel()
 
 	events, err := s.clio.ReadEvents(ctx, processEventCap)
 	if err != nil {
-		v := spaceView{}
+		v := dottedView{}
 		switch {
 		case errors.Is(err, clio.ErrOffline):
-			v.State, v.Message = "offline", "no Clio connected — pick a server to map subjects ↔ events"
+			v.State, v.Message = "offline", "no Clio connected — pick a server to chart its events"
 		case errors.Is(err, clio.ErrUnauthorized):
 			v.State, v.Message = "unauthorized", "Clio rejected the token"
 		default:
@@ -52,94 +80,69 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	in := make([]process.Event, len(events))
+	in := make([]process.TimedEvent, len(events))
 	for i, e := range events {
-		in[i] = process.Event{Subject: e.Subject, Type: e.Type}
+		in[i] = process.TimedEvent{Subject: e.Subject, Type: e.Type, Time: e.Time}
 	}
-	g := process.SubjectTypeGraph(in, 1)
-	s.render(w, "space.html", buildSpaceView(g))
+	s.render(w, "space.html", buildDottedView(process.BuildDotted(in, dMaxRows)))
 }
 
-func buildSpaceView(g process.MeetGraph) spaceView {
-	if len(g.Subjects) == 0 || len(g.Types) == 0 {
-		return spaceView{State: "empty", Message: "Clio is connected, but there are no events to map yet.", Events: g.Events}
+func buildDottedView(d process.Dotted) dottedView {
+	if len(d.Rows) == 0 {
+		return dottedView{State: "empty", Message: "Clio is connected, but there are no events to chart yet."}
 	}
 
-	v := spaceView{State: "ok", SubjectCount: len(g.Subjects), TypeCount: len(g.Types), Events: g.Events}
-
-	rows := len(g.Subjects)
-	if len(g.Types) > rows {
-		rows = len(g.Types)
+	v := dottedView{
+		State:  "ok",
+		W:      dW,
+		PlotL:  dGutter,
+		Shown:  d.Shown,
+		Total:  d.Total,
+		Events: d.Events,
+		Capped: d.Total > d.Shown,
 	}
-	v.W = sRightX + sLeftX
-	v.H = sPadY*2 + float64(rows)*sRowH
+	v.Axis = "sequence →"
+	if d.ByTime {
+		v.Axis = "time →"
+	}
+	v.H = dTop + float64(len(d.Rows))*dRowH + dBottom
+	plotW := dW - dGutter - dRight
+	v.PlotW = plotW
+	v.LabelX = dGutter - 10
+	v.GridTop = dTop
+	v.GridBot = v.H - dBottom
+	v.AxisX = dW - dRight
+	v.AxisY = v.H - 12
 
-	maxCount := 1
-	for _, n := range g.Subjects {
-		if n.Count > maxCount {
-			maxCount = n.Count
+	for i, row := range d.Rows {
+		label := row.Subject
+		if len(label) > 26 {
+			label = "…" + label[len(label)-25:]
 		}
-	}
-	for _, n := range g.Types {
-		if n.Count > maxCount {
-			maxCount = n.Count
-		}
-	}
-	radius := func(c int) float64 { return 16 + 16*float64(c)/float64(maxCount) }
-
-	pos := map[string]*procNode{}
-	column := func(items int) float64 {
-		return sPadY + float64(rows-items)*sRowH/2 + sRowH/2
+		v.Rows = append(v.Rows, dotRow{
+			Label: label,
+			BandY: dTop + float64(i)*dRowH,
+			TextY: dTop + (float64(i)+0.5)*dRowH,
+			Count: row.Count,
+		})
 	}
 
-	subjTop := column(len(g.Subjects))
-	for i, sub := range g.Subjects {
-		n := procNode{
-			Type:  "subj:" + sub.Subject,
-			Label: sub.Subject,
-			Count: sub.Count,
-			X:     sLeftX,
-			Y:     subjTop + float64(i)*sRowH,
-			R:     radius(sub.Count),
-		}
-		n.LabelY = n.Y + n.R + 16
-		v.Nodes = append(v.Nodes, n)
-		cp := n
-		pos[n.Type] = &cp
+	for _, frac := range []float64{0, 0.25, 0.5, 0.75, 1} {
+		v.Grid = append(v.Grid, gridLine{X: dGutter + frac*plotW})
 	}
 
-	typeTop := column(len(g.Types))
-	for i, ty := range g.Types {
-		n := procNode{
-			Type:  "type:" + ty.Type,
-			Label: ty.Type,
-			Phase: string(ty.Phase),
-			Count: ty.Count,
-			X:     sRightX,
-			Y:     typeTop + float64(i)*sRowH,
-			R:     radius(ty.Count),
-		}
-		n.LabelY = n.Y + n.R + 16
-		v.Nodes = append(v.Nodes, n)
-		cp := n
-		pos[n.Type] = &cp
+	for _, dot := range d.Dots {
+		v.Dots = append(v.Dots, dotPoint{
+			X:       dGutter + dot.X*plotW,
+			Y:       dTop + (float64(dot.Row)+0.5)*dRowH,
+			Phase:   string(dot.Phase),
+			Subject: dot.Subject,
+			Type:    dot.Type,
+			Time:    dot.Time,
+		})
 	}
-
-	maxLink := 1
-	for _, l := range g.Links {
-		if l.Count > maxLink {
-			maxLink = l.Count
-		}
-	}
-	for _, l := range g.Links {
-		from, to := pos["subj:"+l.Subject], pos["type:"+l.Type]
-		if from == nil || to == nil {
-			continue
-		}
-		e := procEdge{From: from.Type, To: to.Type, Count: l.Count, Width: 1 + 3.0*float64(l.Count)/float64(maxLink)}
-		e.D, e.LabelX, e.LabelY = edgePath(from, to)
-		v.Edges = append(v.Edges, e)
-	}
-
 	return v
 }
+
+// dotR is exposed to the template for the dot radius.
+func (dottedView) DotR() string { return fmt.Sprintf("%.1f", dDotR) }
