@@ -399,6 +399,16 @@ html, body {
 }
 .proc-tools input:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
 .proc-filter { min-width: 200px; flex: 1; }
+.proc-hops { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.proc-hops select {
+  background: rgba(5, 10, 20, 0.8);
+  border: 1px solid var(--edge);
+  border-radius: 7px;
+  padding: 6px 8px;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
 .proc-graph .filtered { display: none; }
 .proc-graph {
   position: relative;

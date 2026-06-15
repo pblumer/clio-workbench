@@ -59,7 +59,7 @@
         el: g, type: g.getAttribute("data-type"), task: g.getAttribute("data-task"),
         ox: parseFloat(orb.getAttribute("cx")), oy: parseFloat(orb.getAttribute("cy")),
         r: parseFloat(orb.getAttribute("r")), vx: 0, vy: 0, fixed: false,
-        nbrs: [], inc: [],
+        nbrs: [], inc: [], outE: [],
       };
       n.x = n.ox; n.y = n.oy;
       n.countEl = g.querySelector(".proc-count");
@@ -74,7 +74,7 @@
       var ed = { from: f, to: t, path: p, label: p.nextElementSibling };
       edges.push(ed);
       edgeByKey[f.type + " -> " + t.type] = ed;
-      f.inc.push(ed); t.inc.push(ed);
+      f.inc.push(ed); t.inc.push(ed); f.outE.push(ed);
       if (f !== t) { f.nbrs.push(t); t.nbrs.push(f); }
     });
 
@@ -170,24 +170,39 @@
 
       n.el.addEventListener("pointerenter", function () {
         if (dragging) return;
-        viewport.classList.add("graph-dim");
-        n.el.classList.add("hot");
-        n.nbrs.forEach(function (m) { m.el.classList.add("hot"); });
-        n.inc.forEach(function (ed) {
-          ed.path.classList.add("hot");
-          if (ed.label) ed.label.classList.add("hot");
-        });
+        highlight(n);
       }, { signal: sig });
-      n.el.addEventListener("pointerleave", function () {
-        viewport.classList.remove("graph-dim");
-        n.el.classList.remove("hot");
-        n.nbrs.forEach(function (m) { m.el.classList.remove("hot"); });
-        n.inc.forEach(function (ed) {
-          ed.path.classList.remove("hot");
-          if (ed.label) ed.label.classList.remove("hot");
-        });
-      }, { signal: sig });
+      n.el.addEventListener("pointerleave", clearHighlight, { signal: sig });
     });
+
+    // Highlight a node's downstream neighbourhood up to the chosen depth.
+    var hopsSel = (graph.parentElement || graph).querySelector(".proc-hops select");
+    function depth() {
+      var v = hopsSel ? hopsSel.value : "1";
+      return v === "all" ? Infinity : (parseInt(v, 10) || 1);
+    }
+    function highlight(node) {
+      var d = depth(), seenN = {}, hotN = [node], hotE = [];
+      seenN[node.type] = true;
+      var frontier = [node], step = 0;
+      while (frontier.length && step < d) {
+        var next = [];
+        frontier.forEach(function (nd) {
+          nd.outE.forEach(function (ed) {
+            hotE.push(ed);
+            if (!seenN[ed.to.type]) { seenN[ed.to.type] = true; hotN.push(ed.to); next.push(ed.to); }
+          });
+        });
+        frontier = next; step++;
+      }
+      viewport.classList.add("graph-dim");
+      hotN.forEach(function (m) { m.el.classList.add("hot"); });
+      hotE.forEach(function (ed) { ed.path.classList.add("hot"); if (ed.label) ed.label.classList.add("hot"); });
+    }
+    function clearHighlight() {
+      viewport.classList.remove("graph-dim");
+      viewport.querySelectorAll(".hot").forEach(function (el) { el.classList.remove("hot"); });
+    }
 
     var resetBtn = graph.querySelector(".proc-reset");
     if (resetBtn) {
