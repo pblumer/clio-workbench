@@ -22,6 +22,8 @@ type Config struct {
 	// ClioToken is the bearer token injected server-side into proxied
 	// requests. It is never exposed to the browser.
 	ClioToken string
+	// Servers are preset Clio URLs offered for quick selection in the UI.
+	Servers []string
 }
 
 // Defaults mirror docs/WORKBENCH.md §3.3.
@@ -30,6 +32,9 @@ const (
 	defaultDataDir = "./workbench-data"
 )
 
+// defaultServers are offered in the connect menu when WORKBENCH_SERVERS is unset.
+var defaultServers = []string{"https://clio.blumer.cloud"}
+
 // Load reads the configuration from the environment, applying defaults.
 func Load() Config {
 	return Config{
@@ -37,7 +42,24 @@ func Load() Config {
 		DataDir:   envOr("WORKBENCH_DATA", defaultDataDir),
 		ClioURL:   strings.TrimRight(os.Getenv("CLIO_URL"), "/"),
 		ClioToken: os.Getenv("CLIO_API_TOKEN"),
+		Servers:   serverList(os.Getenv("WORKBENCH_SERVERS")),
 	}
+}
+
+// serverList parses a comma/space/newline-separated list of preset Clio URLs,
+// falling back to the built-in defaults when empty.
+func serverList(s string) []string {
+	fields := strings.FieldsFunc(s, func(r rune) bool {
+		return r == ',' || r == ' ' || r == '\n' || r == '\t' || r == '\r'
+	})
+	out := make([]string, 0, len(fields))
+	for _, f := range fields {
+		out = append(out, strings.TrimRight(f, "/"))
+	}
+	if len(out) == 0 {
+		return defaultServers
+	}
+	return out
 }
 
 // ProxyEnabled reports whether an upstream Clio is configured, which is the
