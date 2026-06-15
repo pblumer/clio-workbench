@@ -370,6 +370,58 @@ type FullEvent struct {
 	Data    json.RawMessage `json:"data"`
 }
 
+// ReadFullEvents streams up to limit events (with their data payload) via
+// GET /api/v1/events?recursive=true. Token injected server-side.
+func (c *Client) ReadFullEvents(ctx context.Context, limit int) ([]FullEvent, error) {
+	base, token := c.Snapshot()
+	if base == "" {
+		return nil, ErrOffline
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+eventsPath+"?recursive=true", nil)
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	req.Header.Set("Accept", "application/x-ndjson")
+
+	resp, err := c.httpc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		return nil, ErrUnauthorized
+	default:
+		return nil, fmt.Errorf("clio: unexpected HTTP %d", resp.StatusCode)
+	}
+
+	var events []FullEvent
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 0, 64<<10), 8<<20)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+		var ev FullEvent
+		if err := json.Unmarshal([]byte(line), &ev); err != nil {
+			return nil, fmt.Errorf("clio: decode event: %w", err)
+		}
+		events = append(events, ev)
+		if limit > 0 && len(events) >= limit {
+			break
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("clio: read full events: %w", err)
+	}
+	return events, nil
+}
+
 // ReadEventsByType streams up to limit events of one type (with their data
 // payload) via GET /api/v1/events?type=<type>. Token injected server-side;
 // ErrOffline / ErrUnauthorized returned for those states.

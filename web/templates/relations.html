@@ -12,10 +12,26 @@
 </div>
 
 {{if eq .State "ok"}}
+  <h3 class="rel-sub">Containment (subject hierarchy)</h3>
   <ul class="rel-tree rel-root">
     {{- range .Root.Children}}{{template "relnode" .}}{{end}}
   </ul>
   <p class="panel-hint rel-legend"><span class="rel-card">1:n · N</span> = a collection with N instances · <code>{id}</code> = one instance</p>
+
+  {{if .Refs}}
+  <h3 class="rel-sub">References <small>(inferred from data payloads)</small></h3>
+  <ul class="ref-list">
+    {{- range .Refs}}
+    <li class="ref-item">
+      <code class="ref-from">{{.From}}</code>
+      <span class="rel-card ref-kind{{if eq .Kind "n:m"}} ref-nm{{end}}">{{.Kind}}</span>
+      <code class="ref-to">{{.To}}</code>
+      <span class="ref-via">via {{.Via}}</span>
+      <span class="rel-count">×{{.Count}}</span>
+    </li>
+    {{- end}}
+  </ul>
+  {{end}}
 {{else if eq .State "empty"}}
   <p class="panel-hint">{{.Message}}</p>
 {{else}}

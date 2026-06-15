@@ -608,6 +608,15 @@ html, body {
 }
 .rel-count { font-size: 11px; color: var(--text-dim); }
 .rel-legend { margin-top: 14px; }
+.rel-sub { margin: 18px 0 8px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--neon); text-shadow: var(--glow); }
+.rel-sub small { letter-spacing: 0; text-transform: none; color: var(--text-dim); }
+
+.ref-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ref-item { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 10px; border: 1px solid var(--edge); border-radius: 8px; background: rgba(8, 14, 28, 0.6); }
+.ref-from, .ref-to { color: var(--text); }
+.ref-kind { border-color: rgba(56, 225, 255, 0.45); color: var(--neon); background: rgba(56, 225, 255, 0.1); }
+.ref-kind.ref-nm { border-color: rgba(124, 92, 255, 0.5); color: #cdbcff; background: rgba(124, 92, 255, 0.12); }
+.ref-via { font-size: 11px; color: var(--text-dim); }
 
 /* Node inspector drawer (click a process node) */
 .inspector {
