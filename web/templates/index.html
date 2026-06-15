@@ -16,47 +16,54 @@
       <span class="brand-name">CLIO&nbsp;WORKBENCH</span>
       <span class="brand-sub">event-model drafting board</span>
     </div>
-    <div class="status" id="connection-slot"
-         hx-get="/connection"
-         hx-trigger="load"
-         hx-target="this"
-         hx-swap="innerHTML">
-      <span class="pill pill-checking"><span class="pill-dot" aria-hidden="true"></span>CHECKING…</span>
+    <div class="status">
+      <span id="connection-slot"
+            hx-get="/connection"
+            hx-trigger="load, clio-changed from:body"
+            hx-target="this"
+            hx-swap="innerHTML">
+        <span class="pill pill-checking"><span class="pill-dot" aria-hidden="true"></span>CHECKING…</span>
+      </span>
+
+      <details class="conn-menu">
+        <summary class="conn-btn" title="Add or change the Clio server">⚙&nbsp;Server</summary>
+        <div class="conn-pop">
+          <h3 class="conn-pop-title">Clio server</h3>
+          <p class="conn-pop-hint">
+            Point the Workbench at a running Clio. The token is kept
+            <strong>server-side</strong>.
+          </p>
+          <form class="connect-form"
+                hx-post="/connect"
+                hx-target="#connection-slot"
+                hx-swap="innerHTML"
+                hx-on::after-request="if(event.detail.successful) this.closest('details').removeAttribute('open')">
+            <label>
+              <span>URL</span>
+              <input type="url" name="url" placeholder="http://localhost:3000"
+                     value="{{.ClioURL}}" autocomplete="off">
+            </label>
+            <label>
+              <span>Token
+                {{- if .HasToken}} <small>(set — blank clears)</small>
+                {{- else}} <small>(optional)</small>{{end}}</span>
+              <input type="password" name="token" placeholder="bearer token" autocomplete="off">
+            </label>
+            <div class="connect-actions">
+              <button type="submit" class="btn-primary">Connect</button>
+              <button type="button" class="btn-link"
+                      hx-post="/disconnect"
+                      hx-target="#connection-slot"
+                      hx-swap="innerHTML"
+                      hx-on::after-request="this.closest('details').removeAttribute('open')">Disconnect</button>
+            </div>
+          </form>
+        </div>
+      </details>
     </div>
   </header>
 
   <main class="grid">
-    <section class="panel connect-panel">
-      <h2 class="panel-title">Clio server</h2>
-      <p class="panel-hint">
-        Point the Workbench at a running Clio. The token is kept
-        <strong>server-side</strong> and never sent back to the browser.
-      </p>
-      <form class="connect-form"
-            hx-post="/connect"
-            hx-target="#connection-slot"
-            hx-swap="innerHTML">
-        <label>
-          <span>URL</span>
-          <input type="url" name="url" placeholder="http://localhost:3000"
-                 value="{{.ClioURL}}" autocomplete="off">
-        </label>
-        <label>
-          <span>Token
-            {{- if .HasToken}} <small>(currently set — blank clears it)</small>
-            {{- else}} <small>(optional)</small>{{end}}</span>
-          <input type="password" name="token" placeholder="bearer token" autocomplete="off">
-        </label>
-        <div class="connect-actions">
-          <button type="submit" class="btn-primary">Connect</button>
-          <button type="button" class="btn-link"
-                  hx-post="/disconnect"
-                  hx-target="#connection-slot"
-                  hx-swap="innerHTML">Disconnect</button>
-        </div>
-      </form>
-    </section>
-
     <section class="panel">
       <h2 class="panel-title">New model</h2>
       <p class="panel-hint">
