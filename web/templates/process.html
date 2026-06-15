@@ -5,11 +5,27 @@
   </h2>
   <button class="reconnect" type="button"
           hx-get="/process"
+          hx-include=".proc-scope"
           hx-target="#process-slot"
           hx-swap="innerHTML"
           title="Re-discover the process from Clio"
           aria-label="Refresh">⟳</button>
 </div>
+
+{{if or (eq .State "ok") (eq .State "empty")}}
+<div class="proc-tools">
+  <input class="proc-filter" type="search" placeholder="filter type… e.g. identity" autocomplete="off" aria-label="Filter event types">
+  <form class="proc-scope"
+        hx-get="/process"
+        hx-target="#process-slot"
+        hx-swap="innerHTML"
+        hx-trigger="input changed delay:400ms, submit"
+        onsubmit="return false">
+    <input type="text" name="subject" value="{{.Subject}}" placeholder="subject /orders" autocomplete="off" aria-label="Subject prefix">
+    <input type="text" name="source" value="{{.Source}}" placeholder="source…" autocomplete="off" aria-label="Source filter">
+  </form>
+</div>
+{{end}}
 
 {{if eq .State "ok"}}
   <div class="proc-graph">

@@ -32,6 +32,15 @@
       (ax + bx) / 2, Math.max(ay, by) + dip - 6];
   }
 
+  // openInspector loads the event list for a type into the drawer.
+  function openInspector(type) {
+    var insp = document.getElementById("inspector");
+    if (!insp || !window.htmx) return;
+    insp.classList.add("open");
+    window.htmx.ajax("GET", "/node-events?type=" + encodeURIComponent(type),
+      { target: "#inspector", swap: "innerHTML" });
+  }
+
   function init(graph) {
     var svg = graph.querySelector("svg");
     var viewport = graph.querySelector(".proc-viewport");
@@ -131,8 +140,10 @@
     // ---- node drag + hover highlight ----
     var dragging = null;
     nodes.forEach(function (n) {
+      var down = null;
       n.el.addEventListener("pointerdown", function (evt) {
         evt.stopPropagation(); evt.preventDefault();
+        down = { x: evt.clientX, y: evt.clientY, t: Date.now() };
         dragging = n; n.fixed = true; n.el.classList.add("dragging");
         n.el.setPointerCapture(evt.pointerId);
         reheat();
@@ -147,6 +158,12 @@
         if (dragging !== n) return;
         dragging = null; n.fixed = false; n.el.classList.remove("dragging");
         try { n.el.releasePointerCapture(evt.pointerId); } catch (e) { /* ignore */ }
+        // A short, near-stationary press is a click → open the inspector.
+        if (down) {
+          var dx = evt.clientX - down.x, dy = evt.clientY - down.y;
+          if (dx * dx + dy * dy < 25 && Date.now() - down.t < 400) openInspector(n.type);
+        }
+        down = null;
       }
       n.el.addEventListener("pointerup", drop, { signal: sig });
       n.el.addEventListener("pointercancel", drop, { signal: sig });
@@ -177,6 +194,28 @@
       resetBtn.addEventListener("click", function () {
         view.k = 1; view.tx = 0; view.ty = 0; applyView(); reheat();
       }, { signal: sig });
+    }
+
+    // ---- type search: hide non-matching nodes (and their edges) ----
+    function applyFilter(q) {
+      q = (q || "").trim().toLowerCase();
+      var match = {};
+      nodes.forEach(function (n) {
+        var ok = !q || n.type.toLowerCase().indexOf(q) !== -1;
+        match[n.type] = ok;
+        n.el.classList.toggle("filtered", !ok);
+      });
+      edges.forEach(function (ed) {
+        var ok = match[ed.from.type] && match[ed.to.type];
+        ed.path.classList.toggle("filtered", !ok);
+        if (ed.label) ed.label.classList.toggle("filtered", !ok);
+      });
+    }
+    var panel = graph.parentElement;
+    var filterInput = panel && panel.querySelector(".proc-filter");
+    if (filterInput) {
+      filterInput.addEventListener("input", function () { applyFilter(filterInput.value); }, { signal: sig });
+      if (filterInput.value) applyFilter(filterInput.value);
     }
 
     // ---- simulation ----

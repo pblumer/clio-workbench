@@ -9,6 +9,7 @@ import (
 	"math"
 	"net/http"
 	"sort"
+	"strings"
 
 	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/process"
@@ -73,6 +74,10 @@ type processView struct {
 	Variants []procVariant
 	Subjects int
 	Events   int
+	// Subject is the active subject-prefix filter (empty = all).
+	Subject string
+	// Source is the active source substring filter (empty = all).
+	Source string
 	// ReplayJSON is the ordered event stream for the client-side timeline
 	// replay ([{s,t,ts}, ...]).
 	ReplayJSON template.JS
@@ -84,9 +89,12 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
 	defer cancel()
 
+	subject := strings.TrimSpace(r.URL.Query().Get("subject"))
+	source := strings.TrimSpace(r.URL.Query().Get("source"))
+
 	events, err := s.clio.ReadEvents(ctx, processEventCap)
 	if err != nil {
-		v := processView{}
+		v := processView{Subject: subject, Source: source}
 		switch {
 		case errors.Is(err, clio.ErrOffline):
 			v.State, v.Message = "offline", "no Clio connected — pick a server to discover its process"
@@ -100,12 +108,29 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Optional filters: subject is a path prefix, source a substring match.
+	if subject != "" || source != "" {
+		f := make([]clio.Event, 0, len(events))
+		for _, e := range events {
+			if subject != "" && !strings.HasPrefix(e.Subject, subject) {
+				continue
+			}
+			if source != "" && !strings.Contains(e.Source, source) {
+				continue
+			}
+			f = append(f, e)
+		}
+		events = f
+	}
+
 	in := make([]process.Event, len(events))
 	for i, e := range events {
 		in[i] = process.Event{Subject: e.Subject, Type: e.Type}
 	}
 	g := process.Discover(in, processMaxVariant)
 	v := buildProcessView(g)
+	v.Subject = subject
+	v.Source = source
 	v.ReplayJSON = replayJSON(events)
 	s.render(w, "process.html", v)
 }

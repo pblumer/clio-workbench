@@ -1,0 +1,29 @@
+{{define "nodeevents.html" -}}
+<div class="insp-head">
+  <div class="insp-title">
+    <span class="insp-type">{{.Type}}</span>
+    {{- if eq .State "ok"}} <span class="insp-count">{{.Count}}{{if .Capped}}+{{end}}</span>{{end}}
+  </div>
+  <button type="button" class="insp-close" title="Close"
+          onclick="document.getElementById('inspector').classList.remove('open')">✕</button>
+</div>
+
+{{if eq .State "ok"}}
+  <input class="insp-filter" type="text" placeholder="filter subject or payload…" autocomplete="off"
+         oninput="var q=this.value.toLowerCase();this.closest('#inspector').querySelectorAll('.ev-item').forEach(function(el){el.hidden=q&&el.textContent.toLowerCase().indexOf(q)===-1});">
+  <ul class="ev-list">
+    {{- range .Items}}
+    <li class="ev-item">
+      <div class="ev-meta">
+        <code class="ev-subject">{{.Subject}}</code>
+        {{- if .Time}}<span class="ev-time">{{.Time}}</span>{{end}}
+      </div>
+      {{- if .Source}}<div class="ev-source">from <code>{{.Source}}</code></div>{{end}}
+      <pre class="ev-data">{{.Data}}</pre>
+    </li>
+    {{- end}}
+  </ul>
+{{else}}
+  <p class="insp-msg insp-{{.State}}">{{.Message}}</p>
+{{end}}
+{{- end}}

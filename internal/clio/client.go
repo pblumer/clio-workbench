@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -294,6 +295,7 @@ func (c *Client) ReadEventTypes(ctx context.Context) ([]EventType, error) {
 // append (monotone-id) order, so the stream order is the chronological order.
 type Event struct {
 	ID      string `json:"id"`
+	Source  string `json:"source"`
 	Subject string `json:"subject"`
 	Type    string `json:"type"`
 	Time    string `json:"time"`
@@ -354,6 +356,73 @@ func (c *Client) ReadEvents(ctx context.Context, limit int) ([]Event, error) {
 	}
 	if err := sc.Err(); err != nil {
 		return nil, fmt.Errorf("clio: read events: %w", err)
+	}
+	return events, nil
+}
+
+// FullEvent is an event including its data payload, for the node inspector.
+type FullEvent struct {
+	ID      string          `json:"id"`
+	Source  string          `json:"source"`
+	Subject string          `json:"subject"`
+	Type    string          `json:"type"`
+	Time    string          `json:"time"`
+	Data    json.RawMessage `json:"data"`
+}
+
+// ReadEventsByType streams up to limit events of one type (with their data
+// payload) via GET /api/v1/events?type=<type>. Token injected server-side;
+// ErrOffline / ErrUnauthorized returned for those states.
+func (c *Client) ReadEventsByType(ctx context.Context, typ string, limit int) ([]FullEvent, error) {
+	base, token := c.Snapshot()
+	if base == "" {
+		return nil, ErrOffline
+	}
+
+	u := base + eventsPath + "?recursive=true&type=" + url.QueryEscape(typ)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	req.Header.Set("Accept", "application/x-ndjson")
+
+	resp, err := c.httpc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		// parse below
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		return nil, ErrUnauthorized
+	default:
+		return nil, fmt.Errorf("clio: unexpected HTTP %d", resp.StatusCode)
+	}
+
+	var events []FullEvent
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 0, 64<<10), 8<<20)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+		var ev FullEvent
+		if err := json.Unmarshal([]byte(line), &ev); err != nil {
+			return nil, fmt.Errorf("clio: decode event: %w", err)
+		}
+		events = append(events, ev)
+		if limit > 0 && len(events) >= limit {
+			break
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("clio: read events by type: %w", err)
 	}
 	return events, nil
 }
