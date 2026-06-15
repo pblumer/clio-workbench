@@ -16,12 +16,12 @@
       <span class="brand-name">CLIO&nbsp;WORKBENCH</span>
       <span class="brand-sub">event-model drafting board</span>
     </div>
-    <div class="status">
-      {{if .ProxyEnabled}}
-        <span class="pill pill-on" title="{{.ClioURL}}">UPLINK · {{.ClioURL}}</span>
-      {{else}}
-        <span class="pill pill-off" title="set CLIO_URL to enable push &amp; Gegenprobe">OFFLINE</span>
-      {{end}}
+    <div class="status" id="connection-slot"
+         hx-get="/connection"
+         hx-trigger="load"
+         hx-target="this"
+         hx-swap="innerHTML">
+      <span class="pill pill-checking"><span class="pill-dot" aria-hidden="true"></span>CHECKING…</span>
     </div>
   </header>
 

@@ -60,6 +60,10 @@ func run(log *slog.Logger) error {
 		}
 	}()
 
+	// Probe the upstream Clio without blocking startup: offline drafting must
+	// stay possible even when Clio is down (docs/WORKBENCH.md §3.3).
+	go srv.LogConnectionCheck(ctx)
+
 	select {
 	case err := <-errCh:
 		return err
