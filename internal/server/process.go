@@ -47,6 +47,7 @@ type procGroup struct {
 }
 
 type procEdge struct {
+	From, To       string
 	D              string
 	LabelX, LabelY float64
 	Count          int
@@ -168,7 +169,7 @@ func buildProcessView(g process.Graph) processView {
 		if from == nil || to == nil {
 			continue
 		}
-		pe := procEdge{Count: e.Count, Width: 1.2 + 3.0*float64(e.Count)/float64(maxEdge)}
+		pe := procEdge{From: e.From, To: e.To, Count: e.Count, Width: 1.2 + 3.0*float64(e.Count)/float64(maxEdge)}
 		pe.D, pe.LabelX, pe.LabelY = edgePath(from, to)
 		v.Edges = append(v.Edges, pe)
 	}
