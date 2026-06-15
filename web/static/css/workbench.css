@@ -243,6 +243,19 @@ html, body {
 .connect-actions { display: flex; align-items: center; gap: 14px; margin-top: 2px; }
 .connect-actions .btn-primary { margin-top: 0; }
 
+.server-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.server-chip {
+  cursor: pointer;
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: rgba(8, 14, 28, 0.6);
+  color: var(--neon-dim);
+  font: inherit;
+  font-size: 11px;
+}
+.server-chip:hover { color: var(--neon); border-color: var(--neon-dim); box-shadow: var(--glow); }
+
 /* Events panel — rudimentary BPMN send-task view (read-event-types) */
 .events-panel { grid-column: 1 / -1; }
 .events-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }

@@ -16,8 +16,10 @@ type indexData struct {
 	ClioURL string
 	// HasToken reports whether a token is already set, without revealing it.
 	HasToken bool
-	DataDir  string
-	Drafts   []model.Draft
+	// Servers are preset Clio URLs offered for quick selection.
+	Servers []string
+	DataDir string
+	Drafts  []model.Draft
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -29,6 +31,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "index.html", indexData{
 		ClioURL:  s.clio.BaseURL(),
 		HasToken: s.clio.HasToken(),
+		Servers:  s.cfg.Servers,
 		DataDir:  s.cfg.DataDir,
 		Drafts:   drafts,
 	})

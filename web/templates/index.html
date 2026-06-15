@@ -43,8 +43,21 @@
             <label>
               <span>URL</span>
               <input type="url" name="url" placeholder="http://localhost:3000"
-                     value="{{.ClioURL}}" autocomplete="off">
+                     value="{{.ClioURL}}" list="clio-servers" autocomplete="off">
+              {{- if .Servers}}
+              <datalist id="clio-servers">
+                {{- range .Servers}}<option value="{{.}}"></option>{{end}}
+              </datalist>
+              {{- end}}
             </label>
+            {{- if .Servers}}
+            <div class="server-presets">
+              {{- range .Servers}}
+              <button type="button" class="server-chip"
+                      onclick="this.closest('form').querySelector('input[name=url]').value='{{.}}'">{{.}}</button>
+              {{- end}}
+            </div>
+            {{- end}}
             <label>
               <span>Token
                 {{- if .HasToken}} <small>(set — blank clears)</small>
