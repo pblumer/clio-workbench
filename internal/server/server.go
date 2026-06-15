@@ -60,6 +60,7 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
 	s.mux.HandleFunc("GET /connection", s.handleConnection)
+	s.mux.HandleFunc("GET /events", s.handleEvents)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)

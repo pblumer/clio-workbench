@@ -61,6 +61,15 @@
       <h2 class="panel-title">Drafts</h2>
       {{template "drafts.html" .Drafts}}
     </section>
+
+    <section class="panel events-panel" id="events-slot"
+             hx-get="/events"
+             hx-trigger="load"
+             hx-target="this"
+             hx-swap="innerHTML">
+      <div class="events-head"><h2 class="panel-title">Events</h2></div>
+      <p class="panel-hint">loading…</p>
+    </section>
   </main>
 
   <footer class="hud-foot">

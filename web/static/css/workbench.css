@@ -195,6 +195,60 @@ html, body {
 
 .draft-empty { color: var(--text-dim); font-style: italic; list-style: none; }
 
+/* Events panel — rudimentary BPMN send-task view (read-event-types) */
+.events-panel { grid-column: 1 / -1; }
+.events-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.events-head .panel-title { margin: 0; display: flex; align-items: center; gap: 10px; }
+
+/* header bubble: sum of all occurring events */
+.total-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(124, 92, 255, 0.35), rgba(124, 92, 255, 0.12));
+  border: 1px solid rgba(124, 92, 255, 0.55);
+  color: #cdbcff;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-shadow: 0 0 8px rgba(124, 92, 255, 0.6);
+}
+
+.bpmn-flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+}
+.bpmn-card { margin: 0; display: flex; flex-direction: column; align-items: center; }
+.bpmn-card svg { width: 100%; height: auto; overflow: visible; }
+
+.bpmn-task { fill: rgba(8, 14, 28, 0.7); stroke: var(--neon-dim); stroke-width: 1.5; }
+.bpmn-envelope { fill: var(--neon-dim); stroke: var(--bg); stroke-width: 1; }   /* filled = send */
+.bpmn-envelope-flap { fill: none; stroke: var(--bg); stroke-width: 1.2; }
+.bpmn-assoc { stroke: var(--text-dim); stroke-width: 1.2; stroke-dasharray: 3 3; }
+.bpmn-dataobj { fill: rgba(13, 20, 38, 0.85); stroke: var(--text-dim); stroke-width: 1.2; }
+.bpmn-dataobj-fold { fill: none; stroke: var(--text-dim); stroke-width: 1.2; }
+.bpmn-bubble { fill: var(--accent); }
+.bpmn-bubble-text { fill: #fff; font: 600 13px/1 ui-monospace, monospace; }
+.bpmn-noschema { fill: var(--warn); }
+
+.bpmn-label {
+  margin-top: 6px;
+  max-width: 100%;
+  font-size: 12px;
+  color: var(--text);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bpmn-state-unauthorized { color: var(--warn); }
+.bpmn-state-error { color: #ff7a8a; }
+
 /* Footer */
 .hud-foot {
   display: flex;

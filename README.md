@@ -27,6 +27,9 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
 - A **live connection status** in the header that reports whether Clio is
   actually reachable and the token accepted — not merely whether `CLIO_URL` is
   configured (see below).
+- A rudimentary **events view**: the event types written to Clio
+  (`read-event-types`) rendered as BPMN **send tasks** with an attached data
+  object, a per-type count bubble, and a header bubble summing all occurrences.
 
 Still ahead per the roadmap (`docs/WORKBENCH.md` §8): the drawing canvas and
 state-machine view (Stufe 1), event-type schema editor and export (Stufe 2),

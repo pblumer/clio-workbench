@@ -13,7 +13,9 @@
 package clio
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -172,6 +174,76 @@ func (c *Client) CheckConnection(ctx context.Context) Result {
 			CheckedAt: now,
 		}
 	}
+}
+
+// Sentinel errors returned by read operations so callers can map them onto the
+// same status vocabulary as CheckConnection.
+var (
+	// ErrOffline means no CLIO_URL is configured.
+	ErrOffline = errors.New("clio: no CLIO_URL configured")
+	// ErrUnauthorized means Clio rejected the bearer token (HTTP 401/403).
+	ErrUnauthorized = errors.New("clio: token rejected")
+)
+
+// EventType is one entry of read-event-types: an event type with how often it
+// has occurred and whether a schema is registered. Matches Clio's NDJSON line
+// shape {"type":..,"count":..,"hasSchema":..}.
+type EventType struct {
+	Type      string `json:"type"`
+	Count     int    `json:"count"`
+	HasSchema bool   `json:"hasSchema"`
+}
+
+// ReadEventTypes lists the event types written to Clio so far (with counts), by
+// consuming the NDJSON stream of GET /api/v1/read-event-types. The token is
+// injected server-side. Returns ErrOffline / ErrUnauthorized for those states.
+func (c *Client) ReadEventTypes(ctx context.Context) ([]EventType, error) {
+	if c.baseURL == "" {
+		return nil, ErrOffline
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+probePath, nil)
+	if err != nil {
+		return nil, err
+	}
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	req.Header.Set("Accept", "application/x-ndjson")
+
+	resp, err := c.httpc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		// fall through to parse
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		return nil, ErrUnauthorized
+	default:
+		return nil, fmt.Errorf("clio: unexpected HTTP %d", resp.StatusCode)
+	}
+
+	var types []EventType
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 0, 64<<10), 1<<20)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+		var et EventType
+		if err := json.Unmarshal([]byte(line), &et); err != nil {
+			return nil, fmt.Errorf("clio: decode event type: %w", err)
+		}
+		types = append(types, et)
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("clio: read event types: %w", err)
+	}
+	return types, nil
 }
 
 // transportDetail produces a concise, token-free message for a transport-level

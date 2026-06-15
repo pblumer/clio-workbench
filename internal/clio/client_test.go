@@ -2,6 +2,7 @@ package clio
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -128,6 +129,62 @@ func TestCheckConnection_ContextTimeout(t *testing.T) {
 	}
 	if !strings.Contains(res.Detail, "timeout") {
 		t.Errorf("detail = %q, want it to mention timeout", res.Detail)
+	}
+}
+
+func TestReadEventTypes_ParsesNDJSON(t *testing.T) {
+	const body = `{"type":"order-placed","count":3,"hasSchema":true}
+{"type":"order-shipped","count":2,"hasSchema":false}
+
+{"type":"order-cancelled","count":1,"hasSchema":true}
+`
+	var gotAuth string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "tok", WithHTTPClient(srv.Client()))
+	types, err := c.ReadEventTypes(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if gotAuth != "Bearer tok" {
+		t.Errorf("Authorization = %q, want %q", gotAuth, "Bearer tok")
+	}
+	if len(types) != 3 {
+		t.Fatalf("got %d types, want 3 (blank lines skipped): %+v", len(types), types)
+	}
+	total := 0
+	for _, et := range types {
+		total += et.Count
+	}
+	if total != 6 {
+		t.Errorf("total count = %d, want 6", total)
+	}
+	if types[0].Type != "order-placed" || types[0].Count != 3 || !types[0].HasSchema {
+		t.Errorf("first type = %+v, want order-placed/3/true", types[0])
+	}
+}
+
+func TestReadEventTypes_Offline(t *testing.T) {
+	c := New("", "tok")
+	if _, err := c.ReadEventTypes(context.Background()); !errors.Is(err, ErrOffline) {
+		t.Fatalf("err = %v, want ErrOffline", err)
+	}
+}
+
+func TestReadEventTypes_Unauthorized(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	c := New(srv.URL, "bad", WithHTTPClient(srv.Client()))
+	if _, err := c.ReadEventTypes(context.Background()); !errors.Is(err, ErrUnauthorized) {
+		t.Fatalf("err = %v, want ErrUnauthorized", err)
 	}
 }
 
