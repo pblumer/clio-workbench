@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clio Workbench</title>
+  <link rel="stylesheet" href="/static/css/workbench.css">
+  <script src="/static/js/htmx.min.js" defer></script>
+</head>
+<body>
+  <div class="starfield" aria-hidden="true"></div>
+
+  <header class="hud-bar">
+    <div class="brand">
+      <span class="brand-mark">◇</span>
+      <span class="brand-name">CLIO&nbsp;WORKBENCH</span>
+      <span class="brand-sub">event-model drafting board</span>
+    </div>
+    <div class="status">
+      {{if .ProxyEnabled}}
+        <span class="pill pill-on" title="{{.ClioURL}}">UPLINK · {{.ClioURL}}</span>
+      {{else}}
+        <span class="pill pill-off" title="set CLIO_URL to enable push &amp; Gegenprobe">OFFLINE</span>
+      {{end}}
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="panel">
+      <h2 class="panel-title">New model</h2>
+      <p class="panel-hint">
+        Start a draft: an entity lifecycle (e.g. <code>Order</code>) or a
+        process (e.g. <code>Checkout</code>). Nodes are states/steps, edges are
+        event types.
+      </p>
+      <form class="new-form"
+            hx-post="/drafts"
+            hx-target="#drafts"
+            hx-swap="outerHTML"
+            hx-on::after-request="if(event.detail.successful) this.reset()">
+        <label>
+          <span>Name</span>
+          <input type="text" name="name" placeholder="Order" required autocomplete="off">
+        </label>
+        <label>
+          <span>Kind</span>
+          <select name="kind">
+            <option value="entity">Entity lifecycle</option>
+            <option value="process">Process</option>
+          </select>
+        </label>
+        <label>
+          <span>Namespace <small>(optional)</small></span>
+          <input type="text" name="namespace" placeholder="order" autocomplete="off">
+        </label>
+        <button type="submit" class="btn-primary">Create draft</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Drafts</h2>
+      {{template "drafts.html" .Drafts}}
+    </section>
+  </main>
+
+  <footer class="hud-foot">
+    <span>data · <code>{{.DataDir}}</code></span>
+    <span>Stufe 0 — Gerüst</span>
+  </footer>
+</body>
+</html>
