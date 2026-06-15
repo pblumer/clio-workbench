@@ -21,7 +21,7 @@
     </div>
     <div class="space-bodies">
       {{range .Types}}
-      <figure class="bpmn-card" data-type="{{.Type}}" data-count="{{.Count}}">
+      <figure class="bpmn-card phase-{{.Phase}}" data-type="{{.Type}}" data-count="{{.Count}}">
         <div class="bpmn-card-float">
           <svg viewBox="0 0 200 120" role="img" aria-label="Send task {{.Type}}, {{.Count}} events">
             <!-- BPMN send task -->

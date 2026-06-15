@@ -111,6 +111,41 @@ func TestDiscoverSelfLoop(t *testing.T) {
 	}
 }
 
+func TestClassify(t *testing.T) {
+	cases := []struct {
+		in       string
+		wantTask string
+		wantPh   Phase
+	}{
+		{"shipping.started", "shipping", PhaseActive},
+		{"shipping.completed", "shipping", PhaseComplete},
+		{"shipping.failed", "shipping", PhaseError},
+		{"order-payment-failed", "order-payment", PhaseError},
+		{"order-status-updated", "order-status", PhaseInfo},
+		{"order-placed", "order-placed", PhaseComplete}, // no marker → standalone fact
+		{"cancelled", "cancelled", PhaseError},          // bare error word
+	}
+	for _, c := range cases {
+		task, ph := Classify(c.in)
+		if task != c.wantTask || ph != c.wantPh {
+			t.Errorf("Classify(%q) = (%q,%s), want (%q,%s)", c.in, task, ph, c.wantTask, c.wantPh)
+		}
+	}
+}
+
+func TestDiscoverSetsPhase(t *testing.T) {
+	g := Discover(ev("/o/1", "shipping.started", "shipping.completed", "shipping.failed"), 0)
+	if node(g, "shipping.started").Phase != PhaseActive {
+		t.Errorf("started phase = %s", node(g, "shipping.started").Phase)
+	}
+	if node(g, "shipping.failed").Phase != PhaseError {
+		t.Errorf("failed phase = %s", node(g, "shipping.failed").Phase)
+	}
+	if node(g, "shipping.started").Task != "shipping" {
+		t.Errorf("task = %s, want shipping", node(g, "shipping.started").Task)
+	}
+}
+
 func TestDiscoverMaxVariants(t *testing.T) {
 	var events []Event
 	events = append(events, ev("/o/1", "a")...)

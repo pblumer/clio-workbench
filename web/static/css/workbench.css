@@ -345,6 +345,16 @@ html, body {
 .bpmn-bubble-text { fill: #fff; font: 600 13px/1 ui-monospace, monospace; }
 .bpmn-noschema { fill: var(--warn); }
 
+/* lifecycle phase tint for the orbiting cards */
+.phase-active   .bpmn-bubble { fill: var(--neon); }
+.phase-complete .bpmn-bubble { fill: var(--good); }
+.phase-error    .bpmn-bubble { fill: #ff5a6e; }
+.phase-info     .bpmn-bubble { fill: #9fb0c4; }
+.phase-active   .bpmn-task { stroke: var(--neon); }
+.phase-complete .bpmn-task { stroke: var(--good); }
+.phase-error    .bpmn-task { stroke: #ff5a6e; }
+.phase-info     .bpmn-task { stroke: #9fb0c4; }
+
 .bpmn-label {
   margin-top: 6px;
   max-width: 100%;
@@ -381,10 +391,18 @@ html, body {
   stroke-width: 3px;
 }
 
-.proc-node circle { fill: rgba(8, 14, 28, 0.92); stroke: var(--neon-dim); stroke-width: 1.6; }
-.proc-node.is-start circle { stroke: var(--good); }
-.proc-node.is-end circle { stroke: var(--accent); }
-.proc-node.is-start.is-end circle { stroke: var(--good); stroke-dasharray: 4 3; }
+/* task grouping backdrop */
+.proc-group rect { fill: rgba(56, 225, 255, 0.04); stroke: rgba(56, 225, 255, 0.22); stroke-width: 1; stroke-dasharray: 5 4; }
+.proc-group-label { fill: var(--text-dim); font: 11px/1 ui-monospace, monospace; letter-spacing: 1px; }
+
+/* nodes coloured by lifecycle phase */
+.proc-orb { fill: rgba(8, 14, 28, 0.92); stroke: var(--neon-dim); stroke-width: 1.8; }
+.phase-active   .proc-orb { stroke: var(--neon);  fill: rgba(56, 225, 255, 0.16); }
+.phase-complete .proc-orb { stroke: var(--good);  fill: rgba(70, 240, 160, 0.15); }
+.phase-error    .proc-orb { stroke: #ff5a6e;      fill: rgba(255, 90, 110, 0.18); }
+.phase-info     .proc-orb { stroke: #9fb0c4;      fill: rgba(159, 176, 196, 0.14); }
+.proc-startevt { fill: var(--good); }
+.proc-endevt { fill: none; stroke: var(--accent); stroke-width: 2.5; }
 .proc-count { fill: var(--text); font: 700 14px/1 ui-monospace, monospace; }
 .proc-label {
   fill: var(--text);
@@ -394,7 +412,11 @@ html, body {
   stroke-width: 3px;
 }
 
-.proc-legend { display: flex; gap: 16px; margin: 10px 2px 0; font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.proc-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 2px 0; font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.proc-legend .phase-active { color: var(--neon); }
+.proc-legend .phase-complete { color: var(--good); }
+.proc-legend .phase-error { color: #ff5a6e; }
+.proc-legend .phase-info { color: #9fb0c4; }
 .lg-start { color: var(--good); }
 .lg-end { color: var(--accent); }
 

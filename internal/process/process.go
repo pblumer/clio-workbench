@@ -19,11 +19,71 @@ type Event struct {
 	Type    string
 }
 
+// Phase is a BPMN task lifecycle phase inferred from an event type. A task
+// typically emits an event when it becomes active, one when it completes, and
+// possibly ones for errors or other information.
+type Phase string
+
+const (
+	PhaseActive   Phase = "active"
+	PhaseComplete Phase = "complete"
+	PhaseError    Phase = "error"
+	PhaseInfo     Phase = "info"
+)
+
+// Lifecycle suffix vocabularies for the default convention. They match the last
+// dot/dash/underscore segment of an event type (e.g. "shipping.failed" → error,
+// task "shipping"). This is a sensible default, meant to be overridable later.
+var (
+	errorWords    = words("failed failure error errored rejected denied cancelled canceled aborted timeout timedout expired declined")
+	activeWords   = words("started starting start initiated requested opened began begun resumed active created submitted queued scheduled")
+	completeWords = words("completed complete finished done succeeded success closed ended fulfilled")
+	infoWords     = words("updated changed modified noted logged progress progressed status info recorded observed")
+)
+
+func words(s string) map[string]bool {
+	m := make(map[string]bool)
+	for _, w := range strings.Fields(s) {
+		m[w] = true
+	}
+	return m
+}
+
+// Classify infers a task name and lifecycle phase from an event type using the
+// default convention: the trailing segment is a lifecycle marker and the rest
+// is the task. Event types without a recognised marker stand alone and are
+// treated as a completed fact.
+func Classify(eventType string) (task string, phase Phase) {
+	lower := strings.ToLower(eventType)
+	idx := strings.LastIndexAny(lower, ".-_/")
+	if idx > 0 && idx < len(lower)-1 {
+		suffix := lower[idx+1:]
+		prefix := eventType[:idx]
+		switch {
+		case errorWords[suffix]:
+			return prefix, PhaseError
+		case activeWords[suffix]:
+			return prefix, PhaseActive
+		case completeWords[suffix]:
+			return prefix, PhaseComplete
+		case infoWords[suffix]:
+			return prefix, PhaseInfo
+		}
+	}
+	// No lifecycle marker: a standalone domain fact.
+	if errorWords[lower] {
+		return eventType, PhaseError
+	}
+	return eventType, PhaseComplete
+}
+
 // Node is an event type with how often it occurred and how often it started or
 // ended a subject's sequence. Rank is its column in a left-to-right layout
-// (longest path from a start node).
+// (longest path from a start node). Task/Phase are the inferred lifecycle.
 type Node struct {
 	Type       string
+	Task       string
+	Phase      Phase
 	Count      int
 	StartCount int
 	EndCount   int
@@ -71,6 +131,7 @@ func Discover(events []Event, maxVariants int) Graph {
 		n := nodes[t]
 		if n == nil {
 			n = &Node{Type: t}
+			n.Task, n.Phase = Classify(t)
 			nodes[t] = n
 		}
 		return n

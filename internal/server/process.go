@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
+	"sort"
 
 	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/process"
@@ -25,13 +27,23 @@ const (
 )
 
 type procNode struct {
-	Type       string
-	Count      int
-	StartCount int
-	EndCount   int
-	X, Y, R    float64
-	LabelY     float64
-	Start, End bool
+	Type           string
+	Task           string
+	Phase          string
+	Count          int
+	StartCount     int
+	EndCount       int
+	X, Y, R        float64
+	LabelY         float64
+	StartMX, EndMX float64
+	Start, End     bool
+}
+
+// procGroup is a translucent backdrop around the nodes of one task (only drawn
+// when a task spans more than one event type).
+type procGroup struct {
+	X, Y, W, H float64
+	Label      string
 }
 
 type procEdge struct {
@@ -51,6 +63,7 @@ type processView struct {
 	State    string // ok, empty, offline, unauthorized, error
 	Message  string
 	W, H     float64
+	Groups   []procGroup
 	Nodes    []procNode
 	Edges    []procEdge
 	Variants []procVariant
@@ -122,6 +135,8 @@ func buildProcessView(g process.Graph) processView {
 		for i, n := range col {
 			pn := procNode{
 				Type:       n.Type,
+				Task:       n.Task,
+				Phase:      string(n.Phase),
 				Count:      n.Count,
 				StartCount: n.StartCount,
 				EndCount:   n.EndCount,
@@ -132,11 +147,15 @@ func buildProcessView(g process.Graph) processView {
 				End:        n.EndCount > 0,
 			}
 			pn.LabelY = pn.Y + pn.R + 17
+			pn.StartMX = pn.X - pn.R - 14
+			pn.EndMX = pn.X + pn.R + 14
 			v.Nodes = append(v.Nodes, pn)
 			cp := pn
 			pos[n.Type] = &cp
 		}
 	}
+
+	v.Groups = taskGroups(v.Nodes)
 
 	maxEdge := 1
 	for _, e := range g.Edges {
@@ -162,6 +181,45 @@ func buildProcessView(g process.Graph) processView {
 		v.Variants = append(v.Variants, procVariant{Sequence: va.Sequence, Count: va.Count, Pct: pct})
 	}
 	return v
+}
+
+// taskGroups computes a backdrop box around the nodes of each task that spans
+// more than one event type, so lifecycle siblings read as one task.
+func taskGroups(nodes []procNode) []procGroup {
+	byTask := map[string][]procNode{}
+	for _, n := range nodes {
+		byTask[n.Task] = append(byTask[n.Task], n)
+	}
+	tasks := make([]string, 0, len(byTask))
+	for t := range byTask {
+		tasks = append(tasks, t)
+	}
+	sort.Strings(tasks)
+
+	var groups []procGroup
+	const pad, labelGap = 16.0, 14.0
+	for _, t := range tasks {
+		ns := byTask[t]
+		if len(ns) < 2 {
+			continue
+		}
+		minX, minY := math.Inf(1), math.Inf(1)
+		maxX, maxY := math.Inf(-1), math.Inf(-1)
+		for _, n := range ns {
+			minX = math.Min(minX, n.X-n.R)
+			minY = math.Min(minY, n.Y-n.R)
+			maxX = math.Max(maxX, n.X+n.R)
+			maxY = math.Max(maxY, n.Y+n.R)
+		}
+		groups = append(groups, procGroup{
+			X:     minX - pad,
+			Y:     minY - pad - labelGap,
+			W:     (maxX - minX) + 2*pad,
+			H:     (maxY - minY) + 2*pad + labelGap,
+			Label: t,
+		})
+	}
+	return groups
 }
 
 // edgePath builds a cubic-bezier path from one node to another and the position

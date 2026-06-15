@@ -20,13 +20,21 @@
           <path d="M0,0 L10,5 L0,10 z" class="proc-arrowhead"/>
         </marker>
       </defs>
+      {{range .Groups}}
+      <g class="proc-group">
+        <rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="14"/>
+        <text class="proc-group-label" x="{{.X}}" y="{{.Y}}" dx="10" dy="13">{{.Label}}</text>
+      </g>
+      {{end}}
       {{range .Edges}}
       <path class="proc-edge" d="{{.D}}" fill="none" stroke-width="{{.Width}}" marker-end="url(#proc-arrow)"/>
       <text class="proc-edge-label" x="{{.LabelX}}" y="{{.LabelY}}" text-anchor="middle">{{.Count}}</text>
       {{end}}
       {{range .Nodes}}
-      <g class="proc-node{{if .Start}} is-start{{end}}{{if .End}} is-end{{end}}">
-        <circle cx="{{.X}}" cy="{{.Y}}" r="{{.R}}"/>
+      <g class="proc-node phase-{{.Phase}}">
+        {{if .Start}}<circle class="proc-startevt" cx="{{.StartMX}}" cy="{{.Y}}" r="5"><title>starts sequences</title></circle>{{end}}
+        {{if .End}}<circle class="proc-endevt" cx="{{.EndMX}}" cy="{{.Y}}" r="6"><title>ends sequences</title></circle>{{end}}
+        <circle class="proc-orb" cx="{{.X}}" cy="{{.Y}}" r="{{.R}}"/>
         <text class="proc-count" x="{{.X}}" y="{{.Y}}" text-anchor="middle" dominant-baseline="central">{{.Count}}</text>
         <text class="proc-label" x="{{.X}}" y="{{.LabelY}}" text-anchor="middle" title="{{.Type}}">{{.Type}}</text>
       </g>
@@ -35,8 +43,12 @@
   </div>
 
   <div class="proc-legend">
-    <span class="lg lg-start">● start</span>
-    <span class="lg lg-end">● end</span>
+    <span class="lg phase-active">● active</span>
+    <span class="lg phase-complete">● complete</span>
+    <span class="lg phase-error">● error</span>
+    <span class="lg phase-info">● info</span>
+    <span class="lg lg-start">▸ start</span>
+    <span class="lg lg-end">◉ end</span>
     <span class="lg lg-flow">→ directly-follows (count)</span>
   </div>
 
