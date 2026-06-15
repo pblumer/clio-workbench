@@ -6,7 +6,6 @@
   <title>Clio Workbench</title>
   <link rel="stylesheet" href="/static/css/workbench.css">
   <script src="/static/js/htmx.min.js" defer></script>
-  <script src="/static/js/space.js" defer></script>
   <script src="/static/js/process.js" defer></script>
 </head>
 <body>
@@ -103,11 +102,11 @@
     </section>
 
     <section class="panel events-panel" id="events-slot"
-             hx-get="/events"
+             hx-get="/space"
              hx-trigger="load, clio-changed from:body"
              hx-target="this"
              hx-swap="innerHTML">
-      <div class="events-head"><h2 class="panel-title">Events</h2></div>
+      <div class="events-head"><h2 class="panel-title">Event space</h2></div>
       <p class="panel-hint">loading…</p>
     </section>
 
