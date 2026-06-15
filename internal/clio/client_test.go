@@ -188,6 +188,35 @@ func TestReadEventTypes_Unauthorized(t *testing.T) {
 	}
 }
 
+func TestSetTargetSwitchesState(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	c := New("", "") // start offline
+	if got := c.CheckConnection(context.Background()).Status; got != StatusOffline {
+		t.Fatalf("initial status = %q, want offline", got)
+	}
+
+	c.SetTarget(srv.URL+"/", "tok") // pick a server at runtime (trailing slash trimmed)
+	if !c.Configured() || !c.HasToken() {
+		t.Fatalf("after SetTarget: Configured=%v HasToken=%v", c.Configured(), c.HasToken())
+	}
+	if c.BaseURL() != srv.URL {
+		t.Fatalf("BaseURL = %q, want %q", c.BaseURL(), srv.URL)
+	}
+	c.httpc = srv.Client()
+	if got := c.CheckConnection(context.Background()).Status; got != StatusOnline {
+		t.Fatalf("after connect status = %q, want online", got)
+	}
+
+	c.SetTarget("", "") // disconnect
+	if got := c.CheckConnection(context.Background()).Status; got != StatusOffline {
+		t.Fatalf("after disconnect status = %q, want offline", got)
+	}
+}
+
 func TestNewTrimsTrailingSlash(t *testing.T) {
 	c := New("http://example.test/", "tok")
 	if c.baseURL != "http://example.test" {

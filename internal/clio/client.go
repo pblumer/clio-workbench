@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -69,8 +70,11 @@ type Result struct {
 // OK reports whether the upstream is online.
 func (r Result) OK() bool { return r.Status == StatusOnline }
 
-// Client probes a Clio instance. It is safe for concurrent use.
+// Client probes a Clio instance. The target (base URL + token) can be changed
+// at runtime — e.g. when the user picks a server in the GUI — so it is guarded
+// by a mutex. It is safe for concurrent use.
 type Client struct {
+	mu      sync.RWMutex
 	baseURL string
 	token   string
 	httpc   *http.Client
@@ -111,28 +115,66 @@ func New(baseURL, token string, opts ...Option) *Client {
 	return c
 }
 
+// SetTarget changes the upstream Clio the client talks to. An empty baseURL
+// clears the target (back to offline). The token is held server-side only.
+func (c *Client) SetTarget(baseURL, token string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	c.token = token
+}
+
 // Configured reports whether an upstream Clio URL is set.
-func (c *Client) Configured() bool { return c.baseURL != "" }
+func (c *Client) Configured() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.baseURL != ""
+}
+
+// BaseURL returns the currently configured upstream URL (safe to show in the
+// UI). The token is intentionally not exposed here.
+func (c *Client) BaseURL() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.baseURL
+}
+
+// HasToken reports whether a token is set, without revealing it.
+func (c *Client) HasToken() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.token != ""
+}
+
+// Snapshot returns the current target (base URL + token) atomically. It is
+// used by the reverse proxy within the same process; the token never leaves
+// the server.
+func (c *Client) Snapshot() (baseURL, token string) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.baseURL, c.token
+}
 
 // CheckConnection probes Clio and maps the outcome onto a Status. It never
 // returns an error: every failure mode is expressed as a Result so callers can
 // render it directly. Honour the caller's context for cancellation/deadline.
 func (c *Client) CheckConnection(ctx context.Context) Result {
 	now := time.Now()
-	if c.baseURL == "" {
+	base, token := c.Snapshot()
+	if base == "" {
 		return Result{
 			Status:    StatusOffline,
-			Detail:    "no CLIO_URL configured — drafting works offline",
+			Detail:    "no Clio selected — drafting works offline",
 			CheckedAt: now,
 		}
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+probePath, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+probePath, nil)
 	if err != nil {
 		return Result{Status: StatusUnreachable, Detail: err.Error(), CheckedAt: now}
 	}
-	if c.token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	req.Header.Set("Accept", "application/x-ndjson")
 
@@ -198,16 +240,17 @@ type EventType struct {
 // consuming the NDJSON stream of GET /api/v1/read-event-types. The token is
 // injected server-side. Returns ErrOffline / ErrUnauthorized for those states.
 func (c *Client) ReadEventTypes(ctx context.Context) ([]EventType, error) {
-	if c.baseURL == "" {
+	base, token := c.Snapshot()
+	if base == "" {
 		return nil, ErrOffline
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+probePath, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+probePath, nil)
 	if err != nil {
 		return nil, err
 	}
-	if c.token != "" {
-		req.Header.Set("Authorization", "Bearer "+c.token)
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	req.Header.Set("Accept", "application/x-ndjson")
 

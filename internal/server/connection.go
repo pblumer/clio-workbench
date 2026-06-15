@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pblumer/clio-workbench/internal/clio"
@@ -50,6 +51,39 @@ func (s *Server) connectionView(res clio.Result) connectionView {
 		ClioURL:   s.cfg.ClioURL,
 		LatencyMS: res.Latency.Milliseconds(),
 	}
+}
+
+// handleConnect points the Workbench at the Clio server chosen in the GUI,
+// then probes it and returns the updated status fragment. The token is taken
+// from the form and held server-side only — it is never echoed back.
+func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	url := strings.TrimSpace(r.FormValue("url"))
+	token := r.FormValue("token")
+	s.clio.SetTarget(url, token)
+	s.log.Info("clio target set", "url", s.clio.BaseURL(), "token", s.clio.HasToken())
+
+	// Tell the events panel (and anything else listening) to refresh.
+	w.Header().Set("HX-Trigger", "clio-changed")
+
+	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
+	defer cancel()
+	s.render(w, "connection.html", s.connectionView(s.clio.CheckConnection(ctx)))
+}
+
+// handleDisconnect clears the selected Clio (back to offline) and returns the
+// updated status fragment.
+func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
+	s.clio.SetTarget("", "")
+	s.log.Info("clio target cleared")
+	w.Header().Set("HX-Trigger", "clio-changed")
+
+	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
+	defer cancel()
+	s.render(w, "connection.html", s.connectionView(s.clio.CheckConnection(ctx)))
 }
 
 // LogConnectionCheck runs one connection probe and logs the outcome. It is
