@@ -424,6 +424,41 @@ html, body {
 }
 .proc-reset:hover { color: var(--neon); border-color: var(--neon-dim); box-shadow: var(--glow); }
 
+/* timeline replay: events arrive, nodes flash, counts tick up */
+.proc-node.flash .proc-orb { animation: nodeflash .5s ease; }
+@keyframes nodeflash { 0%, 100% { filter: none; } 35% { filter: drop-shadow(0 0 7px #fff) brightness(1.7); } }
+.proc-edge.pulse { animation: edgepulse .5s ease; }
+@keyframes edgepulse { 0%, 100% { opacity: 0.55; } 40% { opacity: 1; stroke: var(--neon); } }
+
+.proc-timeline {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: rgba(5, 7, 15, 0.72);
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+}
+.tl-play {
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--neon-dim);
+  background: none;
+  color: var(--neon);
+  font: inherit;
+  font-size: 12px;
+}
+.tl-play:hover { box-shadow: var(--glow); }
+.tl-range { flex: 1; accent-color: var(--neon); }
+.tl-label { min-width: 78px; text-align: right; color: var(--text-dim); font-size: 11px; white-space: nowrap; }
+
 .lg-hint { color: var(--neon-dim); }
 
 /* Event space — dotted chart (subjects × time) */

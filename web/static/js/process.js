@@ -38,6 +38,7 @@
     if (!svg || !viewport || !svg.viewBox || !svg.viewBox.baseVal) return;
     if (svg._procStop) svg._procStop();
     var ac = new AbortController(), sig = ac.signal;
+    var playTimer = null;
 
     var W = svg.viewBox.baseVal.width, H = svg.viewBox.baseVal.height;
     var cx = W / 2, cy = H / 2;
@@ -52,16 +53,18 @@
         nbrs: [], inc: [],
       };
       n.x = n.ox; n.y = n.oy;
+      n.countEl = g.querySelector(".proc-count");
       nodes.push(n); byType[n.type] = n;
     });
     if (!nodes.length) return;
 
-    var edges = [];
+    var edges = [], edgeByKey = {};
     viewport.querySelectorAll(".proc-edge").forEach(function (p) {
       var f = byType[p.getAttribute("data-from")], t = byType[p.getAttribute("data-to")];
       if (!f || !t) return;
       var ed = { from: f, to: t, path: p, label: p.nextElementSibling };
       edges.push(ed);
+      edgeByKey[f.type + " -> " + t.type] = ed;
       f.inc.push(ed); t.inc.push(ed);
       if (f !== t) { f.nbrs.push(t); t.nbrs.push(f); }
     });
@@ -249,8 +252,73 @@
       if (document.hidden) stop(); else start();
     }, { signal: sig });
 
+    // ---- timeline replay: events arrive in order, nodes flash, counts +1 ----
+    function setupReplay() {
+      var bar = graph.querySelector(".proc-timeline");
+      var scriptEl = graph.querySelector(".proc-replay");
+      if (!bar || !scriptEl) return;
+      var replay = [];
+      try { replay = JSON.parse(scriptEl.textContent || "[]"); } catch (e) { replay = []; }
+      var N = replay.length;
+      var playBtn = bar.querySelector(".tl-play");
+      var range = bar.querySelector(".tl-range");
+      var label = bar.querySelector(".tl-label");
+      if (!N || !playBtn || !range) { bar.style.display = "none"; return; }
+
+      var cursor = N, playing = false, lastBySubject = {};
+
+      function setCount(node, v) { if (node && node.countEl) node.countEl.textContent = v; }
+      function flash(el, cls) {
+        if (!el) return;
+        el.classList.remove(cls);
+        requestAnimationFrame(function () { el.classList.add(cls); });
+        setTimeout(function () { el.classList.remove(cls); }, 520);
+      }
+
+      function recompute(c) {
+        var counts = {};
+        for (var i = 0; i < c; i++) counts[replay[i].t] = (counts[replay[i].t] || 0) + 1;
+        nodes.forEach(function (n) { setCount(n, counts[n.type] || 0); });
+        cursor = c; range.value = c;
+        label.textContent = c + " / " + N;
+      }
+
+      function stepOnce() {
+        if (cursor >= N) { stopPlay(); return; }
+        var ev = replay[cursor], node = byType[ev.t];
+        if (node) {
+          var cur = parseInt(node.countEl ? node.countEl.textContent : "0", 10) || 0;
+          setCount(node, cur + 1);
+          flash(node.el, "flash");
+        }
+        var prev = lastBySubject[ev.s];
+        if (prev && prev !== ev.t) {
+          var ed = edgeByKey[prev + " -> " + ev.t];
+          if (ed) flash(ed.path, "pulse");
+        }
+        lastBySubject[ev.s] = ev.t;
+        cursor++; range.value = cursor;
+        label.textContent = cursor + " / " + N + (ev.ts ? "  ·  " + ev.ts : "");
+      }
+
+      function play() {
+        if (cursor >= N) { lastBySubject = {}; recompute(0); }
+        playing = true; playBtn.textContent = "⏸ Pause";
+        playTimer = setInterval(stepOnce, 220);
+      }
+      function stopPlay() {
+        if (playTimer) { clearInterval(playTimer); playTimer = null; }
+        playing = false; playBtn.textContent = "▶ Replay";
+      }
+
+      playBtn.addEventListener("click", function () { if (playing) stopPlay(); else play(); }, { signal: sig });
+      range.addEventListener("input", function () { stopPlay(); lastBySubject = {}; recompute(parseInt(range.value, 10) || 0); }, { signal: sig });
+      label.textContent = N + " / " + N;
+    }
+
     applyView();
-    svg._procStop = function () { stop(); ac.abort(); svg._procStop = null; };
+    setupReplay();
+    svg._procStop = function () { stop(); if (playTimer) clearInterval(playTimer); ac.abort(); svg._procStop = null; };
     start();
   }
 

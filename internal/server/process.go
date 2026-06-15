@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"math"
 	"net/http"
 	"sort"
@@ -71,6 +73,9 @@ type processView struct {
 	Variants []procVariant
 	Subjects int
 	Events   int
+	// ReplayJSON is the ordered event stream for the client-side timeline
+	// replay ([{s,t,ts}, ...]).
+	ReplayJSON template.JS
 }
 
 // handleProcess discovers the process from real Clio events and renders the
@@ -100,7 +105,28 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 		in[i] = process.Event{Subject: e.Subject, Type: e.Type}
 	}
 	g := process.Discover(in, processMaxVariant)
-	s.render(w, "process.html", buildProcessView(g))
+	v := buildProcessView(g)
+	v.ReplayJSON = replayJSON(events)
+	s.render(w, "process.html", v)
+}
+
+// replayJSON marshals the ordered events for the timeline replay. encoding/json
+// escapes <, >, & so the payload is safe inside a <script> element.
+func replayJSON(events []clio.Event) template.JS {
+	type rep struct {
+		S  string `json:"s"`
+		T  string `json:"t"`
+		Ts string `json:"ts"`
+	}
+	arr := make([]rep, len(events))
+	for i, e := range events {
+		arr[i] = rep{S: e.Subject, T: e.Type, Ts: e.Time}
+	}
+	b, err := json.Marshal(arr)
+	if err != nil {
+		return template.JS("[]")
+	}
+	return template.JS(b)
 }
 
 // buildProcessView turns the discovered graph into a laid-out SVG view model.
