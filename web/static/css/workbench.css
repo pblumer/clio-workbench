@@ -586,6 +586,26 @@ html, body {
 .variant-step { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--edge); color: var(--text); font-size: 12px; }
 .variant-arrow { color: var(--neon-dim); }
 
+/* Conformance — BPMN template check */
+.conf-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 14px; }
+.conf-form input[type=file] { color: var(--text-dim); font: inherit; font-size: 12px; }
+.conf-form .btn-primary { margin-top: 0; }
+.conf-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 8px; }
+.conf-proc { font-weight: 700; color: var(--neon); text-shadow: var(--glow); }
+.conf-scope { font-size: 11px; color: var(--text-dim); }
+.conf-fit { font-size: 12px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--edge); }
+.conf-fit-good { color: var(--good); border-color: rgba(70, 240, 160, 0.45); }
+.conf-fit-warn { color: var(--warn); border-color: rgba(255, 207, 92, 0.45); }
+.conf-fit-bad { color: #ff5a6e; border-color: rgba(255, 90, 110, 0.45); }
+.conf-meta { font-size: 11px; color: var(--text-dim); }
+.conf-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.conf-step { display: flex; align-items: center; gap: 10px; }
+.conf-step-name { flex: 0 0 40%; color: var(--text); font-size: 12px; word-break: break-all; }
+.conf-bar { flex: 1; height: 8px; border-radius: 999px; background: rgba(8, 14, 28, 0.8); border: 1px solid var(--edge); overflow: hidden; }
+.conf-bar-fill { display: block; height: 100%; background: linear-gradient(90deg, var(--neon-dim), var(--neon)); }
+.conf-step-pct { flex: 0 0 80px; text-align: right; font-size: 11px; color: var(--text-dim); }
+.conf-dev { font-size: 11px; color: var(--warn); }
+
 /* Relationships — subject-hierarchy tree (1:n) */
 .rel-tree { list-style: none; margin: 0; padding: 0; }
 .rel-tree .rel-tree { margin-left: 18px; border-left: 1px solid var(--edge); padding-left: 12px; }
