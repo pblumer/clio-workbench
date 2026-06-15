@@ -9,8 +9,8 @@
 
   // Force tuning (SVG user units).
   var REP = 24000, SPRING = 0.01, LEN = 160, CENTER = 0.0016;
-  var COLPAD = 16, COL = 0.5, DAMP = 0.9, VMAX = 30;
-  var FLOOR = 0.05, COOL = 0.99, WANDER = 5;
+  var COLPAD = 16, COL = 0.5, DAMP = 0.82, VMAX = 18;
+  var COOL = 0.96, REST = 0.02;
   var ZMIN = 0.3, ZMAX = 4;
 
   function edgePath(f, t) {
@@ -229,8 +229,8 @@
       }
       for (var k = 0; k < nodes.length; k++) {
         var n = nodes[k];
-        fx[k] += (cx - n.x) * CENTER + (Math.random() - 0.5) * WANDER;
-        fy[k] += (cy - n.y) * CENTER + (Math.random() - 0.5) * WANDER;
+        fx[k] += (cx - n.x) * CENTER;
+        fy[k] += (cy - n.y) * CENTER;
         if (n.fixed) { n.vx = 0; n.vy = 0; continue; }
         n.vx = (n.vx + fx[k] * alpha) * DAMP;
         n.vy = (n.vy + fy[k] * alpha) * DAMP;
@@ -238,10 +238,10 @@
         n.vy = Math.max(-VMAX, Math.min(VMAX, n.vy));
         n.x += n.vx; n.y += n.vy;
       }
-      alpha = Math.max(FLOOR, alpha * COOL);
+      alpha *= COOL;
     }
-    function loop() { step(); render(); raf = requestAnimationFrame(loop); }
-    function reheat() { alpha = Math.max(alpha, 0.5); }
+    function loop() { step(); render(); raf = alpha > REST ? requestAnimationFrame(loop) : 0; }
+    function reheat() { alpha = Math.max(alpha, 0.5); start(); }
     function start() { if (!raf) raf = requestAnimationFrame(loop); }
     function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; }
 
