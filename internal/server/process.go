@@ -28,6 +28,7 @@ const (
 
 type procNode struct {
 	Type           string
+	Label          string
 	Task           string
 	Phase          string
 	Count          int

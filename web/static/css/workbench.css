@@ -427,6 +427,10 @@ html, body {
 .proc-group rect { fill: rgba(56, 225, 255, 0.04); stroke: rgba(56, 225, 255, 0.22); stroke-width: 1; stroke-dasharray: 5 4; }
 .proc-group-label { fill: var(--text-dim); font: 11px/1 ui-monospace, monospace; letter-spacing: 1px; }
 
+/* subject "planets" in the event space */
+.proc-node.fg-subject .proc-orb { fill: rgba(124, 92, 255, 0.2); stroke: var(--accent); stroke-width: 2; }
+.lg-subject { color: var(--accent); }
+
 /* nodes coloured by lifecycle phase */
 .proc-orb { fill: rgba(8, 14, 28, 0.92); stroke: var(--neon-dim); stroke-width: 1.8; }
 .phase-active   .proc-orb { stroke: var(--neon);  fill: rgba(56, 225, 255, 0.16); }

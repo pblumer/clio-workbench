@@ -1,0 +1,53 @@
+{{define "space.html" -}}
+<div class="events-head">
+  <h2 class="panel-title">Event space
+    {{- if eq .State "ok"}} <span class="proc-stat">{{.SubjectCount}} subjects · {{.TypeCount}} types · {{.Events}} events</span>{{end -}}
+  </h2>
+  <button class="reconnect" type="button"
+          hx-get="/space"
+          hx-target="#events-slot"
+          hx-swap="innerHTML"
+          title="Re-map subjects ↔ events from Clio"
+          aria-label="Refresh">⟳</button>
+</div>
+
+{{if eq .State "ok"}}
+  <div class="proc-graph">
+    <svg viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Subjects and event types graph">
+      <defs>
+        <marker id="space-arrow" viewBox="0 0 10 10" refX="9" refY="5"
+                markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" class="proc-arrowhead"/>
+        </marker>
+      </defs>
+      <g class="proc-viewport">
+      {{range .Edges}}
+      <path class="proc-edge" d="{{.D}}" data-from="{{.From}}" data-to="{{.To}}" fill="none" stroke-width="{{.Width}}" marker-end="url(#space-arrow)"/>
+      <text class="proc-edge-label" x="{{.LabelX}}" y="{{.LabelY}}" text-anchor="middle">{{.Count}}</text>
+      {{end}}
+      {{range .Nodes}}
+      <g class="proc-node {{if .Phase}}phase-{{.Phase}}{{else}}fg-subject{{end}}" data-type="{{.Type}}">
+        <circle class="proc-orb" cx="{{.X}}" cy="{{.Y}}" r="{{.R}}"/>
+        <text class="proc-count" x="{{.X}}" y="{{.Y}}" text-anchor="middle" dominant-baseline="central">{{.Count}}</text>
+        <text class="proc-label" x="{{.X}}" y="{{.LabelY}}" text-anchor="middle" title="{{.Label}}">{{.Label}}</text>
+      </g>
+      {{end}}
+      </g>
+    </svg>
+    <button type="button" class="proc-reset" title="Reset view">⤢</button>
+  </div>
+
+  <div class="proc-legend">
+    <span class="lg lg-subject">● subject</span>
+    <span class="lg phase-active">● active</span>
+    <span class="lg phase-complete">● complete</span>
+    <span class="lg phase-error">● error</span>
+    <span class="lg phase-info">● info</span>
+    <span class="lg lg-hint">✋ drag · scroll to zoom · hover to focus</span>
+  </div>
+{{else if eq .State "empty"}}
+  <p class="panel-hint">{{.Message}}</p>
+{{else}}
+  <p class="panel-hint bpmn-state bpmn-state-{{.State}}">{{.Message}}</p>
+{{end}}
+{{- end}}
