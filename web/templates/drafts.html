@@ -1,0 +1,26 @@
+<ul id="drafts" class="draft-list">
+  {{- if . -}}
+    {{- range . }}
+    <li class="draft-item" data-kind="{{.Kind}}">
+      <div class="draft-head">
+        <span class="draft-name">{{.Name}}</span>
+        <span class="tag tag-{{.Kind}}">{{.Kind}}</span>
+      </div>
+      <div class="draft-meta">
+        <code>{{.Namespace}}</code>
+        <span>· {{len .Nodes}} states · {{len .Edges}} events</span>
+      </div>
+      <div class="draft-actions">
+        <a class="btn-link" href="/drafts/{{.ID}}">open JSON</a>
+        <button class="btn-link btn-danger"
+                hx-delete="/drafts/{{.ID}}"
+                hx-target="#drafts"
+                hx-swap="outerHTML"
+                hx-confirm="Delete draft &quot;{{.Name}}&quot;?">delete</button>
+      </div>
+    </li>
+    {{- end }}
+  {{- else -}}
+    <li class="draft-empty">No drafts yet — create one on the left.</li>
+  {{- end -}}
+</ul>

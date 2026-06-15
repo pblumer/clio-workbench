@@ -1,0 +1,78 @@
+// Package server wires the Workbench HTTP surface: embedded UI, draft store
+// handlers and the /api reverse proxy to an upstream Clio.
+package server
+
+import (
+	"fmt"
+	"html/template"
+	"io/fs"
+	"log/slog"
+	"net/http"
+
+	"github.com/pblumer/clio-workbench/internal/config"
+	"github.com/pblumer/clio-workbench/internal/store"
+	"github.com/pblumer/clio-workbench/web"
+)
+
+// Server holds the Workbench dependencies and routing.
+type Server struct {
+	cfg   config.Config
+	store *store.Store
+	log   *slog.Logger
+	tmpl  *template.Template
+	mux   *http.ServeMux
+}
+
+// New constructs a Server with routes registered.
+func New(cfg config.Config, st *store.Store, log *slog.Logger) (*Server, error) {
+	tmpl, err := template.ParseFS(web.Templates, "templates/*.html")
+	if err != nil {
+		return nil, fmt.Errorf("parse templates: %w", err)
+	}
+	s := &Server{cfg: cfg, store: st, log: log, tmpl: tmpl, mux: http.NewServeMux()}
+	if err := s.routes(); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// Handler returns the root HTTP handler.
+func (s *Server) Handler() http.Handler { return s.mux }
+
+func (s *Server) routes() error {
+	// Static assets (CSS, htmx, canvas JS).
+	staticFS, err := fs.Sub(web.Static, "static")
+	if err != nil {
+		return fmt.Errorf("sub static fs: %w", err)
+	}
+	s.mux.Handle("GET /static/", http.StripPrefix("/static/", cacheControl(http.FileServerFS(staticFS))))
+
+	// Pages and draft handlers.
+	s.mux.HandleFunc("GET /{$}", s.handleIndex)
+	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
+	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
+	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
+	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)
+	s.mux.HandleFunc("DELETE /drafts/{id}", s.handleDeleteDraft)
+
+	// /api reverse proxy to the upstream Clio (token injected server-side).
+	if s.cfg.ProxyEnabled() {
+		proxy, err := newProxy(s.cfg)
+		if err != nil {
+			return err
+		}
+		s.mux.Handle("/api/", proxy)
+		s.log.Info("api proxy enabled", "upstream", s.cfg.ClioURL, "token", s.cfg.ClioToken != "")
+	} else {
+		s.mux.Handle("/api/", proxyDisabledHandler())
+		s.log.Info("api proxy disabled (no CLIO_URL); running offline")
+	}
+	return nil
+}
+
+func cacheControl(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=3600")
+		next.ServeHTTP(w, r)
+	})
+}

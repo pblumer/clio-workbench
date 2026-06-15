@@ -1,0 +1,11 @@
+# Build artifacts
+/clio-workbench
+/dist/
+*.test
+
+# Local draft data (the default WORKBENCH_DATA location)
+/workbench-data/
+
+# Editor / OS
+.DS_Store
+*.swp
