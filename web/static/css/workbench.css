@@ -359,6 +359,63 @@ html, body {
 .bpmn-state-unauthorized { color: var(--warn); }
 .bpmn-state-error { color: #ff7a8a; }
 
+/* Process panel — discovered directly-follows graph + variants */
+.proc-stat { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; font-weight: 400; }
+.proc-graph {
+  overflow-x: auto;
+  border-radius: 12px;
+  padding: 8px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(56, 225, 255, 0.06), transparent 60%),
+    rgba(3, 6, 14, 0.45);
+}
+.proc-graph svg { width: 100%; height: auto; min-width: 360px; overflow: visible; }
+
+.proc-edge { stroke: var(--neon-dim); opacity: 0.55; }
+.proc-arrowhead { fill: var(--neon-dim); }
+.proc-edge-label {
+  fill: var(--text-dim);
+  font: 600 11px/1 ui-monospace, monospace;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+}
+
+.proc-node circle { fill: rgba(8, 14, 28, 0.92); stroke: var(--neon-dim); stroke-width: 1.6; }
+.proc-node.is-start circle { stroke: var(--good); }
+.proc-node.is-end circle { stroke: var(--accent); }
+.proc-node.is-start.is-end circle { stroke: var(--good); stroke-dasharray: 4 3; }
+.proc-count { fill: var(--text); font: 700 14px/1 ui-monospace, monospace; }
+.proc-label {
+  fill: var(--text);
+  font: 12px/1 ui-monospace, monospace;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 3px;
+}
+
+.proc-legend { display: flex; gap: 16px; margin: 10px 2px 0; font-size: 11px; color: var(--text-dim); letter-spacing: 1px; }
+.lg-start { color: var(--good); }
+.lg-end { color: var(--accent); }
+
+.proc-sub { margin: 18px 0 8px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--neon); text-shadow: var(--glow); }
+.variants { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.variant {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: rgba(8, 14, 28, 0.6);
+  flex-wrap: wrap;
+}
+.variant-count { color: var(--neon); font-weight: 700; min-width: 34px; }
+.variant-pct { color: var(--text-dim); font-size: 11px; min-width: 36px; }
+.variant-seq { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.variant-step { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--edge); color: var(--text); font-size: 12px; }
+.variant-arrow { color: var(--neon-dim); }
+
 /* Footer */
 .hud-foot {
   display: flex;
