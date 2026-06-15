@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/pblumer/clio-workbench/internal/config"
+	"github.com/pblumer/clio-workbench/internal/clio"
 )
 
 func TestProxyInjectsTokenAndStripsPrefix(t *testing.T) {
@@ -18,10 +18,7 @@ func TestProxyInjectsTokenAndStripsPrefix(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	proxy, err := newProxy(config.Config{ClioURL: upstream.URL, ClioToken: "s3cret"})
-	if err != nil {
-		t.Fatalf("newProxy: %v", err)
-	}
+	proxy := newProxy(clio.New(upstream.URL, "s3cret"))
 
 	req := httptest.NewRequest(http.MethodGet, "/api/read-event-types", nil)
 	// Client must not be able to inject its own credentials.
@@ -37,6 +34,38 @@ func TestProxyInjectsTokenAndStripsPrefix(t *testing.T) {
 	}
 	if gotAuth != "Bearer s3cret" {
 		t.Fatalf("auth = %q, want server-injected token", gotAuth)
+	}
+}
+
+// TestProxyOfflineAndRuntimeTargetSwitch covers the GUI flow: with no Clio
+// selected the proxy 503s; after SetTarget it forwards to the chosen upstream.
+func TestProxyOfflineAndRuntimeTargetSwitch(t *testing.T) {
+	var gotAuth string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		_, _ = io.WriteString(w, "ok")
+	}))
+	defer upstream.Close()
+
+	c := clio.New("", "")
+	proxy := newProxy(c)
+
+	// No target selected → 503.
+	rec := httptest.NewRecorder()
+	proxy.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/ping", nil))
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("offline status = %d, want 503", rec.Code)
+	}
+
+	// Pick a server at runtime → forwards with the server-side token.
+	c.SetTarget(upstream.URL, "runtime-tok")
+	rec = httptest.NewRecorder()
+	proxy.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/ping", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status after connect = %d, want 200", rec.Code)
+	}
+	if gotAuth != "Bearer runtime-tok" {
+		t.Fatalf("auth = %q, want Bearer runtime-tok", gotAuth)
 	}
 }
 

@@ -24,6 +24,12 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
   **server-side** (never exposed to the browser) and `FlushInterval: -1` so
   NDJSON/SSE streams are not buffered. Disabled gracefully when no `CLIO_URL`
   is set — the Workbench then runs purely offline on the draft.
+- A **live connection status** in the header that reports whether Clio is
+  actually reachable and the token accepted — not merely whether `CLIO_URL` is
+  configured (see below).
+- A rudimentary **events view**: the event types written to Clio
+  (`read-event-types`) rendered as BPMN **send tasks** with an attached data
+  object, a per-type count bubble, and a header bubble summing all occurrences.
 
 Still ahead per the roadmap (`docs/WORKBENCH.md` §8): the drawing canvas and
 state-machine view (Stufe 1), event-type schema editor and export (Stufe 2),
@@ -40,6 +46,58 @@ To enable push and the (later) conformance check against a running Clio:
 
 ```sh
 CLIO_URL=http://localhost:3000 CLIO_API_TOKEN=… go run ./cmd/clio-workbench
+```
+
+## Connection status
+
+The header pill shows the **real** state of the link to Clio, not just whether
+`CLIO_URL` is set. The Workbench probes Clio with a single lightweight,
+authenticated request (`GET /api/v1/read-event-types`), so reachability **and**
+the bearer token are verified together. The bearer token stays strictly
+server-side — it never appears in the rendered fragment or in browser JS.
+
+| Status         | Pill (colour)         | Meaning                                            |
+|----------------|-----------------------|----------------------------------------------------|
+| `online`       | UPLINK (green)        | Reachable **and** token accepted (HTTP 2xx)        |
+| `unauthorized` | AUTH FAIL (yellow)    | Reachable but token rejected (HTTP 401/403)        |
+| `unreachable`  | UNREACHABLE (red)     | Network/DNS/connection error, timeout, or 5xx      |
+| `offline`      | OFFLINE (grey)        | No `CLIO_URL` configured — drafting works offline  |
+
+The status loads on page open (`hx-get="/connection"`) and a **⟳ reconnect**
+button re-probes on demand. A non-blocking probe also runs at startup and is
+logged (`clio connection check`); it never fails the server, so offline drafting
+stays possible even when Clio is down.
+
+### Picking a server in the GUI
+
+You can start the Workbench with no configuration and **choose a Clio server at
+runtime** from the *Clio server* panel: enter the URL and (optionally) a token
+and press **Connect**; **Disconnect** clears it. The target is held in memory
+and applies to both the status probe and the `/api` proxy. `CLIO_URL` /
+`CLIO_API_TOKEN` (below) merely **seed** the initial target, so the env-based
+flow keeps working.
+
+The token is posted once to the local backend and kept **server-side** — it is
+never rendered back into the page or stored in browser JS. The selection is not
+persisted across restarts (re-pick after a restart).
+
+> The probe uses an authenticated read op rather than Clio's unauthenticated
+> health endpoint (`GET /api/v1/ping`), because `ping` would not exercise the
+> token.
+
+### Smoke test
+
+```sh
+# Offline: no upstream configured → grey OFFLINE pill.
+go run ./cmd/clio-workbench
+curl -s localhost:8080/connection
+
+# Online / unauthorized: point at a running Clio.
+CLIO_URL=http://localhost:3000 CLIO_API_TOKEN=<valid>  go run ./cmd/clio-workbench  # → green UPLINK
+CLIO_URL=http://localhost:3000 CLIO_API_TOKEN=<wrong>  go run ./cmd/clio-workbench  # → yellow AUTH FAIL
+
+# Unreachable: a URL with nothing listening → red UNREACHABLE.
+CLIO_URL=http://localhost:3999 CLIO_API_TOKEN=x go run ./cmd/clio-workbench
 ```
 
 ## Configuration
@@ -67,9 +125,10 @@ go vet ./...
 ```
 cmd/clio-workbench/   entrypoint (HTTP server, graceful shutdown)
 internal/config/      environment configuration
+internal/clio/        HTTP client against Clio's public API (connection probe)
 internal/model/       shared draft data model (directed graph: nodes + event edges)
 internal/store/       file-backed draft store (atomic JSON writes)
-internal/server/      routing, html/template rendering, /api reverse proxy
+internal/server/      routing, html/template rendering, /api reverse proxy, /connection
 web/                  embedded templates, CSS, htmx
 docs/WORKBENCH.md     architecture & idea paper
 ```

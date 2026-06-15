@@ -12,10 +12,12 @@ import (
 
 // indexData is the view model for the start page.
 type indexData struct {
-	ProxyEnabled bool
-	ClioURL      string
-	DataDir      string
-	Drafts       []model.Draft
+	// ClioURL is the currently selected upstream (prefills the connect form).
+	ClioURL string
+	// HasToken reports whether a token is already set, without revealing it.
+	HasToken bool
+	DataDir  string
+	Drafts   []model.Draft
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -25,10 +27,10 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.render(w, "index.html", indexData{
-		ProxyEnabled: s.cfg.ProxyEnabled(),
-		ClioURL:      s.cfg.ClioURL,
-		DataDir:      s.cfg.DataDir,
-		Drafts:       drafts,
+		ClioURL:  s.clio.BaseURL(),
+		HasToken: s.clio.HasToken(),
+		DataDir:  s.cfg.DataDir,
+		Drafts:   drafts,
 	})
 }
 

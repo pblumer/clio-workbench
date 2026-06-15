@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/config"
 	"github.com/pblumer/clio-workbench/internal/store"
 	"github.com/pblumer/clio-workbench/web"
@@ -18,6 +19,7 @@ import (
 type Server struct {
 	cfg   config.Config
 	store *store.Store
+	clio  *clio.Client
 	log   *slog.Logger
 	tmpl  *template.Template
 	mux   *http.ServeMux
@@ -29,7 +31,14 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger) (*Server, error) 
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
-	s := &Server{cfg: cfg, store: st, log: log, tmpl: tmpl, mux: http.NewServeMux()}
+	s := &Server{
+		cfg:   cfg,
+		store: st,
+		clio:  clio.New(cfg.ClioURL, cfg.ClioToken),
+		log:   log,
+		tmpl:  tmpl,
+		mux:   http.NewServeMux(),
+	}
 	if err := s.routes(); err != nil {
 		return nil, err
 	}
@@ -50,23 +59,20 @@ func (s *Server) routes() error {
 	// Pages and draft handlers.
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
+	s.mux.HandleFunc("GET /connection", s.handleConnection)
+	s.mux.HandleFunc("POST /connect", s.handleConnect)
+	s.mux.HandleFunc("POST /disconnect", s.handleDisconnect)
+	s.mux.HandleFunc("GET /events", s.handleEvents)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)
 	s.mux.HandleFunc("DELETE /drafts/{id}", s.handleDeleteDraft)
 
 	// /api reverse proxy to the upstream Clio (token injected server-side).
-	if s.cfg.ProxyEnabled() {
-		proxy, err := newProxy(s.cfg)
-		if err != nil {
-			return err
-		}
-		s.mux.Handle("/api/", proxy)
-		s.log.Info("api proxy enabled", "upstream", s.cfg.ClioURL, "token", s.cfg.ClioToken != "")
-	} else {
-		s.mux.Handle("/api/", proxyDisabledHandler())
-		s.log.Info("api proxy disabled (no CLIO_URL); running offline")
-	}
+	// The target is dynamic: it follows the server picked in the GUI, and
+	// 503s when none is selected. Seeded from CLIO_URL at startup.
+	s.mux.Handle("/api/", newProxy(s.clio))
+	s.log.Info("api proxy ready (dynamic target)", "seed", s.cfg.ClioURL, "configured", s.clio.Configured())
 	return nil
 }
 
