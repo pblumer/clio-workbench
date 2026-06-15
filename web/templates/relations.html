@@ -1,0 +1,59 @@
+{{define "relations.html" -}}
+<div class="events-head">
+  <h2 class="panel-title">Relationships
+    {{- if eq .State "ok"}} <span class="proc-stat">{{.Subjects}} subjects · {{.Events}} events · 1:n from subject paths</span>{{end -}}
+  </h2>
+  <button class="reconnect" type="button"
+          hx-get="/relations"
+          hx-target="#relations-slot"
+          hx-swap="innerHTML"
+          title="Re-derive relationships from Clio"
+          aria-label="Refresh">⟳</button>
+</div>
+
+{{if eq .State "ok"}}
+  <h3 class="rel-sub">Containment (subject hierarchy)</h3>
+  <ul class="rel-tree rel-root">
+    {{- range .Root.Children}}{{template "relnode" .}}{{end}}
+  </ul>
+  <p class="panel-hint rel-legend"><span class="rel-card">1:n · N</span> = a collection with N instances · <code>{id}</code> = one instance</p>
+
+  {{if .Refs}}
+  <h3 class="rel-sub">References <small>(inferred from data payloads)</small></h3>
+  <ul class="ref-list">
+    {{- range .Refs}}
+    <li class="ref-item">
+      <code class="ref-from">{{.From}}</code>
+      <span class="rel-card ref-kind{{if eq .Kind "n:m"}} ref-nm{{end}}">{{.Kind}}</span>
+      <code class="ref-to">{{.To}}</code>
+      <span class="ref-via">via {{.Via}}</span>
+      <span class="rel-count">×{{.Count}}</span>
+    </li>
+    {{- end}}
+  </ul>
+  {{end}}
+{{else if eq .State "empty"}}
+  <p class="panel-hint">{{.Message}}</p>
+{{else}}
+  <p class="panel-hint bpmn-state bpmn-state-{{.State}}">{{.Message}}</p>
+{{end}}
+{{- end}}
+
+{{define "relnode" -}}
+<li class="rel-item{{if .IsID}} rel-id{{end}}">
+  {{- if .Children}}
+  <details open>
+    <summary>{{template "rellabel" .}}</summary>
+    <ul class="rel-tree">{{range .Children}}{{template "relnode" .}}{{end}}</ul>
+  </details>
+  {{- else}}
+  <div class="rel-leaf">{{template "rellabel" .}}</div>
+  {{- end}}
+</li>
+{{- end}}
+
+{{define "rellabel" -}}
+<span class="rel-seg">{{if .IsID}}{id}{{else}}{{.Seg}}{{end}}</span>
+{{- if .IsID}} <span class="rel-card">1:n · {{.Instances}}</span>{{end}}
+<span class="rel-count">{{.Events}} ev</span>
+{{- end}}
