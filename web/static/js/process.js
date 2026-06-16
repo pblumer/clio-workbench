@@ -242,6 +242,31 @@
       }, { signal: sig });
     }
 
+    // ---- fullscreen: hand the graph element to the Fullscreen API ----
+    var fsBtn = graph.querySelector(".proc-fullscreen");
+    if (fsBtn) {
+      var req = graph.requestFullscreen || graph.webkitRequestFullscreen;
+      var exit = function () { return (document.exitFullscreen || document.webkitExitFullscreen).call(document); };
+      function fsElement() { return document.fullscreenElement || document.webkitFullscreenElement; }
+      if (!req) {
+        fsBtn.style.display = "none";
+      } else {
+        fsBtn.addEventListener("click", function () {
+          if (fsElement() === graph) exit();
+          else req.call(graph);
+        }, { signal: sig });
+        var onFsChange = function () {
+          var on = fsElement() === graph;
+          fsBtn.textContent = on ? "✕" : "⛶";
+          fsBtn.title = on ? "Exit fullscreen" : "Toggle fullscreen";
+          // The container resized — give the layout a nudge so it re-settles.
+          reheat();
+        };
+        document.addEventListener("fullscreenchange", onFsChange, { signal: sig });
+        document.addEventListener("webkitfullscreenchange", onFsChange, { signal: sig });
+      }
+    }
+
     // ---- type search: hide non-matching nodes (and their edges) ----
     function applyFilter(q) {
       q = (q || "").trim().toLowerCase();

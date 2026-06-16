@@ -435,10 +435,10 @@ html, body {
 .proc-viewport.graph-dim .proc-edge.hot { opacity: 0.85; }
 .proc-viewport.graph-dim .proc-edge-label.hot { opacity: 1; }
 
-.proc-reset {
+.proc-reset,
+.proc-fullscreen {
   position: absolute;
   top: 10px;
-  right: 10px;
   width: 30px;
   height: 30px;
   border-radius: 8px;
@@ -448,7 +448,22 @@ html, body {
   font-size: 15px;
   cursor: pointer;
 }
-.proc-reset:hover { color: var(--neon); border-color: var(--neon-dim); box-shadow: var(--glow); }
+.proc-reset { right: 10px; }
+.proc-fullscreen { right: 48px; }
+.proc-reset:hover,
+.proc-fullscreen:hover { color: var(--neon); border-color: var(--neon-dim); box-shadow: var(--glow); }
+
+/* Fullscreen: let the graph fill the whole screen. The SVG already stretches
+   to its container (width/height 100%), so the force layout just gets more room. */
+.proc-graph:fullscreen {
+  height: 100%;
+  width: 100%;
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(56, 225, 255, 0.06), transparent 60%),
+    var(--bg, #03060e);
+}
+.proc-graph:fullscreen .proc-fullscreen { font-size: 17px; }
 
 /* timeline replay: events arrive, nodes flash, counts tick up */
 /* The flash glow is tinted per subject (--stream-glow) during replay, so events
