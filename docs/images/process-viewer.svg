@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="780" viewBox="0 0 1120 780" font-family="ui-monospace, Menlo, monospace">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1c8fb0"/>
+    </marker>
+  </defs>
+
+  <rect width="1120" height="780" rx="14" fill="#070b16" stroke="#173049"/>
+
+  <!-- header -->
+  <text x="28" y="40" fill="#38e1ff" font-size="15" letter-spacing="3" font-weight="700">PROCESS</text>
+  <text x="120" y="40" fill="#7f95ab" font-size="12">559 SUBJECTS · 5822 EVENTS</text>
+  <circle cx="1078" cy="34" r="14" fill="none" stroke="#173049"/><text x="1078" y="39" text-anchor="middle" fill="#7f95ab" font-size="13">⟳</text>
+
+  <!-- toolbar -->
+  <rect x="28" y="60" width="430" height="38" rx="8" fill="rgba(5,10,20,0.8)" stroke="#173049"/>
+  <text x="44" y="84" fill="#5b6b7d" font-size="12">filter type… (pick or type)</text>
+  <text x="476" y="84" fill="#7f95ab" font-size="12">highlight</text>
+  <rect x="556" y="60" width="96" height="38" rx="8" fill="rgba(5,10,20,0.8)" stroke="#173049"/>
+  <text x="572" y="84" fill="#d7e6f2" font-size="12">3 hops ▾</text>
+  <rect x="664" y="60" width="210" height="38" rx="8" fill="rgba(5,10,20,0.8)" stroke="#173049"/>
+  <text x="680" y="84" fill="#5b6b7d" font-size="12">subject /orders</text>
+  <rect x="884" y="60" width="208" height="38" rx="8" fill="rgba(5,10,20,0.8)" stroke="#173049"/>
+  <text x="900" y="84" fill="#5b6b7d" font-size="12">source…</text>
+
+  <!-- graph area -->
+  <rect x="28" y="112" width="1064" height="560" rx="12" fill="rgba(3,6,14,0.5)"/>
+
+  <!-- edges -->
+  <g fill="none" stroke="#1c8fb0" opacity="0.5">
+    <path d="M120 300 C200 320 240 335 280 345" stroke-width="2" marker-end="url(#a)"/>
+    <path d="M300 326 C360 270 400 230 432 210" stroke-width="3.5" marker-end="url(#a)"/>
+    <path d="M460 200 C520 230 560 260 588 280" stroke-width="3.5" marker-end="url(#a)"/>
+    <path d="M626 285 C690 250 740 210 778 188" stroke-width="2.5" marker-end="url(#a)"/>
+    <path d="M626 300 C740 320 860 320 936 305" stroke-width="2.3" marker-end="url(#a)"/>
+    <path d="M826 190 C812 280 800 380 794 446" stroke-width="2.5" marker-end="url(#a)"/>
+    <path d="M952 322 C900 380 850 420 818 448" stroke-width="2.3" marker-end="url(#a)"/>
+    <path d="M310 372 C400 420 480 450 536 462" stroke-width="3.4" marker-end="url(#a)"/>
+    <path d="M588 472 C680 472 720 472 762 472" stroke-width="3.5" marker-end="url(#a)"/>
+    <path d="M276 560 C380 530 470 500 540 484" stroke-width="2.4" marker-end="url(#a)"/>
+    <path d="M312 372 C290 450 268 510 256 536" stroke-width="1" marker-end="url(#a)"/>
+  </g>
+  <g fill="#7f95ab" font-size="11" text-anchor="middle">
+    <text x="218" y="332">34</text>
+    <text x="372" y="262">832</text>
+    <text x="540" y="252">832</text>
+    <text x="712" y="226">468</text>
+    <text x="800" y="312">364</text>
+    <text x="828" y="320">468</text>
+    <text x="900" y="392">363</text>
+    <text x="430" y="430">798</text>
+    <text x="690" y="462">830</text>
+    <text x="400" y="520">273</text>
+    <text x="300" y="470">1</text>
+  </g>
+
+  <!-- nodes: name, count, phase colour -->
+  <!-- macro: green=complete #46f0a0, cyan=active #38e1ff -->
+  <g>
+    <!-- new (start) -->
+    <circle cx="106" cy="300" r="5" fill="#46f0a0"/>
+    <circle cx="120" cy="300" r="26" fill="rgba(70,240,160,0.15)" stroke="#46f0a0" stroke-width="1.8"/>
+    <text x="120" y="300" text-anchor="middle" dominant-baseline="central" fill="#d7e6f2" font-size="13" font-weight="700">13</text>
+    <text x="120" y="342" text-anchor="middle" fill="#d7e6f2" font-size="11">identity.employee.new</text>
+
+    <!-- created (active, larger) -->
+    <circle cx="300" cy="349" r="30" fill="rgba(56,225,255,0.16)" stroke="#38e1ff" stroke-width="1.8"/>
+    <text x="300" y="349" text-anchor="middle" dominant-baseline="central" fill="#d7e6f2" font-size="13" font-weight="700">13</text>
+    <text x="300" y="395" text-anchor="middle" fill="#d7e6f2" font-size="11">identity.employee.created</text>
+
+    <!-- mailbox.attach -->
+    <circle cx="446" cy="190" r="26" fill="rgba(70,240,160,0.15)" stroke="#46f0a0" stroke-width="1.8"/>
+    <text x="446" y="190" text-anchor="middle" dominant-baseline="central" fill="#d7e6f2" font-size="13" font-weight="700">13</text>
+    <text x="446" y="232" text-anchor="middle" fill="#d7e6f2" font-size="11">identity.employee.mailbox.attach</text>
+
+    <!-- mailbox.attached -->
+    <circle cx="606" cy="290" r="26" fill="rgba(70,240,160,0.15)" stroke="#46f0a0" stroke-width="1.8"/>
+    <text x="606" y="290" text-anchor="middle" dominant-baseline="central" fill="#d7e6f2" font-size="13" font-weight="700">13</text>
+    <text x="606" y="332" text-anchor="middle" fill="#d7e6f2" font-size="11">identity.employee.mailbox.attached</text>
+
+    <!-- organization.add -->
+    <circle cx="826" cy="170" r="26" fill="rgba(70,240,160,0.15)" stroke="#46f0a0" stroke-width="1.8"/>
+    <text x="826" y="170" text-anchor="middle" dominant-baseline="central" fill="#d7e6f2" font-size="13" font-weight="700">12</text>
+    <text x="826" y="212" text-anchor="middle" fill="#d7e6f2" font-size="11">identity.employee.organization.add</text>
+
+    <!-- organization.addTo (count 0, end) -->
+    <circle cx="966" cy="300" r="18" fill="rgba(70,240,160,0.15)" stroke="#46f0a0" stroke-width="1.8"/>
+    <circle cx="988" cy="300" r="6" fill="none" stroke="#7c5cff" stroke-width="2.5"/>
+    <text x="966" y="300" text-anchor="middle" dominant-baseline="central" fill="#d7e6f2" font-size="12" font-weight="700">0</text>
+    <text x="966" y="336" text-anchor="middle" fill="#d7e6f2" font-size="11">identity.employee.organization.addTo</text>
+
+    <!-- organization.added (end) -->
+    <circle cx="790" cy="472" r="26" fill="rgba(70,240,160,0.15)" stroke="#46f0a0" stroke-width="1.8"/>
+    <circle cx="816" cy="472" r="6" fill="none" stroke="#7c5cff" stroke-width="2.5"/>
+    <text x="790" y="472" text-anchor="middle" dominant-baseline="central" fill="#d7e6f2" font-size="13" font-weight="700">12</text>
+    <text x="790" y="514" text-anchor="middle" fill="#d7e6f2" font-size="11">identity.employee.organization.added</text>
+
+    <!-- deployed (end) -->
+    <circle cx="562" cy="472" r="26" fill="rgba(70,240,160,0.15)" stroke="#46f0a0" stroke-width="1.8"/>
+    <circle cx="588" cy="472" r="6" fill="none" stroke="#7c5cff" stroke-width="2.5"/>
+    <text x="562" y="472" text-anchor="middle" dominant-baseline="central" fill="#d7e6f2" font-size="13" font-weight="700">12</text>
+    <text x="562" y="514" text-anchor="middle" fill="#d7e6f2" font-size="11">identity.employee.deployed</text>
+
+    <!-- new.v2 (start + end, count 0) -->
+    <circle cx="232" cy="560" r="5" fill="#46f0a0"/>
+    <circle cx="246" cy="560" r="18" fill="rgba(70,240,160,0.15)" stroke="#46f0a0" stroke-width="1.8"/>
+    <circle cx="268" cy="560" r="6" fill="none" stroke="#7c5cff" stroke-width="2.5"/>
+    <text x="246" y="560" text-anchor="middle" dominant-baseline="central" fill="#d7e6f2" font-size="12" font-weight="700">0</text>
+    <text x="246" y="596" text-anchor="middle" fill="#d7e6f2" font-size="11">identity.employee.new.v2</text>
+  </g>
+
+  <!-- replay bar -->
+  <rect x="44" y="624" width="118" height="34" rx="8" fill="none" stroke="#1c8fb0"/>
+  <text x="103" y="646" text-anchor="middle" fill="#38e1ff" font-size="12">▶ Replay</text>
+  <rect x="180" y="636" width="860" height="8" rx="4" fill="rgba(8,14,28,0.8)" stroke="#173049"/>
+  <rect x="180" y="636" width="40" height="8" rx="4" fill="#1c8fb0"/>
+  <circle cx="222" cy="640" r="8" fill="#38e1ff"/>
+  <text x="1080" y="645" text-anchor="end" fill="#7f95ab" font-size="11">88 / 5822 · 2026-06-16T07:12:52Z</text>
+
+  <!-- legend -->
+  <g font-size="11">
+    <text x="28" y="700" fill="#38e1ff">● active</text>
+    <text x="110" y="700" fill="#46f0a0">● complete</text>
+    <text x="210" y="700" fill="#ff5a6e">● error</text>
+    <text x="290" y="700" fill="#9fb0c4">● info</text>
+    <text x="360" y="700" fill="#46f0a0">▸ start</text>
+    <text x="430" y="700" fill="#7c5cff">◉ end</text>
+    <text x="500" y="700" fill="#7f95ab">→ directly-follows (count)</text>
+    <text x="720" y="700" fill="#1c8fb0">✋ drag · click a node → its events &amp; data</text>
+  </g>
+</svg>

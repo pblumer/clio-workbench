@@ -12,6 +12,8 @@ released independently of Clio. It does **not** replace Clio's embedded `/ui`
 
 The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBENCH.md).
 
+![The process viewer: the discovered directly-follows graph of real events, with lifecycle-phase colours, counts, timeline replay and node inspection.](docs/images/process-viewer.svg)
+
 ## Status
 
 **Stufe 0 — Gerüst** (scaffold). What exists today:
