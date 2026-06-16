@@ -239,8 +239,8 @@ func buildProcessView(g process.Graph) processView {
 
 	for _, va := range g.Variants {
 		pct := 0
-		if g.Subjects > 0 {
-			pct = va.Count * 100 / g.Subjects
+		if g.Traces > 0 {
+			pct = va.Count * 100 / g.Traces
 		}
 		v.Variants = append(v.Variants, procVariant{Sequence: va.Sequence, Count: va.Count, Pct: pct})
 	}
