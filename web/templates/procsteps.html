@@ -8,26 +8,61 @@
 </div>
 
 <ol class="step-list">
-  {{- range .Steps}}
+  {{- range .Steps}}{{$step := .}}
   <li class="step-item step-{{.Kind}}">
-    <span class="step-kind step-kind-{{.Kind}}">{{.Kind}}</span>
-    <form class="step-form" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-trigger="change">
-      <input type="text" name="name" value="{{.Name}}" autocomplete="off"
-             placeholder="{{if eq .Kind "event"}}event type, e.g. identity.employee.created{{else}}command, e.g. attachMailbox{{end}}">
-      {{- if eq .Kind "event"}}
-      <select name="phase" title="lifecycle phase">
-        <option value="active" {{if eq .Phase "active"}}selected{{end}}>active</option>
-        <option value="complete" {{if eq .Phase "complete"}}selected{{end}}>complete</option>
-        <option value="error" {{if eq .Phase "error"}}selected{{end}}>error</option>
-        <option value="info" {{if eq .Phase "info"}}selected{{end}}>info</option>
-      </select>
-      {{- end}}
-    </form>
-    <span class="step-ops">
-      <button type="button" class="btn-link" title="up" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}/move?dir=up" hx-target="#proc-steps" hx-swap="innerHTML">↑</button>
-      <button type="button" class="btn-link" title="down" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}/move?dir=down" hx-target="#proc-steps" hx-swap="innerHTML">↓</button>
-      <button type="button" class="btn-link btn-danger" title="delete" hx-delete="/drafts/{{$.ID}}/steps/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-confirm="Delete this step?">✕</button>
-    </span>
+    <div class="step-row">
+      <span class="step-kind step-kind-{{.Kind}}">{{.Kind}}</span>
+      <form class="step-form" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-trigger="change">
+        <input type="text" name="name" value="{{.Name}}" autocomplete="off"
+               placeholder="{{if eq .Kind "event"}}event type, e.g. identity.employee.created{{else}}command, e.g. attachMailbox{{end}}">
+        {{- if eq .Kind "event"}}
+        <select name="phase" title="lifecycle phase">
+          <option value="active" {{if eq .Phase "active"}}selected{{end}}>active</option>
+          <option value="complete" {{if eq .Phase "complete"}}selected{{end}}>complete</option>
+          <option value="error" {{if eq .Phase "error"}}selected{{end}}>error</option>
+          <option value="info" {{if eq .Phase "info"}}selected{{end}}>info</option>
+        </select>
+        {{- end}}
+      </form>
+      <span class="step-ops">
+        <button type="button" class="btn-link" title="up" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}/move?dir=up" hx-target="#proc-steps" hx-swap="innerHTML">↑</button>
+        <button type="button" class="btn-link" title="down" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}/move?dir=down" hx-target="#proc-steps" hx-swap="innerHTML">↓</button>
+        <button type="button" class="btn-link btn-danger" title="delete" hx-delete="/drafts/{{$.ID}}/steps/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-confirm="Delete this step?">✕</button>
+      </span>
+    </div>
+
+    {{- if eq .Kind "event"}}
+    <details class="step-fields"{{if .Fields}} open{{end}}>
+      <summary>{{len .Fields}} data field(s)</summary>
+      <ul class="field-list">
+        {{- range .Fields}}
+        <li class="field-row">
+          <form class="field-form" hx-post="/drafts/{{$.ID}}/steps/{{$step.ID}}/fields/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-trigger="change">
+            <input type="text" name="name" value="{{.Name}}" placeholder="field name" autocomplete="off">
+            <select name="type">
+              {{- $t := .Type}}
+              <option value="string" {{if eq $t "string"}}selected{{end}}>text</option>
+              <option value="integer" {{if eq $t "integer"}}selected{{end}}>integer</option>
+              <option value="number" {{if eq $t "number"}}selected{{end}}>number</option>
+              <option value="boolean" {{if eq $t "boolean"}}selected{{end}}>boolean</option>
+              <option value="datetime" {{if eq $t "datetime"}}selected{{end}}>date-time</option>
+              <option value="enum" {{if eq $t "enum"}}selected{{end}}>enum</option>
+              <option value="reference" {{if eq $t "reference"}}selected{{end}}>reference</option>
+            </select>
+            <label class="field-req"><input type="checkbox" name="required" value="1" {{if .Required}}checked{{end}}> req</label>
+            <input type="text" name="format" value="{{.Format}}" placeholder="format (uuid…)" autocomplete="off">
+            <input type="text" name="ref" value="{{.Ref}}" placeholder="ref → collection" autocomplete="off">
+            <input type="text" name="enum" value="{{range $i,$v := .Enum}}{{if $i}},{{end}}{{$v}}{{end}}" placeholder="enum a,b,c" autocomplete="off">
+          </form>
+          <button type="button" class="btn-link btn-danger" title="delete field"
+                  hx-delete="/drafts/{{$.ID}}/steps/{{$step.ID}}/fields/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML">✕</button>
+        </li>
+        {{- end}}
+      </ul>
+      <button type="button" class="btn-link" hx-post="/drafts/{{$.ID}}/steps/{{$step.ID}}/fields" hx-target="#proc-steps" hx-swap="innerHTML">+ field</button>
+      <pre class="field-schema">{{eventSchema .Fields}}</pre>
+    </details>
+    {{- end}}
   </li>
   {{- end}}
   {{- if not .Steps}}

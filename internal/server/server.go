@@ -12,6 +12,7 @@ import (
 	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/config"
 	"github.com/pblumer/clio-workbench/internal/envstore"
+	"github.com/pblumer/clio-workbench/internal/schemagen"
 	"github.com/pblumer/clio-workbench/internal/store"
 	"github.com/pblumer/clio-workbench/web"
 )
@@ -29,7 +30,9 @@ type Server struct {
 
 // New constructs a Server with routes registered.
 func New(cfg config.Config, st *store.Store, envs *envstore.Store, log *slog.Logger) (*Server, error) {
-	tmpl, err := template.ParseFS(web.Templates, "templates/*.html")
+	tmpl, err := template.New("").Funcs(template.FuncMap{
+		"eventSchema": schemagen.EventSchema,
+	}).ParseFS(web.Templates, "templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
@@ -86,6 +89,9 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}", s.handleUpdateStep)
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/move", s.handleMoveStep)
 	s.mux.HandleFunc("DELETE /drafts/{id}/steps/{stepId}", s.handleDeleteStep)
+	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/fields", s.handleAddField)
+	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/fields/{fieldId}", s.handleUpdateField)
+	s.mux.HandleFunc("DELETE /drafts/{id}/steps/{stepId}/fields/{fieldId}", s.handleDeleteField)
 
 	// /api reverse proxy to the upstream Clio (token injected server-side).
 	// The target is dynamic: it follows the server picked in the GUI, and

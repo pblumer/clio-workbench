@@ -71,6 +71,23 @@ type Step struct {
 	// Phase is the lifecycle phase for events (active/complete/error/info).
 	Phase       string `json:"phase,omitempty"`
 	Description string `json:"description,omitempty"`
+	// Fields are the data-payload fields (events), from which the JSON Schema
+	// is generated.
+	Fields []Field `json:"fields,omitempty"`
+}
+
+// Field is one data-payload field of an event, authored in the field builder.
+type Field struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Type is one of: string, integer, number, boolean, datetime, enum,
+	// reference.
+	Type        string   `json:"type"`
+	Required    bool     `json:"required,omitempty"`
+	Format      string   `json:"format,omitempty"` // string format, e.g. uuid, email
+	Ref         string   `json:"ref,omitempty"`    // reference target collection
+	Enum        []string `json:"enum,omitempty"`
+	Description string   `json:"description,omitempty"`
 }
 
 // Environment is a saved, switchable working context: a server plus a data
