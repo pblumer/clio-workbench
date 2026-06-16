@@ -12,12 +12,12 @@ func child(n *RelNode, seg string) *RelNode {
 }
 
 func TestIsID(t *testing.T) {
-	for _, s := range []string{"123", "00000000-0000-0000-0000-000000000000", "deadbeefdeadbeef"} {
+	for _, s := range []string{"123", "00000000-0000-0000-0000-000000000000", "deadbeefdeadbeef", "01ARZ3NDEKTSV4RRFFQ69G5FAV"} {
 		if !isID(s) {
 			t.Errorf("isID(%q) = false, want true", s)
 		}
 	}
-	for _, s := range []string{"orders", "items", "user-profile", "abc"} {
+	for _, s := range []string{"orders", "items", "user-profile", "abc", "employee-onboarding"} {
 		if isID(s) {
 			t.Errorf("isID(%q) = true, want false", s)
 		}

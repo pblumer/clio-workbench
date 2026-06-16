@@ -220,6 +220,26 @@ func subjectPattern(s string) string {
 	return "/" + strings.Join(parts, "/")
 }
 
+// ScopePrefix returns the literal leading path of a subject pattern (up to the
+// first {id}), used to read only the relevant collection from Clio.
+// /employees/{id}/employee-onboarding → /employees.
+func ScopePrefix(pattern string) string {
+	var out []string
+	for _, seg := range strings.Split(strings.Trim(pattern, "/"), "/") {
+		if seg == "" {
+			continue
+		}
+		if seg == "{id}" {
+			break
+		}
+		out = append(out, seg)
+	}
+	if len(out) == 0 {
+		return ""
+	}
+	return "/" + strings.Join(out, "/")
+}
+
 // Conformance is the result of checking real sequences against a model.
 type Conformance struct {
 	Process    string
@@ -230,6 +250,12 @@ type Conformance struct {
 	Conforming int // subjects whose projected sequence equals Expected
 	Unexpected []TypeCount
 	Deviations []SubjectDiff
+	// Diagnostics — help explain a check that finds nothing.
+	TotalSubjects   int         // distinct subjects in the events read
+	InScope         int         // subjects matching the scope pattern
+	SamplePatterns  []TypeCount // real subject patterns present (Type = pattern)
+	ExpectedPresent []string    // expected types seen anywhere in the data
+	ExpectedMissing []string    // expected types not seen at all
 }
 
 // CheckConformance compares per-subject type sequences against the model.
@@ -255,6 +281,36 @@ func CheckConformance(m BpmnModel, subjectSeqs map[string][]string, maxDeviation
 	}
 	unexpected := map[string]int{}
 
+	// Diagnostics: subject patterns present and global type coverage.
+	c.TotalSubjects = len(subjectSeqs)
+	patternCount := map[string]int{}
+	allTypes := map[string]bool{}
+	for s, seq := range subjectSeqs {
+		patternCount[subjectPattern(s)]++
+		for _, t := range seq {
+			allTypes[t] = true
+		}
+	}
+	for _, e := range exp {
+		if allTypes[e] {
+			c.ExpectedPresent = append(c.ExpectedPresent, e)
+		} else {
+			c.ExpectedMissing = append(c.ExpectedMissing, e)
+		}
+	}
+	for pat, n := range patternCount {
+		c.SamplePatterns = append(c.SamplePatterns, TypeCount{Type: pat, Count: n})
+	}
+	sort.Slice(c.SamplePatterns, func(i, j int) bool {
+		if c.SamplePatterns[i].Count != c.SamplePatterns[j].Count {
+			return c.SamplePatterns[i].Count > c.SamplePatterns[j].Count
+		}
+		return c.SamplePatterns[i].Type < c.SamplePatterns[j].Type
+	})
+	if len(c.SamplePatterns) > 12 {
+		c.SamplePatterns = c.SamplePatterns[:12]
+	}
+
 	// deterministic subject order
 	subs := make([]string, 0, len(subjectSeqs))
 	for s := range subjectSeqs {
@@ -266,6 +322,7 @@ func CheckConformance(m BpmnModel, subjectSeqs map[string][]string, maxDeviation
 		if wantPattern != "" && subjectPattern(sub) != wantPattern {
 			continue // out of the lane's subject scope
 		}
+		c.InScope++
 		seq := subjectSeqs[sub]
 		relevant := false
 		subjUnexpected := 0

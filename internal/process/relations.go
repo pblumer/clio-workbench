@@ -17,7 +17,8 @@ import (
 var uuidRe = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 // isID reports whether a path segment looks like an instance identifier rather
-// than a named collection.
+// than a named collection. Covers numbers, UUIDs, long hex, and long
+// alphanumeric ids with a digit (ULID/nanoid-style).
 func isID(s string) bool {
 	if s == "" {
 		return false
@@ -25,19 +26,33 @@ func isID(s string) bool {
 	if uuidRe.MatchString(s) {
 		return true
 	}
-	digits, hex := true, true
+	allDigits, allHex, allAlnum, hasDigit := true, true, true, false
 	for _, r := range s {
-		if r < '0' || r > '9' {
-			digits = false
+		d := r >= '0' && r <= '9'
+		hexCh := d || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
+		alnum := d || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
+		if d {
+			hasDigit = true
+		} else {
+			allDigits = false
 		}
-		if !((r >= '0' && r <= '9') || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')) {
-			hex = false
+		if !hexCh {
+			allHex = false
+		}
+		if !alnum {
+			allAlnum = false
 		}
 	}
-	if digits {
+	switch {
+	case allDigits:
 		return true
+	case allHex && len(s) >= 16:
+		return true
+	case allAlnum && hasDigit && len(s) >= 12:
+		return true
+	default:
+		return false
 	}
-	return hex && len(s) >= 16
 }
 
 // RelNode is a node in the subject-relationship tree. IsID marks an instance

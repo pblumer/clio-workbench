@@ -308,12 +308,32 @@ const eventsPath = "/api/v1/events"
 // A limit <= 0 reads all available events. The token is injected server-side;
 // ErrOffline / ErrUnauthorized are returned for those states.
 func (c *Client) ReadEvents(ctx context.Context, limit int) ([]Event, error) {
+	return c.readEventsURL(ctx, c.eventsURL(eventsPath+"?recursive=true"), limit)
+}
+
+// ReadEventsUnder streams up to limit events under a subject prefix via
+// GET /api/v1/events/<prefix>?recursive=true — much cheaper than reading the
+// whole store when a conformance check is scoped to a collection.
+func (c *Client) ReadEventsUnder(ctx context.Context, subjectPrefix string, limit int) ([]Event, error) {
+	p := strings.Trim(strings.TrimSpace(subjectPrefix), "/")
+	if p == "" {
+		return c.ReadEvents(ctx, limit)
+	}
+	return c.readEventsURL(ctx, c.eventsURL(eventsPath+"/"+p+"?recursive=true"), limit)
+}
+
+func (c *Client) eventsURL(path string) string {
+	base, _ := c.Snapshot()
+	return base + path
+}
+
+// readEventsURL performs the shared NDJSON read for the minimal Event shape.
+func (c *Client) readEventsURL(ctx context.Context, fullURL string, limit int) ([]Event, error) {
 	base, token := c.Snapshot()
 	if base == "" {
 		return nil, ErrOffline
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+eventsPath+"?recursive=true", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -327,10 +347,8 @@ func (c *Client) ReadEvents(ctx context.Context, limit int) ([]Event, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-
 	switch {
 	case resp.StatusCode >= 200 && resp.StatusCode < 300:
-		// parse below
 	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
 		return nil, ErrUnauthorized
 	default:

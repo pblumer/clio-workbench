@@ -605,6 +605,10 @@ html, body {
 .conf-bar-fill { display: block; height: 100%; background: linear-gradient(90deg, var(--neon-dim), var(--neon)); }
 .conf-step-pct { flex: 0 0 80px; text-align: right; font-size: 11px; color: var(--text-dim); }
 .conf-dev { font-size: 11px; color: var(--warn); }
+.conf-diag { border: 1px solid var(--edge); border-radius: 8px; padding: 10px 14px; background: rgba(8, 14, 28, 0.5); }
+.conf-diag-list { margin: 6px 0; padding-left: 18px; font-size: 12px; color: var(--text-dim); }
+.conf-diag-list code { color: var(--text); }
+.conf-diag-list ul { margin: 4px 0; }
 
 /* Relationships — subject-hierarchy tree (1:n) */
 .rel-tree { list-style: none; margin: 0; padding: 0; }
