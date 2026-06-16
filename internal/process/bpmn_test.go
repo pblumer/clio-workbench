@@ -60,8 +60,8 @@ func TestConformanceScopesToLaneSubject(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m.Subject != "/identity/1234" {
-		t.Fatalf("lane subject = %q", m.Subject)
+	if m.Subject != "/identity/{id}" {
+		t.Fatalf("lane subject pattern = %q, want /identity/{id}", m.Subject)
 	}
 	c := CheckConformance(m, map[string][]string{
 		"/identity/1": {"a", "b"}, // in scope, conforming
@@ -73,6 +73,37 @@ func TestConformanceScopesToLaneSubject(t *testing.T) {
 	}
 	if c.Relevant != 2 || c.Conforming != 1 {
 		t.Errorf("relevant=%d conforming=%d, want 2/1 (orders out of scope)", c.Relevant, c.Conforming)
+	}
+}
+
+func TestSubjectScopeCollectionPlusProcess(t *testing.T) {
+	const b = `<?xml version="1.0"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
+  <bpmn:collaboration><bpmn:participant name="employee-onboarding" processRef="P"/></bpmn:collaboration>
+  <bpmn:process id="P">
+    <bpmn:laneSet><bpmn:lane id="L" name="employees"/></bpmn:laneSet>
+    <bpmn:startEvent id="s" name="a"/>
+    <bpmn:endEvent id="e" name="b"/>
+    <bpmn:sequenceFlow id="f" sourceRef="s" targetRef="e"/>
+  </bpmn:process>
+</bpmn:definitions>`
+	m, err := ParseBPMN([]byte(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.Process != "employee-onboarding" {
+		t.Errorf("process = %q", m.Process)
+	}
+	if m.Subject != "/employees/{id}/employee-onboarding" {
+		t.Fatalf("scope = %q, want /employees/{id}/employee-onboarding", m.Subject)
+	}
+	c := CheckConformance(m, map[string][]string{
+		"/employees/42/employee-onboarding": {"a", "b"}, // in scope, conforming
+		"/employees/43/employee-onboarding": {"a"},      // in scope, deviation
+		"/identity/1":                       {"a", "b"}, // out of scope
+	}, 12)
+	if c.Relevant != 2 || c.Conforming != 1 {
+		t.Errorf("relevant=%d conforming=%d, want 2/1", c.Relevant, c.Conforming)
 	}
 }
 
