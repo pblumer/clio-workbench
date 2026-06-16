@@ -755,6 +755,28 @@ html, body {
 .insp-unauthorized { color: var(--warn); }
 .insp-error { color: #ff7a8a; }
 
+/* Outline process editor */
+.step-add { display: flex; gap: 14px; }
+.step-list { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.step-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--edge); border-radius: 9px; background: rgba(8, 14, 28, 0.6); }
+.step-kind { flex: none; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--edge); }
+.step-kind-event { color: var(--neon); border-color: rgba(56, 225, 255, 0.4); }
+.step-kind-task { color: var(--accent); border-color: rgba(124, 92, 255, 0.4); }
+.step-form { flex: 1; display: flex; gap: 8px; }
+.step-form input { flex: 1; background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px; padding: 7px 10px; color: var(--text); font: inherit; font-size: 12px; }
+.step-form input:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
+.step-form select { background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px; padding: 7px 8px; color: var(--text); font: inherit; font-size: 12px; }
+.step-ops { display: flex; gap: 8px; flex: none; }
+.step-empty { color: var(--text-dim); font-style: italic; }
+.step-preview { border-top: 1px solid var(--edge); padding-top: 12px; }
+.step-seq { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.prev-ev { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--edge); color: var(--text); font-size: 12px; }
+.prev-arrow { color: var(--neon-dim); }
+.prev-ev.phase-active { color: var(--neon); border-color: rgba(56, 225, 255, 0.45); }
+.prev-ev.phase-complete { color: var(--good); border-color: rgba(70, 240, 160, 0.45); }
+.prev-ev.phase-error { color: #ff5a6e; border-color: rgba(255, 90, 110, 0.45); }
+.prev-ev.phase-info { color: #9fb0c4; }
+
 /* Footer */
 .hud-foot {
   display: flex;

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Name}} — Clio Workbench</title>
+  <link rel="stylesheet" href="/static/css/workbench.css">
+  <script src="/static/js/htmx.min.js" defer></script>
+</head>
+<body>
+  <div class="starfield" aria-hidden="true"></div>
+
+  <header class="hud-bar">
+    <div class="brand">
+      <a class="brand-mark" href="/" title="Back">◇</a>
+      <span class="brand-name">{{.Name}}</span>
+      <span class="brand-sub">process editor</span>
+    </div>
+    <a class="conn-btn" href="/">← back</a>
+  </header>
+
+  <main class="grid">
+    <section class="panel" id="proc-meta">
+      {{template "procmeta.html" .}}
+    </section>
+    <section class="panel" id="proc-steps">
+      {{template "procsteps.html" .}}
+    </section>
+  </main>
+</body>
+</html>

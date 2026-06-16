@@ -1,0 +1,19 @@
+{{define "procmeta.html" -}}
+<h2 class="panel-title">Process</h2>
+<p class="panel-hint">Name, namespace and the subject template the process runs on.</p>
+<form class="new-form" hx-post="/drafts/{{.ID}}/meta" hx-target="#proc-meta" hx-swap="innerHTML">
+  <label>
+    <span>Name</span>
+    <input type="text" name="name" value="{{.Name}}" required autocomplete="off">
+  </label>
+  <label>
+    <span>Namespace <small>(event-type prefix)</small></span>
+    <input type="text" name="namespace" value="{{.Namespace}}" placeholder="identity.employee" autocomplete="off">
+  </label>
+  <label>
+    <span>Subject template</span>
+    <input type="text" name="subject" value="{{.SubjectStyle}}" placeholder="/employees/{id}/employee-onboarding" autocomplete="off">
+  </label>
+  <button type="submit" class="btn-primary">Save</button>
+</form>
+{{- end}}

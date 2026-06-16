@@ -29,8 +29,11 @@ const (
 	KindProcess Kind = "process"
 )
 
-// idPattern constrains identifiers and namespaces to URL/file-safe slugs.
+// idPattern constrains the draft id to a URL/file-safe slug.
 var idPattern = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+
+// nsPattern allows dotted/hyphenated namespaces like "identity.employee".
+var nsPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 
 // Draft is a complete model: the directed graph plus its metadata. It is the
 // single source of truth from which schemas and documentation are generated.
@@ -41,11 +44,33 @@ type Draft struct {
 	// Namespace prefixes generated event-type names, e.g. "order".
 	Namespace string `json:"namespace"`
 	// SubjectStyle is the subject template, e.g. "/orders/{id}".
-	SubjectStyle string    `json:"subjectStyle,omitempty"`
-	Nodes        []Node    `json:"nodes"`
-	Edges        []Edge    `json:"edges"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	SubjectStyle string `json:"subjectStyle,omitempty"`
+	Nodes        []Node `json:"nodes"`
+	Edges        []Edge `json:"edges"`
+	// Steps is the ordered outline of the process (events and tasks). It is the
+	// low-code authoring view; the graph (Nodes/Edges) is the canvas view.
+	Steps     []Step    `json:"steps,omitempty"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// StepKind distinguishes an event (a fact) from a task/command (an action).
+type StepKind string
+
+const (
+	StepEvent StepKind = "event"
+	StepTask  StepKind = "task"
+)
+
+// Step is one ordered node of the process outline.
+type Step struct {
+	ID   string   `json:"id"`
+	Kind StepKind `json:"kind"`
+	// Name is the event-type name (events) or command name (tasks).
+	Name string `json:"name"`
+	// Phase is the lifecycle phase for events (active/complete/error/info).
+	Phase       string `json:"phase,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 // Environment is a saved, switchable working context: a server plus a data
@@ -104,8 +129,8 @@ func (d *Draft) Validate() error {
 	default:
 		return fmt.Errorf("invalid kind %q", d.Kind)
 	}
-	if d.Namespace != "" && !idPattern.MatchString(d.Namespace) {
-		return fmt.Errorf("invalid namespace %q: must be a slug", d.Namespace)
+	if d.Namespace != "" && !nsPattern.MatchString(d.Namespace) {
+		return fmt.Errorf("invalid namespace %q", d.Namespace)
 	}
 
 	nodeIDs := make(map[string]struct{}, len(d.Nodes))

@@ -1,0 +1,46 @@
+{{define "procsteps.html" -}}
+<div class="events-head">
+  <h2 class="panel-title">Steps</h2>
+  <span class="step-add">
+    <button type="button" class="btn-link" hx-post="/drafts/{{.ID}}/steps?kind=event" hx-target="#proc-steps" hx-swap="innerHTML">+ Event</button>
+    <button type="button" class="btn-link" hx-post="/drafts/{{.ID}}/steps?kind=task" hx-target="#proc-steps" hx-swap="innerHTML">+ Task</button>
+  </span>
+</div>
+
+<ol class="step-list">
+  {{- range .Steps}}
+  <li class="step-item step-{{.Kind}}">
+    <span class="step-kind step-kind-{{.Kind}}">{{.Kind}}</span>
+    <form class="step-form" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-trigger="change">
+      <input type="text" name="name" value="{{.Name}}" autocomplete="off"
+             placeholder="{{if eq .Kind "event"}}event type, e.g. identity.employee.created{{else}}command, e.g. attachMailbox{{end}}">
+      {{- if eq .Kind "event"}}
+      <select name="phase" title="lifecycle phase">
+        <option value="active" {{if eq .Phase "active"}}selected{{end}}>active</option>
+        <option value="complete" {{if eq .Phase "complete"}}selected{{end}}>complete</option>
+        <option value="error" {{if eq .Phase "error"}}selected{{end}}>error</option>
+        <option value="info" {{if eq .Phase "info"}}selected{{end}}>info</option>
+      </select>
+      {{- end}}
+    </form>
+    <span class="step-ops">
+      <button type="button" class="btn-link" title="up" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}/move?dir=up" hx-target="#proc-steps" hx-swap="innerHTML">↑</button>
+      <button type="button" class="btn-link" title="down" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}/move?dir=down" hx-target="#proc-steps" hx-swap="innerHTML">↓</button>
+      <button type="button" class="btn-link btn-danger" title="delete" hx-delete="/drafts/{{$.ID}}/steps/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-confirm="Delete this step?">✕</button>
+    </span>
+  </li>
+  {{- end}}
+  {{- if not .Steps}}
+  <li class="step-empty">No steps yet — add an event or a task.</li>
+  {{- end}}
+</ol>
+
+<div class="step-preview">
+  <h3 class="rel-sub">Preview</h3>
+  <p class="panel-hint">subject <code>{{if .SubjectStyle}}{{.SubjectStyle}}{{else}}— set a subject template —{{end}}</code></p>
+  <p class="panel-hint step-seq">expected events:
+    {{- $first := true}}
+    {{- range .Steps}}{{if eq .Kind "event"}} {{if not $first}}<span class="prev-arrow">→</span> {{end}}<span class="prev-ev phase-{{.Phase}}">{{if .Name}}{{.Name}}{{else}}?{{end}}</span>{{$first = false}}{{end}}{{end}}
+  </p>
+</div>
+{{- end}}
