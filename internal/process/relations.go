@@ -27,10 +27,12 @@ func isID(s string) bool {
 		return true
 	}
 	allDigits, allHex, allAlnum, hasDigit := true, true, true, false
+	idLike, hasSep := true, false // idLike: only [A-Za-z0-9_-]
 	for _, r := range s {
 		d := r >= '0' && r <= '9'
 		hexCh := d || (r >= 'a' && r <= 'f') || (r >= 'A' && r <= 'F')
 		alnum := d || (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z')
+		sep := r == '-' || r == '_'
 		if d {
 			hasDigit = true
 		} else {
@@ -42,6 +44,12 @@ func isID(s string) bool {
 		if !alnum {
 			allAlnum = false
 		}
+		if sep {
+			hasSep = true
+		}
+		if !(alnum || sep) {
+			idLike = false
+		}
 	}
 	switch {
 	case allDigits:
@@ -49,6 +57,9 @@ func isID(s string) bool {
 	case allHex && len(s) >= 16:
 		return true
 	case allAlnum && hasDigit && len(s) >= 12:
+		return true
+	case idLike && hasSep && hasDigit && len(s) >= 4:
+		// prefixed ids like EMP-30000, order_123
 		return true
 	default:
 		return false
