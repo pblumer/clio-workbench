@@ -11,7 +11,8 @@
         <span>· {{len .Nodes}} states · {{len .Edges}} events</span>
       </div>
       <div class="draft-actions">
-        <a class="btn-link" href="/drafts/{{.ID}}">open JSON</a>
+        <a class="btn-link" href="/editor/{{.ID}}">edit</a>
+        <a class="btn-link" href="/drafts/{{.ID}}">JSON</a>
         <button class="btn-link btn-danger"
                 hx-delete="/drafts/{{.ID}}"
                 hx-target="#drafts"
