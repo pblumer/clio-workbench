@@ -104,6 +104,18 @@ func TestDiscoverHandlesCycles(t *testing.T) {
 	}
 }
 
+func TestDiscoverSuppressesEndToStartLoop(t *testing.T) {
+	// A subject reused for a second run: deployed (end) then new (start).
+	g := Discover(ev("/e/1", "new", "created", "deployed", "new", "created", "deployed"), 0)
+	if c := edge(g, "deployed", "new"); c != 0 {
+		t.Errorf("deployed→new = %d, want 0 (instance restart suppressed)", c)
+	}
+	// Real forward steps are still there.
+	if edge(g, "new", "created") == 0 || edge(g, "created", "deployed") == 0 {
+		t.Error("forward edges new→created / created→deployed missing")
+	}
+}
+
 func TestDiscoverSelfLoop(t *testing.T) {
 	g := Discover(ev("/o/1", "tick", "tick", "tick"), 0)
 	if c := edge(g, "tick", "tick"); c != 2 {

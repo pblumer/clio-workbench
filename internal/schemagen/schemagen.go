@@ -9,8 +9,7 @@ import (
 	"github.com/pblumer/clio-workbench/internal/model"
 )
 
-// EventSchema renders a pretty-printed JSON Schema for the given fields,
-// preserving field order. Fields without a name are skipped.
+// EventSchema renders a pretty-printed JSON Schema for the given fields, preserving field order. Fields without a name are skipped.
 func EventSchema(fields []model.Field) string {
 	var named []model.Field
 	for _, f := range fields {
@@ -54,6 +53,30 @@ func EventSchema(fields []model.Field) string {
 	}
 	b.WriteString("\n}")
 	return b.String()
+}
+
+// SchemaCollection renders an importable array of register-event-schema
+// payloads ({type, schema}) for every named event step of the draft.
+func SchemaCollection(d model.Draft) string {
+	type payload struct {
+		Type   string          `json:"type"`
+		Schema json.RawMessage `json:"schema"`
+	}
+	var arr []payload
+	for _, st := range d.Steps {
+		if st.Kind != model.StepEvent || strings.TrimSpace(st.Name) == "" {
+			continue
+		}
+		arr = append(arr, payload{Type: st.Name, Schema: json.RawMessage(EventSchema(st.Fields))})
+	}
+	if arr == nil {
+		return "[]"
+	}
+	b, err := json.MarshalIndent(arr, "", "  ")
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
 }
 
 // propSchema builds the JSON Schema fragment for one field.

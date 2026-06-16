@@ -766,6 +766,9 @@ html, body {
 .step-form input { flex: 1; background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px; padding: 7px 10px; color: var(--text); font: inherit; font-size: 12px; }
 .step-form input:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
 .step-form select { background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px; padding: 7px 8px; color: var(--text); font: inherit; font-size: 12px; }
+.export-row { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--edge); }
+.export-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); }
+
 .step-row { display: flex; align-items: center; gap: 10px; }
 .step-ops { display: flex; gap: 8px; flex: none; }
 
