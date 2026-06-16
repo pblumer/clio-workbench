@@ -107,6 +107,31 @@ func TestSubjectScopeCollectionPlusProcess(t *testing.T) {
 	}
 }
 
+func TestConformanceMatchesPrefixedIDs(t *testing.T) {
+	const b = `<?xml version="1.0"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL">
+  <bpmn:collaboration><bpmn:participant name="employee-onboarding" processRef="P"/></bpmn:collaboration>
+  <bpmn:process id="P">
+    <bpmn:laneSet><bpmn:lane id="L" name="employees"/></bpmn:laneSet>
+    <bpmn:startEvent id="s" name="identity.employee.new"/>
+    <bpmn:endEvent id="e" name="identity.employee.deployed"/>
+    <bpmn:sequenceFlow id="f" sourceRef="s" targetRef="e"/>
+  </bpmn:process>
+</bpmn:definitions>`
+	m, _ := ParseBPMN([]byte(b))
+	// Real subjects use an EMP-#### id (letters + hyphen + digits).
+	c := CheckConformance(m, map[string][]string{
+		"/employees/EMP-30000/employee-onboarding": {"identity.employee.new", "identity.employee.deployed"},
+		"/employees/EMP-30001/employee-onboarding": {"identity.employee.new"},
+	}, 12)
+	if c.Relevant != 2 {
+		t.Fatalf("relevant = %d, want 2 (EMP-#### ids must match {id})", c.Relevant)
+	}
+	if c.Conforming != 1 {
+		t.Errorf("conforming = %d, want 1", c.Conforming)
+	}
+}
+
 func TestCheckConformance(t *testing.T) {
 	m, _ := ParseBPMN([]byte(sampleBPMN))
 	seqs := map[string][]string{

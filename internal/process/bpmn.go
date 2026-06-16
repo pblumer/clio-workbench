@@ -203,6 +203,23 @@ func subjectScope(lane, process string) string {
 	return pat
 }
 
+// matchesPattern reports whether a subject fits a scope pattern, where "{id}"
+// segments match any value (so the id format never matters). e.g.
+// /employees/EMP-30000/employee-onboarding fits /employees/{id}/employee-onboarding.
+func matchesPattern(subject, pattern string) bool {
+	ss := strings.Split(strings.Trim(subject, "/"), "/")
+	ps := strings.Split(strings.Trim(pattern, "/"), "/")
+	if len(ss) != len(ps) {
+		return false
+	}
+	for i := range ps {
+		if ps[i] != "{id}" && ps[i] != ss[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // subjectPattern collapses instance ids to "{id}" so subjects of the same
 // aggregate share a pattern (/identity/1234 → /identity/{id}).
 func subjectPattern(s string) string {
@@ -319,7 +336,7 @@ func CheckConformance(m BpmnModel, subjectSeqs map[string][]string, maxDeviation
 	sort.Strings(subs)
 
 	for _, sub := range subs {
-		if wantPattern != "" && subjectPattern(sub) != wantPattern {
+		if wantPattern != "" && !matchesPattern(sub, wantPattern) {
 			continue // out of the lane's subject scope
 		}
 		c.InScope++
