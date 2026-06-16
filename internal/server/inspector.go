@@ -73,15 +73,120 @@ func (s *Server) handleNodeEvents(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "nodeevents.html", v)
 }
 
-// prettyJSON indents a raw JSON payload for display; empty/null becomes "—".
+// prettyJSON indents a raw JSON payload for display, decoding \uXXXX escapes to
+// real characters (so "Müller" shows as "Müller") while preserving field
+// order. Empty/null becomes "—"; invalid JSON is shown as-is.
 func prettyJSON(raw json.RawMessage) string {
 	t := strings.TrimSpace(string(raw))
 	if t == "" || t == "null" {
 		return "—"
 	}
-	var buf bytes.Buffer
-	if err := json.Indent(&buf, raw, "", "  "); err != nil {
-		return t // not valid JSON: show as-is
+	dec := json.NewDecoder(strings.NewReader(t))
+	dec.UseNumber()
+	var b strings.Builder
+	if err := writeJSONValue(&b, dec, 0); err != nil {
+		var buf bytes.Buffer
+		if json.Indent(&buf, raw, "", "  ") == nil {
+			return buf.String()
+		}
+		return t
 	}
-	return buf.String()
+	return b.String()
+}
+
+func jsonIndent(depth int) string { return strings.Repeat("  ", depth) }
+
+// encString re-encodes a Go string as JSON without HTML escaping and without
+// \uXXXX escaping of printable runes — so umlauts etc. render literally.
+func encString(s string) string {
+	var bb bytes.Buffer
+	enc := json.NewEncoder(&bb)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(s)
+	return strings.TrimRight(bb.String(), "\n")
+}
+
+func writeJSONValue(b *strings.Builder, dec *json.Decoder, depth int) error {
+	tok, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	switch v := tok.(type) {
+	case json.Delim:
+		switch v {
+		case '{':
+			return writeJSONObject(b, dec, depth)
+		case '[':
+			return writeJSONArray(b, dec, depth)
+		}
+	case string:
+		b.WriteString(encString(v))
+	case json.Number:
+		b.WriteString(v.String())
+	case bool:
+		if v {
+			b.WriteString("true")
+		} else {
+			b.WriteString("false")
+		}
+	case nil:
+		b.WriteString("null")
+	}
+	return nil
+}
+
+func writeJSONObject(b *strings.Builder, dec *json.Decoder, depth int) error {
+	b.WriteString("{")
+	first := true
+	for dec.More() {
+		keyTok, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		if !first {
+			b.WriteString(",")
+		}
+		first = false
+		b.WriteString("\n")
+		b.WriteString(jsonIndent(depth + 1))
+		b.WriteString(encString(keyTok.(string)))
+		b.WriteString(": ")
+		if err := writeJSONValue(b, dec, depth+1); err != nil {
+			return err
+		}
+	}
+	if _, err := dec.Token(); err != nil { // consume '}'
+		return err
+	}
+	if !first {
+		b.WriteString("\n")
+		b.WriteString(jsonIndent(depth))
+	}
+	b.WriteString("}")
+	return nil
+}
+
+func writeJSONArray(b *strings.Builder, dec *json.Decoder, depth int) error {
+	b.WriteString("[")
+	first := true
+	for dec.More() {
+		if !first {
+			b.WriteString(",")
+		}
+		first = false
+		b.WriteString("\n")
+		b.WriteString(jsonIndent(depth + 1))
+		if err := writeJSONValue(b, dec, depth+1); err != nil {
+			return err
+		}
+	}
+	if _, err := dec.Token(); err != nil { // consume ']'
+		return err
+	}
+	if !first {
+		b.WriteString("\n")
+		b.WriteString(jsonIndent(depth))
+	}
+	b.WriteString("]")
+	return nil
 }
