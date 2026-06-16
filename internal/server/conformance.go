@@ -99,14 +99,14 @@ func (s *Server) handleConformance(w http.ResponseWriter, r *http.Request) {
 func (s *Server) readForConformance(ctx context.Context, model process.BpmnModel) ([]clio.Event, error) {
 	prefix := process.ScopePrefix(model.Subject)
 	if prefix == "" {
-		return s.clio.ReadEvents(ctx, processEventCap)
+		return s.clio.ReadEvents(ctx, s.cfg.EventCap)
 	}
-	events, err := s.clio.ReadEventsUnder(ctx, prefix, processEventCap)
+	events, err := s.clio.ReadEventsUnder(ctx, prefix, s.cfg.EventCap)
 	if err != nil {
-		return s.clio.ReadEvents(ctx, processEventCap) // route maybe unsupported
+		return s.clio.ReadEvents(ctx, s.cfg.EventCap) // route maybe unsupported
 	}
 	if len(events) == 0 {
-		if all, err2 := s.clio.ReadEvents(ctx, processEventCap); err2 == nil {
+		if all, err2 := s.clio.ReadEvents(ctx, s.cfg.EventCap); err2 == nil {
 			return all, nil // nothing under prefix → full read for diagnostics
 		}
 	}

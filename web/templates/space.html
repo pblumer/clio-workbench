@@ -11,6 +11,7 @@
           aria-label="Refresh">⟳</button>
 </div>
 
+{{if .Truncated}}<p class="trunc-note">⚠ read the first {{.Cap}} events (oldest first) — newer events may be missing. Raise <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
 {{if eq .State "ok"}}
   <div class="dotted-graph">
     <svg viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Dotted chart of events per subject over time">

@@ -11,6 +11,7 @@
           aria-label="Refresh">⟳</button>
 </div>
 
+{{if .Truncated}}<p class="trunc-note">⚠ read the first {{.Cap}} events (oldest first) — newer events may be missing. Raise <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
 {{if eq .State "ok"}}
   <h3 class="rel-sub">Containment (subject hierarchy)</h3>
   <ul class="rel-tree rel-root">

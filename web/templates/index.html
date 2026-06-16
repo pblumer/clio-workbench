@@ -79,6 +79,15 @@
   </header>
 
   <main class="grid">
+    <section class="panel events-panel" id="environments-slot"
+             hx-get="/environments"
+             hx-trigger="load"
+             hx-target="this"
+             hx-swap="innerHTML">
+      <div class="events-head"><h2 class="panel-title">Environment</h2></div>
+      <p class="panel-hint">loading…</p>
+    </section>
+
     <section class="panel">
       <h2 class="panel-title">New model</h2>
       <p class="panel-hint">

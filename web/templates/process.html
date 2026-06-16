@@ -12,6 +12,7 @@
           aria-label="Refresh">⟳</button>
 </div>
 
+{{if .Truncated}}<p class="trunc-note">⚠ read the first {{.Cap}} events (oldest first) — newer events may be missing. Raise <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
 {{if or (eq .State "ok") (eq .State "empty")}}
 <div class="proc-tools">
   <input class="proc-filter" type="search" list="proc-types" placeholder="filter type… (pick or type)" autocomplete="off" aria-label="Filter event types">

@@ -1,0 +1,53 @@
+{{define "environments.html" -}}
+<div class="env-bar">
+  <label class="env-pick">Environment
+    <select name="id" hx-post="/environments/activate" hx-target="#environments-slot" hx-swap="innerHTML">
+      <option value="" {{if not .HasActive}}selected{{end}}>— all data —</option>
+      {{- range .Environments}}
+      <option value="{{.ID}}" {{if eq .ID $.ActiveID}}selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <span class="env-limit" title="max events read per panel">limit {{.Limit}}</span>
+  {{if .HasActive}}
+  <span class="env-scope">
+    {{- if .Active.ServerURL}}<code>{{.Active.ServerURL}}</code> · {{end -}}
+    {{- if .Active.Subject}}subject <code>{{.Active.Subject}}</code> · {{end -}}
+    {{- if .Active.Types}}types <code>{{range .Active.Types}}{{.}} {{end}}</code> · {{end -}}
+    {{- if .Active.LowerBound}}from <code>{{.Active.LowerBound}}</code> · {{end -}}
+    {{- if .Active.UpperBound}}to <code>{{.Active.UpperBound}}</code>{{end -}}
+  </span>
+  {{end}}
+</div>
+
+<details class="env-new">
+  <summary>＋ New environment</summary>
+  <form class="env-form" hx-post="/environments" hx-target="#environments-slot" hx-swap="innerHTML"
+        hx-on::after-request="if(event.detail.successful) this.reset()">
+    <input name="name" placeholder="name (e.g. onboarding-dev)" required autocomplete="off">
+    <input name="serverUrl" placeholder="server URL (optional)" autocomplete="off">
+    <input name="subject" placeholder="subject prefix, e.g. /employees" autocomplete="off">
+    <input name="types" placeholder="event types (comma-separated, optional)" autocomplete="off">
+    <input name="lowerBound" placeholder="lowerBound id (optional)" autocomplete="off">
+    <input name="upperBound" placeholder="upperBound id (optional)" autocomplete="off">
+    <input name="limit" type="number" min="1" placeholder="limit (optional)" autocomplete="off">
+    <button type="submit" class="btn-primary">Save</button>
+  </form>
+</details>
+
+{{if .Environments}}
+<ul class="env-list">
+  {{- range .Environments}}
+  <li class="env-item{{if eq .ID $.ActiveID}} env-active{{end}}">
+    <span class="env-name">{{.Name}}</span>
+    <span class="env-item-scope">
+      {{- if .Subject}}<code>{{.Subject}}</code>{{end}}{{if .Types}} · {{len .Types}} types{{end}}{{if .Limit}} · limit {{.Limit}}{{end}}
+    </span>
+    <button class="btn-link btn-danger" hx-post="/environments/delete"
+            hx-vals='{"id":"{{.ID}}"}' hx-target="#environments-slot" hx-swap="innerHTML"
+            hx-confirm="Delete environment “{{.Name}}”?">delete</button>
+  </li>
+  {{- end}}
+</ul>
+{{end}}
+{{- end}}
