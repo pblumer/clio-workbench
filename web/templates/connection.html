@@ -1,7 +1,7 @@
 {{define "connection.html" -}}
 <span class="pill pill-{{.Status}}"
-      title="{{.Detail}}{{if .ClioURL}} · {{.ClioURL}}{{end}}{{if .LatencyMS}} · {{.LatencyMS}}ms{{end}}">
-  <span class="pill-dot" aria-hidden="true"></span>{{.Label}}{{if .ClioURL}} · {{.ClioURL}}{{end}}
+      title="{{.Detail}}{{if .ClioURL}} · {{.ClioURL}}{{end}}{{if .LatencyMS}} · {{.LatencyMS}}ms{{end}}{{if .HasInfo}} · {{.EventsTotal}} events{{end}}">
+  <span class="pill-dot" aria-hidden="true"></span>{{.Label}}{{if .ClioURL}} · {{.ClioURL}}{{end}}{{if .HasInfo}} · {{.EventsTotal}} ev{{end}}
 </span>
 <button class="reconnect" type="button"
         hx-get="/connection"

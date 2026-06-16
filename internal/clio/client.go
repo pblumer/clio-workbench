@@ -301,6 +301,50 @@ type Event struct {
 	Time    string `json:"time"`
 }
 
+// Info is a subset of Clio's GET /api/v1/info (server metadata/telemetry).
+type Info struct {
+	EventsTotal       int64  `json:"eventsTotal"`
+	ActiveObservers   int64  `json:"activeObservers"`
+	DatabaseFileBytes int64  `json:"databaseFileBytes"`
+	Uptime            string `json:"uptime"`
+}
+
+// FetchInfo reads GET /api/v1/info so the UI can show how many events the
+// connected instance actually has (a quick "is this the right/current store?"
+// check). Token injected server-side.
+func (c *Client) FetchInfo(ctx context.Context) (*Info, error) {
+	base, token := c.Snapshot()
+	if base == "" {
+		return nil, ErrOffline
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/api/v1/info", nil)
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		return nil, ErrUnauthorized
+	default:
+		return nil, fmt.Errorf("clio: unexpected HTTP %d", resp.StatusCode)
+	}
+	var info Info
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&info); err != nil {
+		return nil, fmt.Errorf("clio: decode info: %w", err)
+	}
+	return &info, nil
+}
+
 // eventsPath is Clio's convenient root read route (all events as NDJSON).
 const eventsPath = "/api/v1/events"
 
