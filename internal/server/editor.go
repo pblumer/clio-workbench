@@ -168,8 +168,90 @@ func (s *Server) saveDraft(w http.ResponseWriter, d *model.Draft) bool {
 func (s *Server) renderSteps(w http.ResponseWriter, d *model.Draft) { s.render(w, "procsteps.html", d) }
 func (s *Server) renderMeta(w http.ResponseWriter, d *model.Draft)  { s.render(w, "procmeta.html", d) }
 
-func newStepID() string {
+func newStepID() string  { return randID("st") }
+func newFieldID() string { return randID("fl") }
+
+func randID(prefix string) string {
 	var b [5]byte
 	_, _ = rand.Read(b[:])
-	return "st" + hex.EncodeToString(b[:])
+	return prefix + hex.EncodeToString(b[:])
+}
+
+// stepByID returns a pointer to the step with the given id, or nil.
+func stepByID(d *model.Draft, id string) *model.Step {
+	for i := range d.Steps {
+		if d.Steps[i].ID == id {
+			return &d.Steps[i]
+		}
+	}
+	return nil
+}
+
+// handleAddField appends a data field to an event step.
+func (s *Server) handleAddField(w http.ResponseWriter, r *http.Request) {
+	d, ok := s.loadDraft(w, r)
+	if !ok {
+		return
+	}
+	if st := stepByID(d, r.PathValue("stepId")); st != nil {
+		st.Fields = append(st.Fields, model.Field{ID: newFieldID(), Type: "string"})
+	}
+	if !s.saveDraft(w, d) {
+		return
+	}
+	s.renderSteps(w, d)
+}
+
+// handleUpdateField edits a field's name/type/required/format/ref/enum.
+func (s *Server) handleUpdateField(w http.ResponseWriter, r *http.Request) {
+	d, ok := s.loadDraft(w, r)
+	if !ok {
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad form", http.StatusBadRequest)
+		return
+	}
+	st := stepByID(d, r.PathValue("stepId"))
+	if st != nil {
+		fid := r.PathValue("fieldId")
+		for i := range st.Fields {
+			if st.Fields[i].ID != fid {
+				continue
+			}
+			st.Fields[i].Name = strings.TrimSpace(r.FormValue("name"))
+			st.Fields[i].Type = strings.TrimSpace(r.FormValue("type"))
+			st.Fields[i].Required = r.FormValue("required") != ""
+			st.Fields[i].Format = strings.TrimSpace(r.FormValue("format"))
+			st.Fields[i].Ref = strings.TrimSpace(r.FormValue("ref"))
+			st.Fields[i].Enum = splitTypes(r.FormValue("enum"))
+			break
+		}
+	}
+	if !s.saveDraft(w, d) {
+		return
+	}
+	s.renderSteps(w, d)
+}
+
+// handleDeleteField removes a field from an event step.
+func (s *Server) handleDeleteField(w http.ResponseWriter, r *http.Request) {
+	d, ok := s.loadDraft(w, r)
+	if !ok {
+		return
+	}
+	if st := stepByID(d, r.PathValue("stepId")); st != nil {
+		fid := r.PathValue("fieldId")
+		out := st.Fields[:0]
+		for _, f := range st.Fields {
+			if f.ID != fid {
+				out = append(out, f)
+			}
+		}
+		st.Fields = out
+	}
+	if !s.saveDraft(w, d) {
+		return
+	}
+	s.renderSteps(w, d)
 }

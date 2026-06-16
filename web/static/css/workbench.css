@@ -766,7 +766,29 @@ html, body {
 .step-form input { flex: 1; background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px; padding: 7px 10px; color: var(--text); font: inherit; font-size: 12px; }
 .step-form input:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
 .step-form select { background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px; padding: 7px 8px; color: var(--text); font: inherit; font-size: 12px; }
+.step-row { display: flex; align-items: center; gap: 10px; }
 .step-ops { display: flex; gap: 8px; flex: none; }
+
+/* field builder */
+.step-fields { margin-top: 10px; padding-left: 4px; border-left: 1px solid var(--edge); }
+.step-fields summary { cursor: pointer; color: var(--neon-dim); font-size: 11px; letter-spacing: 1px; }
+.step-fields summary:hover { color: var(--neon); }
+.field-list { list-style: none; margin: 10px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.field-row { display: flex; align-items: center; gap: 6px; }
+.field-form { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.field-form input[type=text], .field-form select {
+  background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 6px;
+  padding: 5px 8px; color: var(--text); font: inherit; font-size: 11px;
+}
+.field-form input[name=name] { flex: 1; min-width: 110px; }
+.field-form input[name=format], .field-form input[name=ref], .field-form input[name=enum] { width: 130px; }
+.field-form input:focus, .field-form select:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
+.field-req { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); }
+.field-schema {
+  margin: 8px 0 0; max-height: 240px; overflow: auto; white-space: pre;
+  font-size: 11px; color: var(--text); background: rgba(5, 10, 20, 0.7);
+  border: 1px solid var(--edge); border-radius: 7px; padding: 8px 10px;
+}
 .step-empty { color: var(--text-dim); font-style: italic; }
 .step-preview { border-top: 1px solid var(--edge); padding-top: 12px; }
 .step-seq { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
