@@ -7,6 +7,8 @@
 > bevor sie existieren — und macht aus dem Entwurf nutzbare Artefakte:
 > Clio-Schemas und Dokumentation.
 
+![Der Process-Viewer: der aus realen Events entdeckte Directly-Follows-Graph, eingefärbt nach Lifecycle-Phase, mit Häufigkeiten, Timeline-Replay und Knoten-Inspektion.](images/process-viewer.svg)
+
 ---
 
 ## 1. Motivation & Abgrenzung
