@@ -348,6 +348,105 @@ func (c *Client) FetchInfo(ctx context.Context) (*Info, error) {
 // eventsPath is Clio's convenient root read route (all events as NDJSON).
 const eventsPath = "/api/v1/events"
 
+// Scope narrows an event read to a subject subtree, type set and/or id range.
+type Scope struct {
+	Subject    string
+	Types      []string
+	LowerBound string
+	UpperBound string
+	Limit      int
+}
+
+func (c *Client) scopedURL(base string, sc Scope) string {
+	path := eventsPath
+	if s := strings.Trim(sc.Subject, "/"); s != "" {
+		path += "/" + s
+	}
+	q := url.Values{}
+	q.Set("recursive", "true")
+	for _, t := range sc.Types {
+		if t != "" {
+			q.Add("type", t)
+		}
+	}
+	if sc.LowerBound != "" {
+		q.Set("lowerBound", sc.LowerBound)
+	}
+	if sc.UpperBound != "" {
+		q.Set("upperBound", sc.UpperBound)
+	}
+	return base + path + "?" + q.Encode()
+}
+
+// ReadScoped streams the minimal event projection for a scope.
+func (c *Client) ReadScoped(ctx context.Context, sc Scope) ([]Event, error) {
+	base, _ := c.Snapshot()
+	if base == "" {
+		return nil, ErrOffline
+	}
+	return c.readEventsURL(ctx, c.scopedURL(base, sc), sc.Limit)
+}
+
+// ReadFullScoped streams events with their data payload for a scope.
+func (c *Client) ReadFullScoped(ctx context.Context, sc Scope) ([]FullEvent, error) {
+	base, _ := c.Snapshot()
+	if base == "" {
+		return nil, ErrOffline
+	}
+	return c.readFullEventsURL(ctx, c.scopedURL(base, sc), sc.Limit)
+}
+
+// readFullEventsURL performs the shared NDJSON read for the FullEvent shape.
+func (c *Client) readFullEventsURL(ctx context.Context, fullURL string, limit int) ([]FullEvent, error) {
+	base, token := c.Snapshot()
+	if base == "" {
+		return nil, ErrOffline
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fullURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	req.Header.Set("Accept", "application/x-ndjson")
+
+	resp, err := c.httpc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		return nil, ErrUnauthorized
+	default:
+		return nil, fmt.Errorf("clio: unexpected HTTP %d", resp.StatusCode)
+	}
+
+	var events []FullEvent
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 0, 64<<10), 8<<20)
+	for sc.Scan() {
+		line := strings.TrimSpace(sc.Text())
+		if line == "" {
+			continue
+		}
+		var ev FullEvent
+		if err := json.Unmarshal([]byte(line), &ev); err != nil {
+			return nil, fmt.Errorf("clio: decode event: %w", err)
+		}
+		events = append(events, ev)
+		if limit > 0 && len(events) >= limit {
+			break
+		}
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("clio: read events: %w", err)
+	}
+	return events, nil
+}
+
 // ReadEvents streams up to limit events from Clio (root, recursive) as NDJSON.
 // A limit <= 0 reads all available events. The token is injected server-side;
 // ErrOffline / ErrUnauthorized are returned for those states.

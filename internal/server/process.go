@@ -92,8 +92,9 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 	subject := strings.TrimSpace(r.URL.Query().Get("subject"))
 	source := strings.TrimSpace(r.URL.Query().Get("source"))
 
-	events, err := s.clio.ReadEvents(ctx, s.cfg.EventCap)
-	truncated := err == nil && len(events) >= s.cfg.EventCap
+	sc := s.activeScope()
+	events, err := s.clio.ReadScoped(ctx, sc)
+	truncated := err == nil && len(events) >= sc.Limit
 	if err != nil {
 		v := processView{Subject: subject, Source: source}
 		switch {
@@ -133,7 +134,7 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 	v.Subject = subject
 	v.Source = source
 	v.Truncated = truncated
-	v.Cap = s.cfg.EventCap
+	v.Cap = sc.Limit
 	v.ReplayJSON = replayJSON(events)
 	s.render(w, "process.html", v)
 }

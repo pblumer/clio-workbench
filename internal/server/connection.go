@@ -24,6 +24,8 @@ type connectionView struct {
 	LatencyMS   int64
 	HasInfo     bool
 	EventsTotal int64
+	Limit       int
+	LimitHit    bool
 }
 
 // statusLabels maps a status onto the HUD label shown in the header pill.
@@ -58,6 +60,8 @@ func (s *Server) connectionView(ctx context.Context, res clio.Result) connection
 		if info, err := s.clio.FetchInfo(ctx); err == nil {
 			v.HasInfo = true
 			v.EventsTotal = info.EventsTotal
+			v.Limit = s.effectiveLimit()
+			v.LimitHit = info.EventsTotal > int64(v.Limit)
 		}
 	}
 	return v

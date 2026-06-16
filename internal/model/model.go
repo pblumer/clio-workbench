@@ -48,6 +48,20 @@ type Draft struct {
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
+// Environment is a saved, switchable working context: a server plus a data
+// scope (which subjects, types and id-range to look at). The token is never
+// stored — it stays in the connect flow.
+type Environment struct {
+	ID         string   `json:"id"`
+	Name       string   `json:"name"`
+	ServerURL  string   `json:"serverUrl,omitempty"`
+	Subject    string   `json:"subject,omitempty"`
+	Types      []string `json:"types,omitempty"`
+	LowerBound string   `json:"lowerBound,omitempty"`
+	UpperBound string   `json:"upperBound,omitempty"`
+	Limit      int      `json:"limit,omitempty"` // 0 = use the global cap
+}
+
 // Node is a state (lifecycle) or step/activity (process).
 type Node struct {
 	ID    string `json:"id"`

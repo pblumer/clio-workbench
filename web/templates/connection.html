@@ -3,6 +3,7 @@
       title="{{.Detail}}{{if .ClioURL}} · {{.ClioURL}}{{end}}{{if .LatencyMS}} · {{.LatencyMS}}ms{{end}}{{if .HasInfo}} · {{.EventsTotal}} events{{end}}">
   <span class="pill-dot" aria-hidden="true"></span>{{.Label}}{{if .ClioURL}} · {{.ClioURL}}{{end}}{{if .HasInfo}} · {{.EventsTotal}} ev{{end}}
 </span>
+{{if .LimitHit}}<span class="limit-warn" title="The store has {{.EventsTotal}} events but the active limit is {{.Limit}} — newer events are not loaded. Raise the limit (environment or WORKBENCH_EVENT_CAP).">⚠ LIMIT {{.Limit}} &lt; {{.EventsTotal}}</span>{{end}}
 <button class="reconnect" type="button"
         hx-get="/connection"
         hx-target="#connection-slot"

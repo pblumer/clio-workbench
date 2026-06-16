@@ -11,6 +11,7 @@ import (
 
 	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/config"
+	"github.com/pblumer/clio-workbench/internal/envstore"
 	"github.com/pblumer/clio-workbench/internal/store"
 	"github.com/pblumer/clio-workbench/web"
 )
@@ -19,6 +20,7 @@ import (
 type Server struct {
 	cfg   config.Config
 	store *store.Store
+	envs  *envstore.Store
 	clio  *clio.Client
 	log   *slog.Logger
 	tmpl  *template.Template
@@ -26,7 +28,7 @@ type Server struct {
 }
 
 // New constructs a Server with routes registered.
-func New(cfg config.Config, st *store.Store, log *slog.Logger) (*Server, error) {
+func New(cfg config.Config, st *store.Store, envs *envstore.Store, log *slog.Logger) (*Server, error) {
 	tmpl, err := template.ParseFS(web.Templates, "templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
@@ -34,6 +36,7 @@ func New(cfg config.Config, st *store.Store, log *slog.Logger) (*Server, error) 
 	s := &Server{
 		cfg:   cfg,
 		store: st,
+		envs:  envs,
 		clio:  clio.New(cfg.ClioURL, cfg.ClioToken),
 		log:   log,
 		tmpl:  tmpl,
@@ -66,6 +69,10 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("GET /process", s.handleProcess)
 	s.mux.HandleFunc("GET /node-events", s.handleNodeEvents)
 	s.mux.HandleFunc("GET /relations", s.handleRelations)
+	s.mux.HandleFunc("GET /environments", s.handleEnvironments)
+	s.mux.HandleFunc("POST /environments", s.handleSaveEnvironment)
+	s.mux.HandleFunc("POST /environments/activate", s.handleActivateEnvironment)
+	s.mux.HandleFunc("POST /environments/delete", s.handleDeleteEnvironment)
 	s.mux.HandleFunc("POST /conformance", s.handleConformance)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)

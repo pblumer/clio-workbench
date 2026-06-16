@@ -66,7 +66,8 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
 	defer cancel()
 
-	events, err := s.clio.ReadEvents(ctx, s.cfg.EventCap)
+	sc := s.activeScope()
+	events, err := s.clio.ReadScoped(ctx, sc)
 	if err != nil {
 		v := dottedView{}
 		switch {
@@ -87,8 +88,8 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 		in[i] = process.TimedEvent{Subject: e.Subject, Type: e.Type, Time: e.Time}
 	}
 	v := buildDottedView(process.BuildDotted(in, dMaxRows))
-	v.Truncated = len(events) >= s.cfg.EventCap
-	v.Cap = s.cfg.EventCap
+	v.Truncated = len(events) >= sc.Limit
+	v.Cap = sc.Limit
 	s.render(w, "space.html", v)
 }
 

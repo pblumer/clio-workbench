@@ -27,6 +27,11 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
 - A **live connection status** in the header that reports whether Clio is
   actually reachable and the token accepted — not merely whether `CLIO_URL` is
   configured (see below).
+- **Environments**: saved, switchable working contexts — a server plus a data
+  scope (subject prefix, event types, lower/upperBound, per-env event limit).
+  The active scope applies to all analysis panels; the token is never stored.
+  Limits are shown prominently and the header blinks a warning when the store
+  holds more events than the active limit.
 - A rudimentary **events view**: the event types written to Clio
   (`read-event-types`) rendered as BPMN **send tasks** with an attached data
   object, a per-type count bubble, and a header bubble summing all occurrences.

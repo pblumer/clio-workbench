@@ -27,7 +27,8 @@ func (s *Server) handleRelations(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
 	defer cancel()
 
-	events, err := s.clio.ReadFullEvents(ctx, s.cfg.EventCap)
+	sc := s.activeScope()
+	events, err := s.clio.ReadFullScoped(ctx, sc)
 	v := relationsView{}
 	switch {
 	case err == nil:
@@ -49,8 +50,8 @@ func (s *Server) handleRelations(w http.ResponseWriter, r *http.Request) {
 		v.Refs = process.BuildReferences(refIn).Edges
 		v.Subjects = len(distinct)
 		v.Events = len(events)
-		v.Truncated = len(events) >= s.cfg.EventCap
-		v.Cap = s.cfg.EventCap
+		v.Truncated = len(events) >= sc.Limit
+		v.Cap = sc.Limit
 	case errors.Is(err, clio.ErrOffline):
 		v.State, v.Message = "offline", "no Clio connected — pick a server to map relationships"
 	case errors.Is(err, clio.ErrUnauthorized):
