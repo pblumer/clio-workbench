@@ -114,6 +114,16 @@ func TestDiscoverSuppressesEndToStartLoop(t *testing.T) {
 	if edge(g, "new", "created") == 0 || edge(g, "created", "deployed") == 0 {
 		t.Error("forward edges new→created / created→deployed missing")
 	}
+	// The reused subject is split into 2 runs → one variant (single run), x2.
+	if g.Traces != 2 {
+		t.Errorf("traces = %d, want 2 runs", g.Traces)
+	}
+	if len(g.Variants) != 1 || g.Variants[0].Count != 2 {
+		t.Fatalf("variants = %+v, want one variant x2", g.Variants)
+	}
+	if strings.Join(g.Variants[0].Sequence, " ") != "new created deployed" {
+		t.Errorf("variant = %v, want a single run [new created deployed]", g.Variants[0].Sequence)
+	}
 }
 
 func TestDiscoverSelfLoop(t *testing.T) {

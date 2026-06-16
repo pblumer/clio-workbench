@@ -111,6 +111,25 @@ type Graph struct {
 	Variants []Variant
 	Subjects int // distinct subjects observed
 	Events   int // events fed in
+	Traces   int // process runs (subjects split at restart boundaries)
+}
+
+// splitRuns splits a subject's event sequence into separate runs at every
+// end→start boundary (an end-type event immediately followed by a different
+// start-type event = a restart on a reused subject).
+func splitRuns(seq []string, startType, endType map[string]bool) [][]string {
+	if len(seq) == 0 {
+		return nil
+	}
+	var runs [][]string
+	start := 0
+	for i := 1; i < len(seq); i++ {
+		if seq[i-1] != seq[i] && endType[seq[i-1]] && startType[seq[i]] {
+			runs = append(runs, seq[start:i])
+			start = i
+		}
+	}
+	return append(runs, seq[start:])
 }
 
 // Discover builds the process graph from events. maxVariants caps the returned
@@ -136,12 +155,11 @@ func Discover(events []Event, maxVariants int) Graph {
 		}
 		return n
 	}
-	edgeCount := make(map[string]map[string]int)
 	startType := make(map[string]bool)
 	endType := make(map[string]bool)
-	variantCount := make(map[string]int)
-	variantSeq := make(map[string][]string)
 
+	// Pass 1: event counts and the set of start/end types, from the raw
+	// per-subject sequences.
 	for _, subj := range order {
 		seq := seqs[subj]
 		if len(seq) == 0 {
@@ -154,31 +172,35 @@ func Discover(events []Event, maxVariants int) Graph {
 		node(seq[len(seq)-1]).EndCount++
 		startType[seq[0]] = true
 		endType[seq[len(seq)-1]] = true
-		key := strings.Join(seq, " ")
-		variantCount[key]++
-		if _, ok := variantSeq[key]; !ok {
-			variantSeq[key] = seq
-		}
 	}
 
-	// Directly-follows edges, in a second pass so start/end types are known.
-	// Skip an end→start transition (e.g. deployed → new): that is an instance
-	// restart on a reused subject, not a real step in the process.
+	// Pass 2: split each subject's sequence into runs at end→start boundaries
+	// (a reused subject = several runs), then derive edges and variants from the
+	// runs. So a restart (e.g. deployed → new.v2) is never a step nor inflates a
+	// variant into a doubled trace.
+	edgeCount := make(map[string]map[string]int)
+	variantCount := make(map[string]int)
+	variantSeq := make(map[string][]string)
+	traces := 0
 	for _, subj := range order {
-		seq := seqs[subj]
-		for i := 0; i+1 < len(seq); i++ {
-			from, to := seq[i], seq[i+1]
-			if from != to && endType[from] && startType[to] {
-				continue // instance restart (end → start), not a self-loop
+		for _, run := range splitRuns(seqs[subj], startType, endType) {
+			traces++
+			for i := 0; i+1 < len(run); i++ {
+				from, to := run[i], run[i+1]
+				if edgeCount[from] == nil {
+					edgeCount[from] = make(map[string]int)
+				}
+				edgeCount[from][to]++
 			}
-			if edgeCount[from] == nil {
-				edgeCount[from] = make(map[string]int)
+			key := strings.Join(run, " ")
+			variantCount[key]++
+			if _, ok := variantSeq[key]; !ok {
+				variantSeq[key] = run
 			}
-			edgeCount[from][to]++
 		}
 	}
 
-	g := Graph{Subjects: len(order), Events: len(events)}
+	g := Graph{Subjects: len(order), Events: len(events), Traces: traces}
 
 	// Edges, sorted for stable output (by count desc, then names).
 	for from, tos := range edgeCount {
