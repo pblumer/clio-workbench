@@ -125,12 +125,14 @@ func ParseBPMN(data []byte) (BpmnModel, error) {
 	}
 
 	m := BpmnModel{Process: processName(defs, p)}
+	laneName := ""
 	for _, lane := range p.LaneSet.Lanes {
 		if lane.Name != "" {
-			m.Subject = lane.Name
+			laneName = lane.Name
 			break
 		}
 	}
+	m.Subject = subjectScope(laneName, m.Process)
 	seen := map[string]bool{}
 	for cur := start; cur != "" && !seen[cur]; cur = next[cur] {
 		seen[cur] = true
@@ -178,6 +180,27 @@ type TypeCount struct {
 type SubjectDiff struct {
 	Subject string
 	Detail  string
+}
+
+// subjectScope derives the subject pattern an event stream lives on from the
+// BPMN lane and process name. Two conventions are supported:
+//
+//   - a bare collection lane ("employees") + process name ("employee-onboarding")
+//     → /employees/{id}/employee-onboarding (an instance's process stream);
+//   - a lane already written as a path ("/identity/1234") → /identity/{id}.
+func subjectScope(lane, process string) string {
+	lane = strings.Trim(strings.TrimSpace(lane), "/")
+	if lane == "" {
+		return ""
+	}
+	if strings.Contains(lane, "/") {
+		return subjectPattern("/" + lane)
+	}
+	pat := "/" + lane + "/{id}"
+	if process != "" {
+		pat += "/" + process
+	}
+	return pat
 }
 
 // subjectPattern collapses instance ids to "{id}" so subjects of the same
