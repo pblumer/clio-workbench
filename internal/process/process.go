@@ -137,6 +137,8 @@ func Discover(events []Event, maxVariants int) Graph {
 		return n
 	}
 	edgeCount := make(map[string]map[string]int)
+	startType := make(map[string]bool)
+	endType := make(map[string]bool)
 	variantCount := make(map[string]int)
 	variantSeq := make(map[string][]string)
 
@@ -150,17 +152,29 @@ func Discover(events []Event, maxVariants int) Graph {
 		}
 		node(seq[0]).StartCount++
 		node(seq[len(seq)-1]).EndCount++
-		for i := 0; i+1 < len(seq); i++ {
-			from, to := seq[i], seq[i+1]
-			if edgeCount[from] == nil {
-				edgeCount[from] = make(map[string]int)
-			}
-			edgeCount[from][to]++
-		}
+		startType[seq[0]] = true
+		endType[seq[len(seq)-1]] = true
 		key := strings.Join(seq, " ")
 		variantCount[key]++
 		if _, ok := variantSeq[key]; !ok {
 			variantSeq[key] = seq
+		}
+	}
+
+	// Directly-follows edges, in a second pass so start/end types are known.
+	// Skip an end→start transition (e.g. deployed → new): that is an instance
+	// restart on a reused subject, not a real step in the process.
+	for _, subj := range order {
+		seq := seqs[subj]
+		for i := 0; i+1 < len(seq); i++ {
+			from, to := seq[i], seq[i+1]
+			if from != to && endType[from] && startType[to] {
+				continue // instance restart (end → start), not a self-loop
+			}
+			if edgeCount[from] == nil {
+				edgeCount[from] = make(map[string]int)
+			}
+			edgeCount[from][to]++
 		}
 	}
 
