@@ -6,7 +6,8 @@
   <title>Clio Workbench</title>
   <link rel="stylesheet" href="/static/css/workbench.css">
   <script src="/static/js/htmx.min.js" defer></script>
-  <script src="/static/js/space.js" defer></script>
+  <script src="/static/js/process.js" defer></script>
+  <script src="/static/js/dotted.js" defer></script>
 </head>
 <body>
   <div class="starfield" aria-hidden="true"></div>
@@ -42,8 +43,21 @@
             <label>
               <span>URL</span>
               <input type="url" name="url" placeholder="http://localhost:3000"
-                     value="{{.ClioURL}}" autocomplete="off">
+                     value="{{.ClioURL}}" list="clio-servers" autocomplete="off">
+              {{- if .Servers}}
+              <datalist id="clio-servers">
+                {{- range .Servers}}<option value="{{.}}"></option>{{end}}
+              </datalist>
+              {{- end}}
             </label>
+            {{- if .Servers}}
+            <div class="server-presets">
+              {{- range .Servers}}
+              <button type="button" class="server-chip"
+                      onclick="this.closest('form').querySelector('input[name=url]').value='{{.}}'">{{.}}</button>
+              {{- end}}
+            </div>
+            {{- end}}
             <label>
               <span>Token
                 {{- if .HasToken}} <small>(set — blank clears)</small>
@@ -65,6 +79,15 @@
   </header>
 
   <main class="grid">
+    <section class="panel events-panel" id="environments-slot"
+             hx-get="/environments"
+             hx-trigger="load"
+             hx-target="this"
+             hx-swap="innerHTML">
+      <div class="events-head"><h2 class="panel-title">Environment</h2></div>
+      <p class="panel-hint">loading…</p>
+    </section>
+
     <section class="panel">
       <h2 class="panel-title">New model</h2>
       <p class="panel-hint">
@@ -102,11 +125,11 @@
     </section>
 
     <section class="panel events-panel" id="events-slot"
-             hx-get="/events"
+             hx-get="/space"
              hx-trigger="load, clio-changed from:body"
              hx-target="this"
              hx-swap="innerHTML">
-      <div class="events-head"><h2 class="panel-title">Events</h2></div>
+      <div class="events-head"><h2 class="panel-title">Event space</h2></div>
       <p class="panel-hint">loading…</p>
     </section>
 
@@ -118,11 +141,36 @@
       <div class="events-head"><h2 class="panel-title">Process</h2></div>
       <p class="panel-hint">loading…</p>
     </section>
+
+    <section class="panel events-panel" id="relations-slot"
+             hx-get="/relations"
+             hx-trigger="load, clio-changed from:body"
+             hx-target="this"
+             hx-swap="innerHTML">
+      <div class="events-head"><h2 class="panel-title">Relationships</h2></div>
+      <p class="panel-hint">loading…</p>
+    </section>
+
+    <section class="panel events-panel">
+      <div class="events-head"><h2 class="panel-title">Conformance</h2></div>
+      <p class="panel-hint">Upload a BPMN template to check whether the real events follow it (deviations are highlighted). The lane/participant subject scopes the check.</p>
+      <form class="conf-form"
+            hx-post="/conformance"
+            hx-target="#conformance-result"
+            hx-swap="innerHTML"
+            hx-encoding="multipart/form-data">
+        <input type="file" name="bpmn" accept=".bpmn,.xml,application/xml,text/xml" required>
+        <button type="submit" class="btn-primary">Check conformance</button>
+      </form>
+      <div id="conformance-result"></div>
+    </section>
   </main>
 
   <footer class="hud-foot">
     <span>data · <code>{{.DataDir}}</code></span>
     <span>Stufe 0 — Gerüst</span>
   </footer>
+
+  <aside id="inspector" class="inspector" aria-label="Event inspector"></aside>
 </body>
 </html>

@@ -1,0 +1,61 @@
+{{define "conformance.html" -}}
+{{if eq .State "ok"}}
+  <div class="conf-summary">
+    <span class="conf-proc">{{.Conf.Process}}</span>
+    {{if .Conf.Subject}}<span class="conf-scope">scope <code>{{.Conf.Subject}}</code></span>{{end}}
+    <span class="conf-fit conf-fit-{{if ge .FitPct 80}}good{{else if ge .FitPct 40}}warn{{else}}bad{{end}}">{{.FitPct}}% conform</span>
+    <span class="conf-meta">{{.Conf.Conforming}} of {{.Conf.Relevant}} subjects follow the template</span>
+  </div>
+
+  <h3 class="rel-sub">Expected sequence — coverage</h3>
+  <ol class="conf-steps">
+    {{- range .Steps}}
+    <li class="conf-step">
+      <span class="conf-step-name">{{.Name}}</span>
+      <span class="conf-bar"><span class="conf-bar-fill" style="width:{{.Pct}}%"></span></span>
+      <span class="conf-step-pct">{{.Pct}}% · {{.Seen}}</span>
+    </li>
+    {{- end}}
+  </ol>
+
+  {{if .Conf.Unexpected}}
+  <h3 class="rel-sub">Unexpected events <small>(seen, not in the template)</small></h3>
+  <ul class="ref-list">
+    {{- range .Conf.Unexpected}}
+    <li class="ref-item"><code>{{.Type}}</code> <span class="rel-count">×{{.Count}}</span></li>
+    {{- end}}
+  </ul>
+  {{end}}
+
+  {{if .Conf.Deviations}}
+  <h3 class="rel-sub">Deviating subjects</h3>
+  <ul class="ref-list">
+    {{- range .Conf.Deviations}}
+    <li class="ref-item"><code class="ref-from">{{.Subject}}</code> <span class="conf-dev">{{.Detail}}</span></li>
+    {{- end}}
+  </ul>
+  {{else if gt .Conf.Relevant 0}}
+  <p class="panel-hint">No deviations — every participating subject follows the template. 🎉</p>
+  {{end}}
+
+  {{if eq .Conf.Relevant 0}}
+  <div class="conf-diag">
+    <p class="panel-hint">No matching subjects found. Diagnostics:</p>
+    <ul class="conf-diag-list">
+      <li>Read <strong>{{.Conf.TotalSubjects}}</strong> subjects; <strong>{{.Conf.InScope}}</strong> matched the scope <code>{{.Conf.Subject}}</code>.</li>
+      {{if .Conf.ExpectedMissing}}<li>Expected types <em>not seen anywhere</em> in the data: {{range .Conf.ExpectedMissing}}<code>{{.}}</code> {{end}}</li>{{end}}
+      {{if .Conf.ExpectedPresent}}<li>Expected types present in the data: {{range .Conf.ExpectedPresent}}<code>{{.}}</code> {{end}}</li>{{end}}
+      {{if .Conf.SamplePatterns}}<li>Subject patterns actually present:
+        <ul>{{range .Conf.SamplePatterns}}<li><code>{{.Type}}</code> <span class="rel-count">×{{.Count}}</span></li>{{end}}</ul>
+      </li>{{end}}
+    </ul>
+    <p class="panel-hint">If the scope or types differ from your data above, adjust the BPMN lane/participant or event names.</p>
+  </div>
+  {{end}}
+{{else if eq .State "offline"}}
+  <p class="panel-hint">{{.Message}}</p>
+  {{if .Conf.Expected}}<ol class="conf-steps">{{range .Conf.Expected}}<li class="conf-step"><span class="conf-step-name">{{.}}</span></li>{{end}}</ol>{{end}}
+{{else}}
+  <p class="panel-hint bpmn-state bpmn-state-{{.State}}">{{.Message}}</p>
+{{end}}
+{{- end}}

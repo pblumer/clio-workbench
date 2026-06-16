@@ -1,0 +1,49 @@
+{{define "space.html" -}}
+<div class="events-head">
+  <h2 class="panel-title">Event space
+    {{- if eq .State "ok"}} <span class="proc-stat">{{.Shown}}{{if .Capped}}/{{.Total}}{{end}} subjects · {{.Events}} events · {{.Axis}}</span>{{end -}}
+  </h2>
+  <button class="reconnect" type="button"
+          hx-get="/space"
+          hx-target="#events-slot"
+          hx-swap="innerHTML"
+          title="Re-chart events from Clio"
+          aria-label="Refresh">⟳</button>
+</div>
+
+{{if .Truncated}}<p class="trunc-note">⚠ read the first {{.Cap}} events (oldest first) — newer events may be missing. Raise <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
+{{if eq .State "ok"}}
+  <div class="dotted-graph">
+    <svg viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Dotted chart of events per subject over time">
+      <g class="dotted-viewport">
+        {{range .Rows}}
+        <rect class="dot-row" x="{{$.PlotL}}" y="{{.BandY}}" width="{{$.PlotW}}" height="20"/>
+        <text class="dot-label" x="{{$.LabelX}}" y="{{.TextY}}" text-anchor="end" dominant-baseline="central" title="{{.Label}}">{{.Label}}</text>
+        {{end}}
+        {{range .Grid}}
+        <line class="dot-grid" x1="{{.X}}" y1="{{$.GridTop}}" x2="{{.X}}" y2="{{$.GridBot}}"/>
+        {{end}}
+        <text class="dot-axis" x="{{.AxisX}}" y="{{.AxisY}}" text-anchor="end">{{.Axis}}</text>
+        {{range .Dots}}
+        <circle class="dot phase-{{.Phase}}" cx="{{.X}}" cy="{{.Y}}" r="{{$.DotR}}"
+                data-subject="{{.Subject}}" data-type="{{.Type}}" data-time="{{.Time}}"/>
+        {{end}}
+      </g>
+    </svg>
+    <button type="button" class="proc-reset" title="Reset view">⤢</button>
+    <div class="dot-tip" hidden></div>
+  </div>
+
+  <div class="proc-legend">
+    <span class="lg phase-active">● active</span>
+    <span class="lg phase-complete">● complete</span>
+    <span class="lg phase-error">● error</span>
+    <span class="lg phase-info">● info</span>
+    <span class="lg lg-hint">✋ drag · scroll to zoom · hover a dot</span>
+  </div>
+{{else if eq .State "empty"}}
+  <p class="panel-hint">{{.Message}}</p>
+{{else}}
+  <p class="panel-hint bpmn-state bpmn-state-{{.State}}">{{.Message}}</p>
+{{end}}
+{{- end}}

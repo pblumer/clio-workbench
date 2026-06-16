@@ -2,21 +2,21 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"math"
 	"net/http"
 	"sort"
+	"strings"
 
 	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/process"
 )
 
-// Bounds for reading events and listing variants, so a large store stays light.
-const (
-	processEventCap   = 5000
-	processMaxVariant = 8
-)
+// processMaxVariant bounds the number of distinct variants listed.
+const processMaxVariant = 8
 
 // Layout constants for the server-side SVG graph (left-to-right by rank).
 const (
@@ -28,6 +28,7 @@ const (
 
 type procNode struct {
 	Type           string
+	Label          string
 	Task           string
 	Phase          string
 	Count          int
@@ -47,6 +48,7 @@ type procGroup struct {
 }
 
 type procEdge struct {
+	From, To       string
 	D              string
 	LabelX, LabelY float64
 	Count          int
@@ -69,6 +71,16 @@ type processView struct {
 	Variants []procVariant
 	Subjects int
 	Events   int
+	// Truncated reports the read hit the event cap (Cap), so older events only.
+	Truncated bool
+	Cap       int
+	// Subject is the active subject-prefix filter (empty = all).
+	Subject string
+	// Source is the active source substring filter (empty = all).
+	Source string
+	// ReplayJSON is the ordered event stream for the client-side timeline
+	// replay ([{s,t,ts}, ...]).
+	ReplayJSON template.JS
 }
 
 // handleProcess discovers the process from real Clio events and renders the
@@ -77,9 +89,14 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
 	defer cancel()
 
-	events, err := s.clio.ReadEvents(ctx, processEventCap)
+	subject := strings.TrimSpace(r.URL.Query().Get("subject"))
+	source := strings.TrimSpace(r.URL.Query().Get("source"))
+
+	sc := s.activeScope()
+	events, err := s.clio.ReadScoped(ctx, sc)
+	truncated := err == nil && len(events) >= sc.Limit
 	if err != nil {
-		v := processView{}
+		v := processView{Subject: subject, Source: source}
 		switch {
 		case errors.Is(err, clio.ErrOffline):
 			v.State, v.Message = "offline", "no Clio connected — pick a server to discover its process"
@@ -93,12 +110,52 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Optional filters: subject is a path prefix, source a substring match.
+	if subject != "" || source != "" {
+		f := make([]clio.Event, 0, len(events))
+		for _, e := range events {
+			if subject != "" && !strings.HasPrefix(e.Subject, subject) {
+				continue
+			}
+			if source != "" && !strings.Contains(e.Source, source) {
+				continue
+			}
+			f = append(f, e)
+		}
+		events = f
+	}
+
 	in := make([]process.Event, len(events))
 	for i, e := range events {
 		in[i] = process.Event{Subject: e.Subject, Type: e.Type}
 	}
 	g := process.Discover(in, processMaxVariant)
-	s.render(w, "process.html", buildProcessView(g))
+	v := buildProcessView(g)
+	v.Subject = subject
+	v.Source = source
+	v.Truncated = truncated
+	v.Cap = sc.Limit
+	v.ReplayJSON = replayJSON(events)
+	s.render(w, "process.html", v)
+}
+
+// replayJSON marshals the ordered events for the timeline replay. encoding/json
+// escapes <, >, & so the payload is safe inside a <script> element.
+func replayJSON(events []clio.Event) template.JS {
+	type rep struct {
+		S  string `json:"s"`
+		T  string `json:"t"`
+		Ts string `json:"ts"`
+	}
+	arr := make([]rep, len(events))
+	for i, e := range events {
+		arr[i] = rep{S: e.Subject, T: e.Type, Ts: e.Time}
+	}
+	b, err := json.Marshal(arr)
+	if err != nil {
+		return template.JS("[]")
+	}
+	return template.JS(b)
 }
 
 // buildProcessView turns the discovered graph into a laid-out SVG view model.
@@ -158,18 +215,22 @@ func buildProcessView(g process.Graph) processView {
 	v.Groups = taskGroups(v.Nodes)
 
 	maxEdge := 1
+	hasEdge := map[string]bool{}
 	for _, e := range g.Edges {
 		if e.Count > maxEdge {
 			maxEdge = e.Count
 		}
+		hasEdge[e.From+" -> "+e.To] = true
 	}
 	for _, e := range g.Edges {
 		from, to := pos[e.From], pos[e.To]
 		if from == nil || to == nil {
 			continue
 		}
-		pe := procEdge{Count: e.Count, Width: 1.2 + 3.0*float64(e.Count)/float64(maxEdge)}
-		pe.D, pe.LabelX, pe.LabelY = edgePath(from, to)
+		// Bow a pair of opposite edges apart so both stay legible.
+		bend := e.From != e.To && hasEdge[e.To+" -> "+e.From]
+		pe := procEdge{From: e.From, To: e.To, Count: e.Count, Width: 1.2 + 3.0*float64(e.Count)/float64(maxEdge)}
+		pe.D, pe.LabelX, pe.LabelY = edgePath(from, to, bend)
 		v.Edges = append(v.Edges, pe)
 	}
 
@@ -222,33 +283,34 @@ func taskGroups(nodes []procNode) []procGroup {
 	return groups
 }
 
-// edgePath builds a cubic-bezier path from one node to another and the position
-// for its count label. Forward edges curve right→left; self-loops loop above;
-// back/same-rank edges arc below to stay legible.
-func edgePath(from, to *procNode) (d string, lx, ly float64) {
+// edgePath builds a path from one node to another and the position for its count
+// label. Edges attach to the node boundary along the straight line between the
+// two centres, so they leave and enter pointing at each other (no fixed
+// left/right stubs that bow). A single edge is a straight line; when an opposite
+// edge also exists (bend), it bows gently to one side so both stay legible.
+// Self-loops loop above the node.
+func edgePath(from, to *procNode, bend bool) (d string, lx, ly float64) {
 	if from.Type == to.Type {
 		x, y := from.X, from.Y-from.R
 		d = fmt.Sprintf("M%.1f %.1f C%.1f %.1f %.1f %.1f %.1f %.1f",
 			x-9, y, x-46, y-58, x+46, y-58, x+9, y)
 		return d, x, y - 50
 	}
-	dx := to.X - from.X
-	if dx > 0 { // forward
-		x1, y1 := from.X+from.R, from.Y
-		x2, y2 := to.X-to.R, to.Y
-		d = fmt.Sprintf("M%.1f %.1f C%.1f %.1f %.1f %.1f %.1f %.1f",
-			x1, y1, x1+dx*0.4, y1, x2-dx*0.4, y2, x2, y2)
-		return d, (x1 + x2) / 2, (y1+y2)/2 - 8
+	dx, dy := to.X-from.X, to.Y-from.Y
+	dist := math.Hypot(dx, dy)
+	if dist == 0 {
+		dist = 0.01
 	}
-	// back or same-rank: arc below both nodes
-	x1, y1 := from.X, from.Y+from.R
-	x2, y2 := to.X, to.Y+to.R
-	dip := 64.0
-	d = fmt.Sprintf("M%.1f %.1f C%.1f %.1f %.1f %.1f %.1f %.1f",
-		x1, y1, x1, y1+dip, x2, y2+dip, x2, y2)
-	mid := y1
-	if y2 > mid {
-		mid = y2
+	ux, uy := dx/dist, dy/dist // unit vector from → to
+	px, py := -uy, ux          // left-hand normal
+	x1, y1 := from.X+ux*from.R, from.Y+uy*from.R
+	x2, y2 := to.X-ux*to.R, to.Y-uy*to.R
+	off := 0.0
+	if bend {
+		off = math.Min(dist*0.18, 48)
 	}
-	return d, (x1 + x2) / 2, mid + dip - 6
+	mx, my := (x1+x2)/2+px*off, (y1+y2)/2+py*off
+	d = fmt.Sprintf("M%.1f %.1f Q%.1f %.1f %.1f %.1f", x1, y1, mx, my, x2, y2)
+	loff := off*0.5 + 9
+	return d, (x1+x2)/2 + px*loff, (y1+y2)/2 + py*loff
 }

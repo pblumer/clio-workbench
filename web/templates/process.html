@@ -5,33 +5,60 @@
   </h2>
   <button class="reconnect" type="button"
           hx-get="/process"
+          hx-include=".proc-scope"
           hx-target="#process-slot"
           hx-swap="innerHTML"
           title="Re-discover the process from Clio"
           aria-label="Refresh">⟳</button>
 </div>
 
+{{if .Truncated}}<p class="trunc-note">⚠ read the first {{.Cap}} events (oldest first) — newer events may be missing. Raise <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
+{{if or (eq .State "ok") (eq .State "empty")}}
+<div class="proc-tools">
+  <input class="proc-filter" type="search" list="proc-types" placeholder="filter type… (pick or type)" autocomplete="off" aria-label="Filter event types">
+  <datalist id="proc-types">{{range .Nodes}}<option value="{{.Type}}"></option>{{end}}</datalist>
+  <label class="proc-hops">highlight
+    <select aria-label="Highlight depth">
+      <option value="1">1 hop</option>
+      <option value="2">2 hops</option>
+      <option value="3">3 hops</option>
+      <option value="all">all</option>
+    </select>
+  </label>
+  <form class="proc-scope"
+        hx-get="/process"
+        hx-target="#process-slot"
+        hx-swap="innerHTML"
+        hx-trigger="input changed delay:400ms, submit"
+        onsubmit="return false">
+    <input type="text" name="subject" value="{{.Subject}}" placeholder="subject /orders" autocomplete="off" aria-label="Subject prefix">
+    <input type="text" name="source" value="{{.Source}}" placeholder="source…" autocomplete="off" aria-label="Source filter">
+  </form>
+</div>
+{{end}}
+
 {{if eq .State "ok"}}
   <div class="proc-graph">
-    <svg viewBox="0 0 {{.W}} {{.H}}" role="img" aria-label="Discovered directly-follows graph">
+    <svg viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Discovered directly-follows graph">
       <defs>
         <marker id="proc-arrow" viewBox="0 0 10 10" refX="9" refY="5"
                 markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10 z" class="proc-arrowhead"/>
         </marker>
       </defs>
+      <g class="proc-viewport">
       {{range .Groups}}
-      <g class="proc-group">
+      <g class="proc-group" data-task="{{.Label}}">
         <rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="14"/>
         <text class="proc-group-label" x="{{.X}}" y="{{.Y}}" dx="10" dy="13">{{.Label}}</text>
       </g>
       {{end}}
       {{range .Edges}}
-      <path class="proc-edge" d="{{.D}}" fill="none" stroke-width="{{.Width}}" marker-end="url(#proc-arrow)"/>
+      <path class="proc-edge" d="{{.D}}" data-from="{{.From}}" data-to="{{.To}}" fill="none" stroke-width="{{.Width}}" marker-end="url(#proc-arrow)"/>
       <text class="proc-edge-label" x="{{.LabelX}}" y="{{.LabelY}}" text-anchor="middle">{{.Count}}</text>
       {{end}}
       {{range .Nodes}}
-      <g class="proc-node phase-{{.Phase}}">
+      <g class="proc-node phase-{{.Phase}}" data-type="{{.Type}}" data-task="{{.Task}}">
         {{if .Start}}<circle class="proc-startevt" cx="{{.StartMX}}" cy="{{.Y}}" r="5"><title>starts sequences</title></circle>{{end}}
         {{if .End}}<circle class="proc-endevt" cx="{{.EndMX}}" cy="{{.Y}}" r="6"><title>ends sequences</title></circle>{{end}}
         <circle class="proc-orb" cx="{{.X}}" cy="{{.Y}}" r="{{.R}}"/>
@@ -39,7 +66,15 @@
         <text class="proc-label" x="{{.X}}" y="{{.LabelY}}" text-anchor="middle" title="{{.Type}}">{{.Type}}</text>
       </g>
       {{end}}
+      </g>
     </svg>
+    <button type="button" class="proc-reset" title="Reset view">⤢</button>
+    <script type="application/json" class="proc-replay">{{.ReplayJSON}}</script>
+    <div class="proc-timeline">
+      <button type="button" class="tl-play" title="Replay the event stream">▶ Replay</button>
+      <input class="tl-range" type="range" min="0" max="{{.Events}}" value="{{.Events}}" step="1">
+      <span class="tl-label"></span>
+    </div>
   </div>
 
   <div class="proc-legend">
@@ -50,6 +85,7 @@
     <span class="lg lg-start">▸ start</span>
     <span class="lg lg-end">◉ end</span>
     <span class="lg lg-flow">→ directly-follows (count)</span>
+    <span class="lg lg-hint">✋ drag · click a node → its events &amp; data</span>
   </div>
 
   <h3 class="proc-sub">Top variants</h3>

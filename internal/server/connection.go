@@ -17,11 +17,15 @@ const connectionTimeout = 6 * time.Second
 // deliberately token-free: only the status, a label, a safe detail message,
 // the upstream URL and the measured latency reach the browser.
 type connectionView struct {
-	Status    clio.Status
-	Label     string
-	Detail    string
-	ClioURL   string
-	LatencyMS int64
+	Status      clio.Status
+	Label       string
+	Detail      string
+	ClioURL     string
+	LatencyMS   int64
+	HasInfo     bool
+	EventsTotal int64
+	Limit       int
+	LimitHit    bool
 }
 
 // statusLabels maps a status onto the HUD label shown in the header pill.
@@ -39,18 +43,28 @@ func (s *Server) handleConnection(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
 	defer cancel()
 
-	res := s.clio.CheckConnection(ctx)
-	s.render(w, "connection.html", s.connectionView(res))
+	s.render(w, "connection.html", s.connectionView(ctx, s.clio.CheckConnection(ctx)))
 }
 
-func (s *Server) connectionView(res clio.Result) connectionView {
-	return connectionView{
+// connectionView builds the view; when online it also fetches the event count
+// (Clio /api/v1/info) so the header shows how much data the instance holds.
+func (s *Server) connectionView(ctx context.Context, res clio.Result) connectionView {
+	v := connectionView{
 		Status:    res.Status,
 		Label:     statusLabels[res.Status],
 		Detail:    res.Detail,
-		ClioURL:   s.cfg.ClioURL,
+		ClioURL:   s.clio.BaseURL(),
 		LatencyMS: res.Latency.Milliseconds(),
 	}
+	if res.Status == clio.StatusOnline {
+		if info, err := s.clio.FetchInfo(ctx); err == nil {
+			v.HasInfo = true
+			v.EventsTotal = info.EventsTotal
+			v.Limit = s.effectiveLimit()
+			v.LimitHit = info.EventsTotal > int64(v.Limit)
+		}
+	}
+	return v
 }
 
 // handleConnect points the Workbench at the Clio server chosen in the GUI,
@@ -71,7 +85,7 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
 	defer cancel()
-	s.render(w, "connection.html", s.connectionView(s.clio.CheckConnection(ctx)))
+	s.render(w, "connection.html", s.connectionView(ctx, s.clio.CheckConnection(ctx)))
 }
 
 // handleDisconnect clears the selected Clio (back to offline) and returns the
@@ -83,7 +97,7 @@ func (s *Server) handleDisconnect(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
 	defer cancel()
-	s.render(w, "connection.html", s.connectionView(s.clio.CheckConnection(ctx)))
+	s.render(w, "connection.html", s.connectionView(ctx, s.clio.CheckConnection(ctx)))
 }
 
 // LogConnectionCheck runs one connection probe and logs the outcome. It is
