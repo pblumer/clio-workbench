@@ -13,23 +13,28 @@
   var COOL = 0.96, REST = 0.02;
   var ZMIN = 0.3, ZMAX = 4;
 
-  function edgePath(f, t) {
+  // edgePath returns [d, labelX, labelY]. Edges attach to the node boundary
+  // along the straight line between the two centres, so they leave and enter
+  // pointing at each other (no fixed left/right stubs that bow). A single edge
+  // is a straight line; a pair of opposite edges (bend) bows gently to opposite
+  // sides so both stay legible. Self-loops loop above the node.
+  function edgePath(f, t, bend) {
     if (f === t) {
       var x = f.x, y = f.y - f.r;
       return ["M" + (x - 9) + " " + y + " C" + (x - 46) + " " + (y - 58) +
         " " + (x + 46) + " " + (y - 58) + " " + (x + 9) + " " + y, x, y - 50];
     }
-    var dx = t.x - f.x;
-    if (dx > 0) {
-      var x1 = f.x + f.r, y1 = f.y, x2 = t.x - t.r, y2 = t.y;
-      return ["M" + x1 + " " + y1 + " C" + (x1 + dx * 0.4) + " " + y1 +
-        " " + (x2 - dx * 0.4) + " " + y2 + " " + x2 + " " + y2,
-        (x1 + x2) / 2, (y1 + y2) / 2 - 8];
-    }
-    var ax = f.x, ay = f.y + f.r, bx = t.x, by = t.y + t.r, dip = 64;
-    return ["M" + ax + " " + ay + " C" + ax + " " + (ay + dip) +
-      " " + bx + " " + (by + dip) + " " + bx + " " + by,
-      (ax + bx) / 2, Math.max(ay, by) + dip - 6];
+    var dx = t.x - f.x, dy = t.y - f.y;
+    var dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
+    var ux = dx / dist, uy = dy / dist; // unit vector f → t
+    var px = -uy, py = ux;              // left-hand normal
+    var x1 = f.x + ux * f.r, y1 = f.y + uy * f.r;
+    var x2 = t.x - ux * t.r, y2 = t.y - uy * t.r;
+    var off = bend ? Math.min(dist * 0.18, 48) : 0;
+    var mx = (x1 + x2) / 2 + px * off, my = (y1 + y2) / 2 + py * off;
+    var loff = off * 0.5 + 9;
+    return ["M" + x1 + " " + y1 + " Q" + mx + " " + my + " " + x2 + " " + y2,
+      (x1 + x2) / 2 + px * loff, (y1 + y2) / 2 + py * loff];
   }
 
   // openInspector loads the event list for a type into the drawer.
@@ -76,6 +81,10 @@
       edgeByKey[f.type + " -> " + t.type] = ed;
       f.inc.push(ed); t.inc.push(ed); f.outE.push(ed);
       if (f !== t) { f.nbrs.push(t); t.nbrs.push(f); }
+    });
+    // Bow a pair of opposite edges apart so both stay legible.
+    edges.forEach(function (ed) {
+      ed.bend = ed.from !== ed.to && !!edgeByKey[ed.to.type + " -> " + ed.from.type];
     });
 
     var groups = [];
@@ -241,7 +250,7 @@
         n.el.setAttribute("transform", "translate(" + (n.x - n.ox).toFixed(2) + " " + (n.y - n.oy).toFixed(2) + ")");
       }
       for (var e = 0; e < edges.length; e++) {
-        var ed = edges[e], r = edgePath(ed.from, ed.to);
+        var ed = edges[e], r = edgePath(ed.from, ed.to, ed.bend);
         ed.path.setAttribute("d", r[0]);
         if (ed.label) { ed.label.setAttribute("x", r[1]); ed.label.setAttribute("y", r[2]); }
       }
@@ -321,6 +330,14 @@
 
       var cursor = N, playing = false, lastBySubject = {};
 
+      // streamColor maps a subject to a stable, vivid hue so every event of the
+      // same stream (one employee's process) flashes in the same colour.
+      function streamColor(s) {
+        var h = 0;
+        for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+        return "hsl(" + h + ", 90%, 64%)";
+      }
+
       function setCount(node, v) { if (node && node.countEl) node.countEl.textContent = v; }
       function flash(el, cls) {
         if (!el) return;
@@ -339,16 +356,17 @@
 
       function stepOnce() {
         if (cursor >= N) { stopPlay(); return; }
-        var ev = replay[cursor], node = byType[ev.t];
+        var ev = replay[cursor], node = byType[ev.t], col = streamColor(ev.s);
         if (node) {
           var cur = parseInt(node.countEl ? node.countEl.textContent : "0", 10) || 0;
           setCount(node, cur + 1);
+          node.el.style.setProperty("--stream-glow", col);
           flash(node.el, "flash");
         }
         var prev = lastBySubject[ev.s];
         if (prev && prev !== ev.t) {
           var ed = edgeByKey[prev + " -> " + ev.t];
-          if (ed) flash(ed.path, "pulse");
+          if (ed) { ed.path.style.setProperty("--stream-glow", col); flash(ed.path, "pulse"); }
         }
         lastBySubject[ev.s] = ev.t;
         cursor++; range.value = cursor;

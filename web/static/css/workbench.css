@@ -451,10 +451,12 @@ html, body {
 .proc-reset:hover { color: var(--neon); border-color: var(--neon-dim); box-shadow: var(--glow); }
 
 /* timeline replay: events arrive, nodes flash, counts tick up */
+/* The flash glow is tinted per subject (--stream-glow) during replay, so events
+   of the same stream flash in the same colour; falls back to white/neon. */
 .proc-node.flash .proc-orb { animation: nodeflash .5s ease; }
-@keyframes nodeflash { 0%, 100% { filter: none; } 35% { filter: drop-shadow(0 0 7px #fff) brightness(1.7); } }
+@keyframes nodeflash { 0%, 100% { filter: none; } 35% { filter: drop-shadow(0 0 8px var(--stream-glow, #fff)) brightness(1.6); } }
 .proc-edge.pulse { animation: edgepulse .5s ease; }
-@keyframes edgepulse { 0%, 100% { opacity: 0.55; } 40% { opacity: 1; stroke: var(--neon); } }
+@keyframes edgepulse { 0%, 100% { opacity: 0.55; } 40% { opacity: 1; stroke: var(--stream-glow, var(--neon)); } }
 
 .proc-timeline {
   position: absolute;
