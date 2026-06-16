@@ -92,6 +92,8 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/fields", s.handleAddField)
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/fields/{fieldId}", s.handleUpdateField)
 	s.mux.HandleFunc("DELETE /drafts/{id}/steps/{stepId}/fields/{fieldId}", s.handleDeleteField)
+	s.mux.HandleFunc("GET /drafts/{id}/export/schemas", s.handleExportSchemas)
+	s.mux.HandleFunc("GET /drafts/{id}/export/bpmn", s.handleExportBPMN)
 
 	// /api reverse proxy to the upstream Clio (token injected server-side).
 	// The target is dynamic: it follows the server picked in the GUI, and

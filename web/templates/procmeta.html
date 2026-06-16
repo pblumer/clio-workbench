@@ -16,4 +16,9 @@
   </label>
   <button type="submit" class="btn-primary">Save</button>
 </form>
+<div class="export-row">
+  <span class="export-label">Export</span>
+  <a class="btn-link" href="/drafts/{{.ID}}/export/schemas" download>↓ schemas.json</a>
+  <a class="btn-link" href="/drafts/{{.ID}}/export/bpmn" download>↓ process.bpmn</a>
+</div>
 {{- end}}
