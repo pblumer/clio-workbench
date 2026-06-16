@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -54,7 +55,9 @@ func (s *Server) handleConformance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	events, err := s.clio.ReadEvents(r.Context(), processEventCap)
+	// Read only the relevant collection when the model is scoped to one;
+	// fall back to a full read if that route returns nothing or errors.
+	events, err := s.readForConformance(r.Context(), model)
 	if err != nil {
 		v := conformanceView{Conf: process.Conformance{Process: model.Process, Expected: model.Expected}}
 		switch {
@@ -88,4 +91,24 @@ func (s *Server) handleConformance(w http.ResponseWriter, r *http.Request) {
 		v.FitPct = conf.Conforming * 100 / conf.Relevant
 	}
 	s.render(w, "conformance.html", v)
+}
+
+// readForConformance reads the events to check: scoped to the model's subject
+// collection when known (cheap, avoids the global cap), with a full-store
+// fallback so diagnostics can still show what subjects actually exist.
+func (s *Server) readForConformance(ctx context.Context, model process.BpmnModel) ([]clio.Event, error) {
+	prefix := process.ScopePrefix(model.Subject)
+	if prefix == "" {
+		return s.clio.ReadEvents(ctx, processEventCap)
+	}
+	events, err := s.clio.ReadEventsUnder(ctx, prefix, processEventCap)
+	if err != nil {
+		return s.clio.ReadEvents(ctx, processEventCap) // route maybe unsupported
+	}
+	if len(events) == 0 {
+		if all, err2 := s.clio.ReadEvents(ctx, processEventCap); err2 == nil {
+			return all, nil // nothing under prefix → full read for diagnostics
+		}
+	}
+	return events, nil
 }

@@ -39,7 +39,18 @@
   {{end}}
 
   {{if eq .Conf.Relevant 0}}
-  <p class="panel-hint">Parsed the template, but no subject has any of its events yet.</p>
+  <div class="conf-diag">
+    <p class="panel-hint">No matching subjects found. Diagnostics:</p>
+    <ul class="conf-diag-list">
+      <li>Read <strong>{{.Conf.TotalSubjects}}</strong> subjects; <strong>{{.Conf.InScope}}</strong> matched the scope <code>{{.Conf.Subject}}</code>.</li>
+      {{if .Conf.ExpectedMissing}}<li>Expected types <em>not seen anywhere</em> in the data: {{range .Conf.ExpectedMissing}}<code>{{.}}</code> {{end}}</li>{{end}}
+      {{if .Conf.ExpectedPresent}}<li>Expected types present in the data: {{range .Conf.ExpectedPresent}}<code>{{.}}</code> {{end}}</li>{{end}}
+      {{if .Conf.SamplePatterns}}<li>Subject patterns actually present:
+        <ul>{{range .Conf.SamplePatterns}}<li><code>{{.Type}}</code> <span class="rel-count">×{{.Count}}</span></li>{{end}}</ul>
+      </li>{{end}}
+    </ul>
+    <p class="panel-hint">If the scope or types differ from your data above, adjust the BPMN lane/participant or event names.</p>
+  </div>
   {{end}}
 {{else if eq .State "offline"}}
   <p class="panel-hint">{{.Message}}</p>
