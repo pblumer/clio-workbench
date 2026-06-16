@@ -215,18 +215,22 @@ func buildProcessView(g process.Graph) processView {
 	v.Groups = taskGroups(v.Nodes)
 
 	maxEdge := 1
+	hasEdge := map[string]bool{}
 	for _, e := range g.Edges {
 		if e.Count > maxEdge {
 			maxEdge = e.Count
 		}
+		hasEdge[e.From+" -> "+e.To] = true
 	}
 	for _, e := range g.Edges {
 		from, to := pos[e.From], pos[e.To]
 		if from == nil || to == nil {
 			continue
 		}
+		// Bow a pair of opposite edges apart so both stay legible.
+		bend := e.From != e.To && hasEdge[e.To+" -> "+e.From]
 		pe := procEdge{From: e.From, To: e.To, Count: e.Count, Width: 1.2 + 3.0*float64(e.Count)/float64(maxEdge)}
-		pe.D, pe.LabelX, pe.LabelY = edgePath(from, to)
+		pe.D, pe.LabelX, pe.LabelY = edgePath(from, to, bend)
 		v.Edges = append(v.Edges, pe)
 	}
 
@@ -279,33 +283,34 @@ func taskGroups(nodes []procNode) []procGroup {
 	return groups
 }
 
-// edgePath builds a cubic-bezier path from one node to another and the position
-// for its count label. Forward edges curve right→left; self-loops loop above;
-// back/same-rank edges arc below to stay legible.
-func edgePath(from, to *procNode) (d string, lx, ly float64) {
+// edgePath builds a path from one node to another and the position for its count
+// label. Edges attach to the node boundary along the straight line between the
+// two centres, so they leave and enter pointing at each other (no fixed
+// left/right stubs that bow). A single edge is a straight line; when an opposite
+// edge also exists (bend), it bows gently to one side so both stay legible.
+// Self-loops loop above the node.
+func edgePath(from, to *procNode, bend bool) (d string, lx, ly float64) {
 	if from.Type == to.Type {
 		x, y := from.X, from.Y-from.R
 		d = fmt.Sprintf("M%.1f %.1f C%.1f %.1f %.1f %.1f %.1f %.1f",
 			x-9, y, x-46, y-58, x+46, y-58, x+9, y)
 		return d, x, y - 50
 	}
-	dx := to.X - from.X
-	if dx > 0 { // forward
-		x1, y1 := from.X+from.R, from.Y
-		x2, y2 := to.X-to.R, to.Y
-		d = fmt.Sprintf("M%.1f %.1f C%.1f %.1f %.1f %.1f %.1f %.1f",
-			x1, y1, x1+dx*0.4, y1, x2-dx*0.4, y2, x2, y2)
-		return d, (x1 + x2) / 2, (y1+y2)/2 - 8
+	dx, dy := to.X-from.X, to.Y-from.Y
+	dist := math.Hypot(dx, dy)
+	if dist == 0 {
+		dist = 0.01
 	}
-	// back or same-rank: arc below both nodes
-	x1, y1 := from.X, from.Y+from.R
-	x2, y2 := to.X, to.Y+to.R
-	dip := 64.0
-	d = fmt.Sprintf("M%.1f %.1f C%.1f %.1f %.1f %.1f %.1f %.1f",
-		x1, y1, x1, y1+dip, x2, y2+dip, x2, y2)
-	mid := y1
-	if y2 > mid {
-		mid = y2
+	ux, uy := dx/dist, dy/dist // unit vector from → to
+	px, py := -uy, ux          // left-hand normal
+	x1, y1 := from.X+ux*from.R, from.Y+uy*from.R
+	x2, y2 := to.X-ux*to.R, to.Y-uy*to.R
+	off := 0.0
+	if bend {
+		off = math.Min(dist*0.18, 48)
 	}
-	return d, (x1 + x2) / 2, mid + dip - 6
+	mx, my := (x1+x2)/2+px*off, (y1+y2)/2+py*off
+	d = fmt.Sprintf("M%.1f %.1f Q%.1f %.1f %.1f %.1f", x1, y1, mx, my, x2, y2)
+	loff := off*0.5 + 9
+	return d, (x1+x2)/2 + px*loff, (y1+y2)/2 + py*loff
 }
