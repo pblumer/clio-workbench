@@ -7,6 +7,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -24,12 +25,15 @@ type Config struct {
 	ClioToken string
 	// Servers are preset Clio URLs offered for quick selection in the UI.
 	Servers []string
+	// EventCap bounds how many events the analysis panels read from Clio.
+	EventCap int
 }
 
 // Defaults mirror docs/WORKBENCH.md §3.3.
 const (
-	defaultAddr    = ":8080"
-	defaultDataDir = "./workbench-data"
+	defaultAddr     = ":8080"
+	defaultDataDir  = "./workbench-data"
+	defaultEventCap = 50000
 )
 
 // defaultServers are offered in the connect menu when WORKBENCH_SERVERS is unset.
@@ -43,7 +47,17 @@ func Load() Config {
 		ClioURL:   strings.TrimRight(os.Getenv("CLIO_URL"), "/"),
 		ClioToken: os.Getenv("CLIO_API_TOKEN"),
 		Servers:   serverList(os.Getenv("WORKBENCH_SERVERS")),
+		EventCap:  intEnvOr("WORKBENCH_EVENT_CAP", defaultEventCap),
 	}
+}
+
+func intEnvOr(key string, fallback int) int {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return fallback
 }
 
 // serverList parses a comma/space/newline-separated list of preset Clio URLs,

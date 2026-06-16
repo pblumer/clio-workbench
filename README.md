@@ -108,6 +108,8 @@ CLIO_URL=http://localhost:3999 CLIO_API_TOKEN=x go run ./cmd/clio-workbench
 | `CLIO_API_TOKEN`  | no\*     | —                  | Bearer token, injected server-side        |
 | `WORKBENCH_ADDR`  | no       | `:8080`            | Listen address                            |
 | `WORKBENCH_DATA`  | no       | `./workbench-data` | Where drafts are stored                   |
+| `WORKBENCH_SERVERS` | no     | `https://clio.blumer.cloud` | Preset Clio URLs for the connect menu |
+| `WORKBENCH_EVENT_CAP` | no   | `50000`            | Max events the analysis panels read from Clio |
 
 \* Without `CLIO_URL`/token the Workbench works offline on the draft; only push
 and the Gegenprobe need an instance.

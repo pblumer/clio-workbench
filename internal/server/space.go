@@ -55,6 +55,8 @@ type dottedView struct {
 	Total            int
 	Events           int
 	Capped           bool
+	Truncated        bool
+	Cap              int
 }
 
 // handleSpace renders the "event space" as a dotted chart: one row per subject,
@@ -64,7 +66,7 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
 	defer cancel()
 
-	events, err := s.clio.ReadEvents(ctx, processEventCap)
+	events, err := s.clio.ReadEvents(ctx, s.cfg.EventCap)
 	if err != nil {
 		v := dottedView{}
 		switch {
@@ -84,7 +86,10 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	for i, e := range events {
 		in[i] = process.TimedEvent{Subject: e.Subject, Type: e.Type, Time: e.Time}
 	}
-	s.render(w, "space.html", buildDottedView(process.BuildDotted(in, dMaxRows)))
+	v := buildDottedView(process.BuildDotted(in, dMaxRows))
+	v.Truncated = len(events) >= s.cfg.EventCap
+	v.Cap = s.cfg.EventCap
+	s.render(w, "space.html", v)
 }
 
 func buildDottedView(d process.Dotted) dottedView {

@@ -15,11 +15,8 @@ import (
 	"github.com/pblumer/clio-workbench/internal/process"
 )
 
-// Bounds for reading events and listing variants, so a large store stays light.
-const (
-	processEventCap   = 5000
-	processMaxVariant = 8
-)
+// processMaxVariant bounds the number of distinct variants listed.
+const processMaxVariant = 8
 
 // Layout constants for the server-side SVG graph (left-to-right by rank).
 const (
@@ -74,6 +71,9 @@ type processView struct {
 	Variants []procVariant
 	Subjects int
 	Events   int
+	// Truncated reports the read hit the event cap (Cap), so older events only.
+	Truncated bool
+	Cap       int
 	// Subject is the active subject-prefix filter (empty = all).
 	Subject string
 	// Source is the active source substring filter (empty = all).
@@ -92,7 +92,8 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 	subject := strings.TrimSpace(r.URL.Query().Get("subject"))
 	source := strings.TrimSpace(r.URL.Query().Get("source"))
 
-	events, err := s.clio.ReadEvents(ctx, processEventCap)
+	events, err := s.clio.ReadEvents(ctx, s.cfg.EventCap)
+	truncated := err == nil && len(events) >= s.cfg.EventCap
 	if err != nil {
 		v := processView{Subject: subject, Source: source}
 		switch {
@@ -131,6 +132,8 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 	v := buildProcessView(g)
 	v.Subject = subject
 	v.Source = source
+	v.Truncated = truncated
+	v.Cap = s.cfg.EventCap
 	v.ReplayJSON = replayJSON(events)
 	s.render(w, "process.html", v)
 }

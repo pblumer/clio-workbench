@@ -10,12 +10,14 @@ import (
 )
 
 type relationsView struct {
-	State    string // ok, empty, offline, unauthorized, error
-	Message  string
-	Root     *process.RelNode
-	Refs     []process.RefEdge // inferred from data payloads
-	Subjects int
-	Events   int
+	State     string // ok, empty, offline, unauthorized, error
+	Message   string
+	Root      *process.RelNode
+	Refs      []process.RefEdge // inferred from data payloads
+	Subjects  int
+	Events    int
+	Truncated bool
+	Cap       int
 }
 
 // handleRelations derives relationships from real events: 1:n containment from
@@ -25,7 +27,7 @@ func (s *Server) handleRelations(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
 	defer cancel()
 
-	events, err := s.clio.ReadFullEvents(ctx, processEventCap)
+	events, err := s.clio.ReadFullEvents(ctx, s.cfg.EventCap)
 	v := relationsView{}
 	switch {
 	case err == nil:
@@ -47,6 +49,8 @@ func (s *Server) handleRelations(w http.ResponseWriter, r *http.Request) {
 		v.Refs = process.BuildReferences(refIn).Edges
 		v.Subjects = len(distinct)
 		v.Events = len(events)
+		v.Truncated = len(events) >= s.cfg.EventCap
+		v.Cap = s.cfg.EventCap
 	case errors.Is(err, clio.ErrOffline):
 		v.State, v.Message = "offline", "no Clio connected — pick a server to map relationships"
 	case errors.Is(err, clio.ErrUnauthorized):

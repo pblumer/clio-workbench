@@ -486,6 +486,8 @@ html, body {
 .tl-label { min-width: 78px; text-align: right; color: var(--text-dim); font-size: 11px; white-space: nowrap; }
 
 .lg-hint { color: var(--neon-dim); }
+.trunc-note { margin: 0 0 12px; font-size: 12px; color: var(--warn); }
+.trunc-note code { color: var(--text); }
 
 /* Event space — dotted chart (subjects × time) */
 .dotted-graph {
