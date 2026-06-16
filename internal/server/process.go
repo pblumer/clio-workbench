@@ -18,12 +18,15 @@ import (
 // processMaxVariant bounds the number of distinct variants listed.
 const processMaxVariant = 8
 
-// Layout constants for the server-side SVG graph (left-to-right by rank).
+// Layout constants for the server-side SVG graph (left-to-right by rank). Kept
+// roomy so the long event-type labels under each node have space and don't
+// overlap — both in the no-JS fallback and as the viewBox the live force
+// layout (process.js) spreads into.
 const (
-	pColW = 190.0
-	pRowH = 104.0
-	pPadX = 70.0
-	pPadY = 56.0
+	pColW = 330.0
+	pRowH = 150.0
+	pPadX = 90.0
+	pPadY = 64.0
 )
 
 type procNode struct {

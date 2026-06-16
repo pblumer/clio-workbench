@@ -7,9 +7,10 @@
 (function () {
   "use strict";
 
-  // Force tuning (SVG user units).
-  var REP = 24000, SPRING = 0.01, LEN = 160, CENTER = 0.0016;
-  var COLPAD = 16, COL = 0.5, DAMP = 0.82, VMAX = 18;
+  // Force tuning (SVG user units). LEN/REP are generous so nodes sit far enough
+  // apart that the (long) event-type labels below them don't overlap.
+  var REP = 55000, SPRING = 0.01, LEN = 320, CENTER = 0.0016;
+  var COLPAD = 28, COL = 0.5, DAMP = 0.82, VMAX = 18;
   var COOL = 0.96, REST = 0.02;
   var ZMIN = 0.3, ZMAX = 4;
 
@@ -85,6 +86,27 @@
     // Bow a pair of opposite edges apart so both stay legible.
     edges.forEach(function (ed) {
       ed.bend = ed.from !== ed.to && !!edgeByKey[ed.to.type + " -> " + ed.from.type];
+    });
+
+    // Weight the layout by traffic so the busy "happy path" settles in the
+    // centre and rare paths drift outwards: frequent nodes (bigger orbs) are
+    // pulled hard to the centre, and heavy edges form a short, tight spine,
+    // while rare nodes/edges are only weakly held.
+    var rMin = Infinity, rMax = -Infinity;
+    nodes.forEach(function (n) { if (n.r < rMin) rMin = n.r; if (n.r > rMax) rMax = n.r; });
+    nodes.forEach(function (n) {
+      var w = rMax > rMin ? (n.r - rMin) / (rMax - rMin) : 1;
+      n.grav = 0.3 + 1.9 * w;
+    });
+    var maxEW = 1;
+    edges.forEach(function (ed) {
+      ed.w = ed.label ? (parseInt(ed.label.textContent, 10) || 1) : 1;
+      if (ed.w > maxEW) maxEW = ed.w;
+    });
+    edges.forEach(function (ed) {
+      var r = ed.w / maxEW;             // 0..1 share of the busiest flow
+      ed.springK = 0.4 + 1.8 * r;       // heavy edges pull harder
+      ed.len = LEN * (1.45 - 0.7 * r);  // …and sit shorter (tight central spine)
     });
 
     var groups = [];
@@ -286,17 +308,17 @@
         }
       }
       for (var e = 0; e < edges.length; e++) {
-        var a = edges[e].from, b = edges[e].to;
+        var edge = edges[e], a = edge.from, b = edge.to;
         if (a === b) continue;
         var ex = b.x - a.x, ey = b.y - a.y, el = Math.sqrt(ex * ex + ey * ey) || 0.01;
-        var f = (el - LEN) * SPRING, uex = ex / el, uey = ey / el;
+        var f = (el - edge.len) * SPRING * edge.springK, uex = ex / el, uey = ey / el;
         var ai = nodes.indexOf(a), bi = nodes.indexOf(b);
         fx[ai] += uex * f; fy[ai] += uey * f; fx[bi] -= uex * f; fy[bi] -= uey * f;
       }
       for (var k = 0; k < nodes.length; k++) {
         var n = nodes[k];
-        fx[k] += (cx - n.x) * CENTER;
-        fy[k] += (cy - n.y) * CENTER;
+        fx[k] += (cx - n.x) * CENTER * n.grav;
+        fy[k] += (cy - n.y) * CENTER * n.grav;
         if (n.fixed) { n.vx = 0; n.vy = 0; continue; }
         n.vx = (n.vx + fx[k] * alpha) * DAMP;
         n.vy = (n.vy + fy[k] * alpha) * DAMP;
