@@ -1,7 +1,8 @@
 {{define "nodeevents.html" -}}
 <div class="insp-head">
   <div class="insp-title">
-    <span class="insp-type">{{.Type}}</span>
+    {{if .Subject}}<span class="insp-subject" title="{{.Subject}}">{{.Subject}}</span>
+    {{- else}}<span class="insp-type">{{.Type}}</span>{{end}}
     {{- if eq .State "ok"}} <span class="insp-count">{{.Count}}{{if .Capped}}+{{end}}</span>{{end}}
   </div>
   <button type="button" class="insp-close" title="Close"
@@ -15,7 +16,7 @@
     {{- range .Items}}
     <li class="ev-item">
       <div class="ev-meta">
-        <code class="ev-subject">{{.Subject}}</code>
+        {{if .Type}}<code class="ev-type">{{.Type}}</code>{{else}}<code class="ev-subject">{{.Subject}}</code>{{end}}
         {{- if .Time}}<span class="ev-time">{{.Time}}</span>{{end}}
       </div>
       {{- if .Source}}<div class="ev-source">from <code>{{.Source}}</code></div>{{end}}

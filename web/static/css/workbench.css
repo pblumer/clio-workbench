@@ -622,6 +622,45 @@ html, body {
 .lg-start { color: var(--good); }
 .lg-end { color: var(--accent); }
 
+/* subjects legend — colour-coded, clickable streams (rendered by subjects.js) */
+.proc-subjects { margin: 12px 2px 0; }
+.subj-box { border: 1px solid var(--edge); border-radius: 8px; background: rgba(8, 14, 28, 0.5); }
+.subj-summary {
+  cursor: pointer;
+  padding: 8px 12px;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--neon);
+  user-select: none;
+}
+.subj-summary::-webkit-details-marker { color: var(--neon-dim); }
+.subj-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 12px 12px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.subj-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 9px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: rgba(8, 14, 28, 0.7);
+  font: 11px/1 ui-monospace, monospace;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.subj-chip:hover { border-color: currentColor; box-shadow: 0 0 8px -2px currentColor; }
+.subj-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.subj-name { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
+.subj-n { color: var(--text-dim); font-size: 10px; }
+
 .proc-sub { margin: 18px 0 8px; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--neon); text-shadow: var(--glow); }
 .variants { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .variant {
@@ -720,6 +759,7 @@ html, body {
 .insp-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .insp-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .insp-type { font-weight: 700; color: var(--neon); text-shadow: var(--glow); word-break: break-all; }
+.insp-subject { font-weight: 700; color: var(--accent); text-shadow: var(--glow); word-break: break-all; }
 .insp-count { font-size: 12px; color: var(--text-dim); }
 .insp-close {
   flex: none;
@@ -753,6 +793,7 @@ html, body {
 }
 .ev-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .ev-subject { color: var(--accent); font-size: 12px; word-break: break-all; }
+.ev-type { color: var(--neon); font-size: 12px; word-break: break-all; }
 .ev-time { color: var(--text-dim); font-size: 11px; flex: none; }
 .ev-data {
   margin: 0;
