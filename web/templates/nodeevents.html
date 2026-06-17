@@ -5,8 +5,15 @@
     {{- else}}<span class="insp-type">{{.Type}}</span>{{end}}
     {{- if eq .State "ok"}} <span class="insp-count">{{.Count}}{{if .Capped}}+{{end}}</span>{{end}}
   </div>
-  <button type="button" class="insp-close" title="Close"
-          onclick="document.getElementById('inspector').classList.remove('open')">✕</button>
+  <div class="insp-actions">
+    {{- if eq .State "ok"}}
+    <label class="insp-follow" title="During replay, scroll the list to each event as it flashes on the graph">
+      <input type="checkbox" class="insp-follow-cb"> follow
+    </label>
+    {{- end}}
+    <button type="button" class="insp-close" title="Close"
+            onclick="document.getElementById('inspector').classList.remove('open')">✕</button>
+  </div>
 </div>
 
 {{if eq .State "ok"}}
@@ -14,9 +21,9 @@
          oninput="var q=this.value.toLowerCase();this.closest('#inspector').querySelectorAll('.ev-item').forEach(function(el){el.hidden=q&&el.textContent.toLowerCase().indexOf(q)===-1});">
   <ul class="ev-list">
     {{- range .Items}}
-    <li class="ev-item">
+    <li class="ev-item" data-subject="{{.Subject}}" data-type="{{.Type}}" data-time="{{.Time}}">
       <div class="ev-meta">
-        {{if .Type}}<code class="ev-type">{{.Type}}</code>{{else}}<code class="ev-subject">{{.Subject}}</code>{{end}}
+        {{if $.Subject}}<code class="ev-type">{{.Type}}</code>{{else}}<code class="ev-subject">{{.Subject}}</code>{{end}}
         {{- if .Time}}<span class="ev-time">{{.Time}}</span>{{end}}
       </div>
       {{- if .Source}}<div class="ev-source">from <code>{{.Source}}</code></div>{{end}}

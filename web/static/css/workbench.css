@@ -761,6 +761,19 @@ html, body {
 .insp-type { font-weight: 700; color: var(--neon); text-shadow: var(--glow); word-break: break-all; }
 .insp-subject { font-weight: 700; color: var(--accent); text-shadow: var(--glow); word-break: break-all; }
 .insp-count { font-size: 12px; color: var(--text-dim); }
+.insp-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+.insp-follow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  user-select: none;
+}
+.insp-follow:hover { color: var(--neon); }
+.insp-follow input { accent-color: var(--neon); cursor: pointer; }
 .insp-close {
   flex: none;
   cursor: pointer;
@@ -790,6 +803,17 @@ html, body {
   border-radius: 9px;
   padding: 10px 12px;
   background: rgba(8, 14, 28, 0.6);
+}
+.ev-item { transition: border-color 0.2s, box-shadow 0.2s, background 0.2s; }
+.ev-item.ev-focus {
+  border-color: var(--neon);
+  background: rgba(56, 225, 255, 0.1);
+  box-shadow: 0 0 0 1px var(--neon-dim), var(--glow);
+  animation: ev-focus-pulse 0.6s ease-out;
+}
+@keyframes ev-focus-pulse {
+  0% { box-shadow: 0 0 0 2px var(--neon), 0 0 16px -2px var(--neon); }
+  100% { box-shadow: 0 0 0 1px var(--neon-dim), var(--glow); }
 }
 .ev-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .ev-subject { color: var(--accent); font-size: 12px; word-break: break-all; }
