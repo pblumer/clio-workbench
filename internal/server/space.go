@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/process"
@@ -137,15 +138,57 @@ func buildDottedView(d process.Dotted) dottedView {
 		v.Grid = append(v.Grid, gridLine{X: dGutter + frac*plotW})
 	}
 
+	// A subject's lifecycle events often arrive in a tight time burst, so
+	// without help they land on the same pixel and only the last-drawn dot
+	// shows. Within each row, fan out (dodge) runs of dots closer than a
+	// dot-width, centred on the run's true mean time so each event stays
+	// visible without drifting from where it happened.
+	const dMinGap = 2*dDotR + 1.5
+	loX, hiX := dGutter, dGutter+plotW
+	byRow := make(map[int][]process.Dot, len(d.Rows))
 	for _, dot := range d.Dots {
-		v.Dots = append(v.Dots, dotPoint{
-			X:       dGutter + dot.X*plotW,
-			Y:       dTop + (float64(dot.Row)+0.5)*dRowH,
-			Phase:   string(dot.Phase),
-			Subject: dot.Subject,
-			Type:    dot.Type,
-			Time:    dot.Time,
-		})
+		byRow[dot.Row] = append(byRow[dot.Row], dot)
+	}
+	for row := 0; row < len(d.Rows); row++ {
+		grp := byRow[row]
+		sort.SliceStable(grp, func(i, j int) bool { return grp[i].X < grp[j].X })
+		y := dTop + (float64(row)+0.5)*dRowH
+		xs := make([]float64, len(grp))
+		for i, dot := range grp {
+			xs[i] = dGutter + dot.X*plotW
+		}
+		// Walk runs of overlapping dots and spread each, centred on its mean.
+		for i := 0; i < len(grp); {
+			j, sum := i+1, xs[i]
+			for j < len(grp) && xs[j] < xs[j-1]+dMinGap {
+				sum += xs[j]
+				j++
+			}
+			if n := j - i; n > 1 {
+				width := float64(n-1) * dMinGap
+				start := sum/float64(n) - width/2
+				if start < loX {
+					start = loX
+				}
+				if start+width > hiX {
+					start = hiX - width
+				}
+				for k := i; k < j; k++ {
+					xs[k] = start + float64(k-i)*dMinGap
+				}
+			}
+			i = j
+		}
+		for i, dot := range grp {
+			v.Dots = append(v.Dots, dotPoint{
+				X:       xs[i],
+				Y:       y,
+				Phase:   string(dot.Phase),
+				Subject: dot.Subject,
+				Type:    dot.Type,
+				Time:    dot.Time,
+			})
+		}
 	}
 	return v
 }

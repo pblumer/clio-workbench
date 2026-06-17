@@ -66,18 +66,13 @@ func (s *Server) handleNodeEvents(w http.ResponseWriter, r *http.Request) {
 		v.Count = len(events)
 		v.Capped = len(events) >= nodeEventsCap
 		for _, e := range events {
-			it := nodeEventItem{
+			v.Items = append(v.Items, nodeEventItem{
 				Subject: e.Subject,
+				Type:    e.Type,
 				Source:  e.Source,
 				Time:    e.Time,
 				Data:    prettyJSON(e.Data),
-			}
-			// In subject mode every item shares the subject, so surface the
-			// event type instead as the per-item label.
-			if subject != "" {
-				it.Type = e.Type
-			}
-			v.Items = append(v.Items, it)
+			})
 		}
 	case errors.Is(err, clio.ErrOffline):
 		v.State, v.Message = "offline", "no Clio connected"

@@ -416,6 +416,9 @@
           if (ed) { ed.path.style.setProperty("--stream-glow", col); flash(ed.path, "pulse"); }
         }
         lastBySubject[ev.s] = ev.t;
+        // Let the inspector follow along (subjects.js / inspector-follow.js).
+        document.dispatchEvent(new CustomEvent("clio:replay-step",
+          { detail: { s: ev.s, t: ev.t, ts: ev.ts } }));
         cursor++; range.value = cursor;
         label.textContent = cursor + " / " + N + (ev.ts ? "  ·  " + ev.ts : "");
       }
