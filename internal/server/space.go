@@ -2,14 +2,34 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"hash/fnv"
 	"net/http"
 	"sort"
+	"strconv"
 
-	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/process"
 )
+
+// defaultFrame is the size of the live window when the user asks for "the last
+// N" without giving a number. dMaxRows already caps subjects; this caps events.
+const defaultFrame = 1000
+
+// typePalette is the fixed neon-leaning set the dotted chart colours event
+// types with. A type is mapped to a slot by a stable hash so the same type
+// keeps its colour across the static render and the live stream.
+var typePalette = []string{
+	"#38e1ff", "#46f0a0", "#ff5a6e", "#c79bff", "#ffd166",
+	"#ff9f5a", "#5ad1ff", "#9fe06a", "#ff7ac0", "#7aa2ff",
+	"#6ff0d6", "#f0e15a",
+}
+
+// typeColor maps an event type to a stable colour from the palette.
+func typeColor(t string) string {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(t))
+	return typePalette[h.Sum32()%uint32(len(typePalette))]
+}
 
 // Dotted-chart layout (server-side; the SVG is then pan/zoomed client-side).
 const (
@@ -26,9 +46,18 @@ const (
 type dotPoint struct {
 	X, Y    float64
 	Phase   string
+	Color   string
+	ID      string
 	Subject string
 	Type    string
 	Time    string
+}
+
+// typeLegendItem is one entry of the by-type colour legend.
+type typeLegendItem struct {
+	Type  string
+	Color string
+	Count int
 }
 
 type dotRow struct {
@@ -58,6 +87,10 @@ type dottedView struct {
 	Capped           bool
 	Truncated        bool
 	Cap              int
+	Legend           []typeLegendItem
+	Frame            int    // active window size (0 = all)
+	Framed           bool   // the read was clipped to the last Frame events
+	AfterID          string // newest id shown — the live stream resumes past it
 }
 
 // handleSpace renders the "event space" as a dotted chart: one row per subject,
@@ -68,30 +101,59 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	sc := s.activeScope()
-	events, err := s.clio.ReadScoped(ctx, sc)
+	events, err := s.scopedEvents(ctx)
 	if err != nil {
 		v := dottedView{}
-		switch {
-		case errors.Is(err, clio.ErrOffline):
-			v.State, v.Message = "offline", "no Clio connected — pick a server to chart its events"
-		case errors.Is(err, clio.ErrUnauthorized):
-			v.State, v.Message = "unauthorized", "Clio rejected the token"
-		default:
-			v.State, v.Message = "error", "could not read events from Clio"
+		v.State, v.Message = readErrState(err)
+		if v.State == "error" {
 			s.log.Warn("read events (space)", "err", err)
 		}
 		s.render(w, "space.html", v)
 		return
 	}
 
+	// The "frame" keeps only the last N events (the newest tail of the scope),
+	// the window the user pans across while live events stream in.
+	frame := frameSize(r.URL.Query().Get("frame"))
+	truncated := len(events) >= sc.Limit
+	framed := false
+	if frame > 0 && len(events) > frame {
+		events = events[len(events)-frame:]
+		framed = true
+	}
+
 	in := make([]process.TimedEvent, len(events))
 	for i, e := range events {
-		in[i] = process.TimedEvent{Subject: e.Subject, Type: e.Type, Time: e.Time}
+		in[i] = process.TimedEvent{ID: e.ID, Subject: e.Subject, Type: e.Type, Time: e.Time}
 	}
 	v := buildDottedView(process.BuildDotted(in, dMaxRows))
-	v.Truncated = len(events) >= sc.Limit
+	v.Truncated = truncated
 	v.Cap = sc.Limit
+	v.Frame = frame
+	v.Framed = framed
+	if n := len(events); n > 0 {
+		v.AfterID = events[n-1].ID
+	}
 	s.render(w, "space.html", v)
+}
+
+// frameSize parses the frame query param. "all"/"0"/"" means no window; a bare
+// number or a "-1000"/"last" style hint means the last N events.
+func frameSize(raw string) int {
+	switch raw {
+	case "", "all", "0":
+		return 0
+	case "live", "last":
+		return defaultFrame
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0
+	}
+	if n < 0 {
+		n = -n // "-1000" reads as "the last 1000"
+	}
+	return n
 }
 
 func buildDottedView(d process.Dotted) dottedView {
@@ -184,13 +246,48 @@ func buildDottedView(d process.Dotted) dottedView {
 				X:       xs[i],
 				Y:       y,
 				Phase:   string(dot.Phase),
+				Color:   typeColor(dot.Type),
+				ID:      dot.ID,
 				Subject: dot.Subject,
 				Type:    dot.Type,
 				Time:    dot.Time,
 			})
 		}
 	}
+	v.Legend = buildTypeLegend(d.Dots)
 	return v
+}
+
+// legendCap bounds how many distinct types the legend lists before collapsing
+// the rest into a single "+N more" hint.
+const legendCap = 14
+
+// buildTypeLegend lists the distinct event types with their colour and count,
+// busiest first, so the chart's colours are readable at a glance.
+func buildTypeLegend(dots []process.Dot) []typeLegendItem {
+	counts := make(map[string]int, 16)
+	for _, d := range dots {
+		counts[d.Type]++
+	}
+	items := make([]typeLegendItem, 0, len(counts))
+	for t, c := range counts {
+		items = append(items, typeLegendItem{Type: t, Color: typeColor(t), Count: c})
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Count != items[j].Count {
+			return items[i].Count > items[j].Count
+		}
+		return items[i].Type < items[j].Type
+	})
+	if len(items) > legendCap {
+		rest := 0
+		for _, it := range items[legendCap:] {
+			rest += it.Count
+		}
+		items = items[:legendCap]
+		items = append(items, typeLegendItem{Type: fmt.Sprintf("+%d more types", len(counts)-legendCap), Count: rest})
+	}
+	return items
 }
 
 // dotR is exposed to the template for the dot radius.

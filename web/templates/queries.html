@@ -1,0 +1,45 @@
+{{define "queries.html" -}}
+<div class="events-head">
+  <h2 class="panel-title">Queries
+    {{- if eq .State "ok"}} <span class="proc-stat">{{.Final}} / {{.BaseEvents}} events · {{len .Stages}} stage{{if ne (len .Stages) 1}}s{{end}}</span>{{end -}}
+  </h2>
+  {{if .Stages}}
+  <button class="reconnect" type="button"
+          hx-post="/queries/clear" hx-target="#queries-slot" hx-swap="innerHTML"
+          title="Clear all query stages" aria-label="Clear">⨉</button>
+  {{end}}
+</div>
+
+{{if eq .State "ok"}}
+<p class="panel-hint">Chain queries to drill down — each stage further decimates the survivors of the one before it. The funnel feeds every panel below.</p>
+
+<ol class="q-funnel">
+  <li class="q-step q-base">
+    <span class="q-rank">env</span>
+    <span class="q-label">environment scope</span>
+    <span class="q-count">{{.BaseEvents}} ev · {{.BaseSubj}} subj</span>
+  </li>
+  {{- range .Stages}}
+  <li class="q-step">
+    <span class="q-rank">{{.Index | inc}}</span>
+    <span class="q-label">{{.Label}}</span>
+    <span class="q-count">{{.Events}} ev · {{.Subject}} subj</span>
+    <button class="q-del" type="button" title="Remove this stage"
+            hx-post="/queries/delete" hx-vals='{"index":"{{.Index}}"}'
+            hx-target="#queries-slot" hx-swap="innerHTML">✕</button>
+  </li>
+  {{- end}}
+</ol>
+
+<form class="q-form" hx-post="/queries" hx-target="#queries-slot" hx-swap="innerHTML"
+      hx-on::after-request="if(event.detail.successful) this.reset()">
+  <input name="subject" placeholder="subject prefix, e.g. /orders" autocomplete="off">
+  <input name="types" placeholder="event types (comma-separated)" autocomplete="off">
+  <input name="lowerBound" placeholder="from id" autocomplete="off">
+  <input name="upperBound" placeholder="to id" autocomplete="off">
+  <button type="submit" class="btn-primary">Add stage</button>
+</form>
+{{else}}
+<p class="panel-hint bpmn-state bpmn-state-{{.State}}">{{.Message}}</p>
+{{end}}
+{{- end}}

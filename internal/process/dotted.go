@@ -7,6 +7,7 @@ import (
 
 // TimedEvent is an event with its timestamp, for the dotted chart.
 type TimedEvent struct {
+	ID      string // Clio event id; carried through so a dot can be inspected
 	Subject string
 	Type    string
 	Time    string // RFC3339; empty/unparseable falls back to sequence order
@@ -17,6 +18,7 @@ type TimedEvent struct {
 type Dot struct {
 	Row     int
 	X       float64
+	ID      string
 	Type    string
 	Phase   Phase
 	Subject string
@@ -158,6 +160,7 @@ func BuildDotted(events []TimedEvent, maxRows int) Dotted {
 		d.Dots = append(d.Dots, Dot{
 			Row:     row,
 			X:       (val[i] - min) / span,
+			ID:      e.ID,
 			Type:    e.Type,
 			Phase:   phase,
 			Subject: e.Subject,

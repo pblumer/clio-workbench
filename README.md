@@ -37,6 +37,14 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
 - A rudimentary **events view**: the event types written to Clio
   (`read-event-types`) rendered as BPMN **send tasks** with an attached data
   object, a per-type count bubble, and a header bubble summing all occurrences.
+- A **query pipeline**: after the environment, chain refinement queries — each
+  stage (subject prefix, types, id-bounds) further *decimates* the survivors of
+  the one before it. The funnel shows the surviving event/subject count per
+  stage and feeds every analysis panel below.
+- A **dynamic Event Space**: a *frame* keeps the last N events, dots are
+  coloured by **event type** (with a type legend), a **live** toggle streams new
+  events in over SSE (the Workbench tails Clio server-side), and hovering a dot
+  opens a card with the event's metadata and pretty-printed payload.
 
 Still ahead per the roadmap (`docs/WORKBENCH.md` §8): the drawing canvas and
 state-machine view (Stufe 1), event-type schema editor and export (Stufe 2),
