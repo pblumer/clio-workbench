@@ -96,7 +96,7 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 	source := strings.TrimSpace(r.URL.Query().Get("source"))
 
 	sc := s.activeScope()
-	events, err := s.clio.ReadScoped(ctx, sc)
+	events, err := s.scopedEvents(ctx)
 	truncated := err == nil && len(events) >= sc.Limit
 	if err != nil {
 		v := processView{Subject: subject, Source: source}

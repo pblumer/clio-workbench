@@ -1,0 +1,24 @@
+{{define "spaceevent.html" -}}
+{{if eq .State "ok"}}
+<div class="evcard-head phase-{{.Phase}}">
+  <span class="evcard-type">{{.Type}}</span>
+  <span class="evcard-phase">{{.Phase}}</span>
+</div>
+<dl class="evcard-meta">
+  <dt>subject</dt><dd>{{.Subject}}</dd>
+  <dt>time</dt><dd>{{if .Time}}{{.Time}}{{else}}—{{end}}</dd>
+  {{if .Source}}<dt>source</dt><dd>{{.Source}}</dd>{{end}}
+  <dt>id</dt><dd>{{.ID}}</dd>
+</dl>
+<div class="evcard-data-label">payload</div>
+<pre class="evcard-data">{{.Data}}</pre>
+{{else if eq .State "empty"}}
+<p class="evcard-note">event not found</p>
+{{else if eq .State "offline"}}
+<p class="evcard-note">no Clio connected</p>
+{{else if eq .State "unauthorized"}}
+<p class="evcard-note">Clio rejected the token</p>
+{{else}}
+<p class="evcard-note">could not load event</p>
+{{end}}
+{{- end}}

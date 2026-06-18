@@ -90,6 +90,15 @@
       <p class="panel-hint">loading…</p>
     </section>
 
+    <section class="panel events-panel" id="queries-slot"
+             hx-get="/queries"
+             hx-trigger="load, clio-changed from:body, scope-changed from:body"
+             hx-target="this"
+             hx-swap="innerHTML">
+      <div class="events-head"><h2 class="panel-title">Queries</h2></div>
+      <p class="panel-hint">loading…</p>
+    </section>
+
     <section class="panel">
       <h2 class="panel-title">New model</h2>
       <p class="panel-hint">
@@ -128,7 +137,7 @@
 
     <section class="panel events-panel" id="events-slot"
              hx-get="/space"
-             hx-trigger="load, clio-changed from:body"
+             hx-trigger="load, clio-changed from:body, scope-changed from:body"
              hx-target="this"
              hx-swap="innerHTML">
       <div class="events-head"><h2 class="panel-title">Event space</h2></div>
@@ -137,7 +146,7 @@
 
     <section class="panel events-panel" id="process-slot"
              hx-get="/process"
-             hx-trigger="load, clio-changed from:body"
+             hx-trigger="load, clio-changed from:body, scope-changed from:body"
              hx-target="this"
              hx-swap="innerHTML">
       <div class="events-head"><h2 class="panel-title">Process</h2></div>
@@ -146,7 +155,7 @@
 
     <section class="panel events-panel" id="relations-slot"
              hx-get="/relations"
-             hx-trigger="load, clio-changed from:body"
+             hx-trigger="load, clio-changed from:body, scope-changed from:body"
              hx-target="this"
              hx-swap="innerHTML">
       <div class="events-head"><h2 class="panel-title">Relationships</h2></div>

@@ -28,7 +28,7 @@ func (s *Server) handleRelations(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	sc := s.activeScope()
-	events, err := s.clio.ReadFullScoped(ctx, sc)
+	events, err := s.scopedFullEvents(ctx)
 	v := relationsView{}
 	switch {
 	case err == nil:
