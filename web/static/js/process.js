@@ -7,6 +7,21 @@
 (function () {
   "use strict";
 
+  // Live graph instances, so a graph that htmx swaps out of the DOM (innerHTML
+  // replaces the whole <svg>, so the per-svg _procStop cleanup never runs on it)
+  // can still have its replay timer / RAF loop / listeners torn down. Otherwise
+  // an orphaned replay keeps dispatching "clio:replay-step" on document and the
+  // inspector keeps scrolling to phantom events long after the graph is gone.
+  var instances = [];
+  function sweep() {
+    for (var i = instances.length - 1; i >= 0; i--) {
+      if (!document.contains(instances[i].graph)) {
+        try { instances[i].stop(); } catch (e) {}
+        instances.splice(i, 1);
+      }
+    }
+  }
+
   // Force tuning (SVG user units). LEN/REP are generous so nodes sit far enough
   // apart that the (long) event-type labels below them don't overlap.
   var REP = 55000, SPRING = 0.01, LEN = 320, CENTER = 0.0016;
@@ -52,6 +67,9 @@
     var viewport = graph.querySelector(".proc-viewport");
     if (!svg || !viewport || !svg.viewBox || !svg.viewBox.baseVal) return;
     if (svg._procStop) svg._procStop();
+    for (var ri = instances.length - 1; ri >= 0; ri--) {
+      if (instances[ri].graph === graph) instances.splice(ri, 1);
+    }
     var ac = new AbortController(), sig = ac.signal;
     var playTimer = null;
 
@@ -441,12 +459,17 @@
     applyView();
     setupReplay();
     svg._procStop = function () { stop(); if (playTimer) clearInterval(playTimer); ac.abort(); svg._procStop = null; };
+    // Register so sweep() can stop us if our graph is swapped out of the DOM.
+    instances.push({ graph: graph, stop: svg._procStop });
     start();
   }
 
   function initAll() { document.querySelectorAll(".proc-graph").forEach(init); }
 
   document.addEventListener("htmx:afterSettle", function (e) {
+    // Sweep first: a swap may have removed a (possibly mid-replay) graph even
+    // when the new content has no .proc-graph at all (empty/error state).
+    sweep();
     if (e.target && e.target.querySelector && e.target.querySelector(".proc-graph")) initAll();
   });
   if (document.readyState !== "loading") initAll();
