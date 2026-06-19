@@ -53,6 +53,15 @@
       (x1 + x2) / 2 + px * loff, (y1 + y2) / 2 + py * loff];
   }
 
+  // streamColor maps a subject to a stable, vivid hue so every event of the same
+  // stream (one employee's process) is tinted alike. MUST stay byte-for-byte in
+  // sync with the copy in subjects.js.
+  function streamColor(s) {
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+    return "hsl(" + h + ", 90%, 64%)";
+  }
+
   // openInspector loads the event list for a type into the drawer.
   function openInspector(type) {
     var insp = document.getElementById("inspector");
@@ -133,6 +142,14 @@
       ed.len = LEN * (1.45 - 0.7 * r);  // …and sit shorter (tight central spine)
     });
 
+    // The ordered event stream, parsed once and shared by the timeline replay
+    // and the Stream-Walk below.
+    var replay = [];
+    var replayScript = graph.querySelector(".proc-replay");
+    if (replayScript) {
+      try { replay = JSON.parse(replayScript.textContent || "[]"); } catch (e) { replay = []; }
+    }
+
     var groups = [];
     viewport.querySelectorAll(".proc-group").forEach(function (gp) {
       var task = gp.getAttribute("data-task");
@@ -156,6 +173,24 @@
     function localPoint(evt) {
       var sp = svgPoint(evt);
       return { x: (sp.x - view.tx) / view.k, y: (sp.y - view.ty) / view.k };
+    }
+    // frameNodes pans/zooms the viewport so the given nodes fill it (with
+    // padding) — used to frame the soloed subject's path in Stream-Walk.
+    function frameNodes(list) {
+      if (!list.length) return;
+      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      list.forEach(function (n) {
+        minX = Math.min(minX, n.x - n.r); minY = Math.min(minY, n.y - n.r);
+        maxX = Math.max(maxX, n.x + n.r); maxY = Math.max(maxY, n.y + n.r);
+      });
+      var pad = 70;
+      minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+      var bw = (maxX - minX) || 1, bh = (maxY - minY) || 1;
+      var k = Math.max(ZMIN, Math.min(ZMAX, Math.min(W / bw, H / bh)));
+      view.k = k;
+      view.tx = W / 2 - k * (minX + maxX) / 2;
+      view.ty = H / 2 - k * (minY + maxY) / 2;
+      applyView();
     }
 
     svg.addEventListener("wheel", function (evt) {
@@ -392,10 +427,7 @@
     // ---- timeline replay: events arrive in order, nodes flash, counts +1 ----
     function setupReplay() {
       var bar = graph.querySelector(".proc-timeline");
-      var scriptEl = graph.querySelector(".proc-replay");
-      if (!bar || !scriptEl) return;
-      var replay = [];
-      try { replay = JSON.parse(scriptEl.textContent || "[]"); } catch (e) { replay = []; }
+      if (!bar) return;
       var N = replay.length;
       var playBtn = bar.querySelector(".tl-play");
       var range = bar.querySelector(".tl-range");
@@ -407,14 +439,6 @@
       var nextBtn = bar.querySelector(".tl-subj-next");
 
       var cursor = N, playing = false, lastBySubject = {};
-
-      // streamColor maps a subject to a stable, vivid hue so every event of the
-      // same stream (one employee's process) flashes in the same colour.
-      function streamColor(s) {
-        var h = 0;
-        for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
-        return "hsl(" + h + ", 90%, 64%)";
-      }
 
       function setCount(node, v) { if (node && node.countEl) node.countEl.textContent = v; }
       function flash(el, cls) {
@@ -545,6 +569,15 @@
         holdTicks = 0;
         walkRenderTo(full ? bySubject[subjOrder[wi]].length : 0);
         updatePinBtn();
+        // On a deliberate load (enter/step), frame the subject's path; during
+        // auto-play we leave the view put so paths light across the full graph.
+        if (full) {
+          var seen = {}, members = [];
+          bySubject[subjOrder[wi]].forEach(function (ev) {
+            if (!seen[ev.t] && byType[ev.t]) { seen[ev.t] = true; members.push(byType[ev.t]); }
+          });
+          frameNodes(members);
+        }
       }
       function walkTick() {
         var subj = subjOrder[wi], evs = bySubject[subj], col = streamColor(subj);
@@ -586,6 +619,7 @@
         walkBtn.textContent = "⛓ Solo"; walkBtn.title = "Stream-Walk: follow one subject through the graph";
         range.max = origMax;
         recompute(N); // restore the full aggregate counts and range
+        view.k = 1; view.tx = 0; view.ty = 0; applyView(); reheat(); // un-frame
         playBtn.textContent = "▶ Replay";
       }
 
