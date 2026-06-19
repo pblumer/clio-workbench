@@ -646,6 +646,7 @@ html, body {
 .dot-card {
   position: absolute;
   pointer-events: auto;
+  user-select: text;
   z-index: 6;
   max-width: 340px;
   max-height: 320px;
