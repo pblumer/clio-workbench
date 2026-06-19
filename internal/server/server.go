@@ -3,6 +3,7 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -37,13 +38,25 @@ type Server struct {
 
 // New constructs a Server with routes registered.
 func New(cfg config.Config, st *store.Store, envs *envstore.Store, log *slog.Logger) (*Server, error) {
+	// root is captured by the "partial" func below so the shell can render a
+	// View's body template chosen at runtime (the {{template}} action only
+	// accepts a constant name). It is assigned right after ParseFS.
+	var root *template.Template
 	tmpl, err := template.New("").Funcs(template.FuncMap{
 		"eventSchema": schemagen.EventSchema,
 		"inc":         func(i int) int { return i + 1 },
+		"partial": func(name string, data any) (template.HTML, error) {
+			var b bytes.Buffer
+			if err := root.ExecuteTemplate(&b, name, data); err != nil {
+				return "", err
+			}
+			return template.HTML(b.String()), nil //nolint:gosec // trusted embedded templates
+		},
 	}).ParseFS(web.Templates, "templates/*.html")
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
+	root = tmpl
 	s := &Server{
 		cfg:   cfg,
 		store: st,

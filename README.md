@@ -18,6 +18,10 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
 
 **Stufe 0 — Gerüst** (scaffold). What exists today:
 
+- A **VS-Code-style shell** (activity bar · sidebar · editor tabs · bottom panel
+  · status bar) over the space look, driven by a declarative **contribution
+  registry** so new diagrams and tools plug in with one `View` entry plus a
+  fragment handler. See [`docs/FRAMEWORK.md`](docs/FRAMEWORK.md).
 - Single Go binary with the UI, templates, CSS and htmx baked in via `embed.FS`.
 - File-backed **draft store** (`WORKBENCH_DATA`): drafts are versionable JSON.
 - A **start page** in the Clio space-look (starfield + neon HUD) where you
@@ -146,6 +150,10 @@ internal/clio/        HTTP client against Clio's public API (connection probe)
 internal/model/       shared draft data model (directed graph: nodes + event edges)
 internal/store/       file-backed draft store (atomic JSON writes)
 internal/server/      routing, html/template rendering, /api reverse proxy, /connection
+                      shell.go: the VS-Code shell's contribution registry
 web/                  embedded templates, CSS, htmx
+                      templates/views.html: contributed View bodies
+                      static/js/shell.js: shell chrome (tabs, sidebar, panel)
 docs/WORKBENCH.md     architecture & idea paper
+docs/FRAMEWORK.md     the UI framework (shell regions + how to add a view)
 ```
