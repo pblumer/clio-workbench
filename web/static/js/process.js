@@ -53,6 +53,34 @@
       (x1 + x2) / 2 + px * loff, (y1 + y2) / 2 + py * loff];
   }
 
+  // streamColor maps a subject to a stable, vivid hue so every event of the same
+  // stream (one employee's process) is tinted alike. MUST stay byte-for-byte in
+  // sync with the copies in subjects.js and the (now removed) local one below.
+  function streamColor(s) {
+    var h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
+    return "hsl(" + h + ", 90%, 64%)";
+  }
+
+  // groupBySubject returns a stable reordering of the time-ordered replay where
+  // all events of one subject run consecutively (subjects in first-seen order,
+  // events within a subject keep their time order). It is the "by subject"
+  // replay schedule.
+  function groupBySubject(arr) {
+    var by = {}, order = [];
+    for (var i = 0; i < arr.length; i++) {
+      var s = arr[i].s;
+      if (!(s in by)) { by[s] = []; order.push(s); }
+      by[s].push(arr[i]);
+    }
+    var out = [];
+    for (var k = 0; k < order.length; k++) {
+      var g = by[order[k]];
+      for (var j = 0; j < g.length; j++) out.push(g[j]);
+    }
+    return out;
+  }
+
   // openInspector loads the event list for a type into the drawer.
   function openInspector(type) {
     var insp = document.getElementById("inspector");
@@ -126,6 +154,14 @@
       ed.springK = 0.4 + 1.8 * r;       // heavy edges pull harder
       ed.len = LEN * (1.45 - 0.7 * r);  // …and sit shorter (tight central spine)
     });
+
+    // The ordered event stream (shared by the timeline replay and the
+    // click-to-focus-a-subject feature below).
+    var replay = [];
+    var replayScript = graph.querySelector(".proc-replay");
+    if (replayScript) {
+      try { replay = JSON.parse(replayScript.textContent || "[]"); } catch (e) { replay = []; }
+    }
 
     var groups = [];
     viewport.querySelectorAll(".proc-group").forEach(function (gp) {
@@ -253,9 +289,77 @@
       viewport.querySelectorAll(".hot").forEach(function (el) { el.classList.remove("hot"); });
     }
 
+    // ---- focus a subject: spotlight just one stream's path through the graph ----
+    // Clicking a subject in the legend (subjects.js) dispatches "clio:focus-subject".
+    // We light up only the nodes and directly-follows edges that subject travels,
+    // tinted in its stream colour, and frame them in the viewport.
+    var focusedSubject = null;
+    function clearFocus() {
+      focusedSubject = null;
+      viewport.classList.remove("graph-focus");
+      viewport.querySelectorAll(".focused").forEach(function (el) {
+        el.classList.remove("focused");
+        el.style.removeProperty("--stream-glow");
+      });
+    }
+    // frameNodes pans/zooms the viewport so the given nodes fill it (with padding).
+    function frameNodes(list) {
+      if (!list.length) return;
+      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      list.forEach(function (n) {
+        minX = Math.min(minX, n.x - n.r); minY = Math.min(minY, n.y - n.r);
+        maxX = Math.max(maxX, n.x + n.r); maxY = Math.max(maxY, n.y + n.r);
+      });
+      var pad = 70;
+      minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+      var bw = (maxX - minX) || 1, bh = (maxY - minY) || 1;
+      var k = Math.max(ZMIN, Math.min(ZMAX, Math.min(W / bw, H / bh)));
+      view.k = k;
+      view.tx = W / 2 - k * (minX + maxX) / 2;
+      view.ty = H / 2 - k * (minY + maxY) / 2;
+      applyView();
+    }
+    function focusSubject(subject) {
+      clearFocus();
+      if (!subject) return;
+      focusedSubject = subject;
+      var col = streamColor(subject);
+      var nodeSet = {}, edgeSet = {}, prevType = null;
+      for (var i = 0; i < replay.length; i++) {
+        if (replay[i].s !== subject) continue;
+        var t = replay[i].t;
+        nodeSet[t] = true;
+        if (prevType && prevType !== t) edgeSet[prevType + " -> " + t] = true;
+        prevType = t;
+      }
+      var members = [];
+      Object.keys(nodeSet).forEach(function (t) {
+        var n = byType[t];
+        if (!n) return;
+        n.el.classList.add("focused");
+        n.el.style.setProperty("--stream-glow", col);
+        members.push(n);
+      });
+      Object.keys(edgeSet).forEach(function (key) {
+        var ed = edgeByKey[key];
+        if (!ed) return;
+        ed.path.classList.add("focused");
+        ed.path.style.setProperty("--stream-glow", col);
+        if (ed.label) ed.label.classList.add("focused");
+      });
+      if (!members.length) { clearFocus(); return; }
+      viewport.classList.add("graph-focus");
+      frameNodes(members);
+    }
+    document.addEventListener("clio:focus-subject", function (e) {
+      var d = e.detail || {};
+      focusSubject(d.s || null);
+    }, { signal: sig });
+
     var resetBtn = graph.querySelector(".proc-reset");
     if (resetBtn) {
       resetBtn.addEventListener("click", function () {
+        clearFocus();
         view.k = 1; view.tx = 0; view.ty = 0; applyView(); reheat();
       }, { signal: sig });
     }
@@ -383,25 +487,23 @@
     // ---- timeline replay: events arrive in order, nodes flash, counts +1 ----
     function setupReplay() {
       var bar = graph.querySelector(".proc-timeline");
-      var scriptEl = graph.querySelector(".proc-replay");
-      if (!bar || !scriptEl) return;
-      var replay = [];
-      try { replay = JSON.parse(scriptEl.textContent || "[]"); } catch (e) { replay = []; }
+      if (!bar) return;
       var N = replay.length;
       var playBtn = bar.querySelector(".tl-play");
       var range = bar.querySelector(".tl-range");
       var label = bar.querySelector(".tl-label");
+      var modeBtn = bar.querySelector(".tl-mode");
       if (!N || !playBtn || !range) { bar.style.display = "none"; return; }
 
-      var cursor = N, playing = false, lastBySubject = {};
+      // Two replay schedules over the same events: chronological ("time") and
+      // grouped per subject ("subject"). The active one is `seq`; switching
+      // resets the cursor since the ordering changed. The choice persists.
+      var MODE_KEY = "clio.replayMode";
+      var orders = { time: replay, subject: groupBySubject(replay) };
+      var mode = localStorage.getItem(MODE_KEY) === "subject" ? "subject" : "time";
+      var seq = orders[mode];
 
-      // streamColor maps a subject to a stable, vivid hue so every event of the
-      // same stream (one employee's process) flashes in the same colour.
-      function streamColor(s) {
-        var h = 0;
-        for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
-        return "hsl(" + h + ", 90%, 64%)";
-      }
+      var cursor = N, playing = false, lastBySubject = {};
 
       function setCount(node, v) { if (node && node.countEl) node.countEl.textContent = v; }
       function flash(el, cls) {
@@ -413,7 +515,7 @@
 
       function recompute(c) {
         var counts = {};
-        for (var i = 0; i < c; i++) counts[replay[i].t] = (counts[replay[i].t] || 0) + 1;
+        for (var i = 0; i < c; i++) counts[seq[i].t] = (counts[seq[i].t] || 0) + 1;
         nodes.forEach(function (n) { setCount(n, counts[n.type] || 0); });
         cursor = c; range.value = c;
         label.textContent = c + " / " + N;
@@ -421,7 +523,7 @@
 
       function stepOnce() {
         if (cursor >= N) { stopPlay(); return; }
-        var ev = replay[cursor], node = byType[ev.t], col = streamColor(ev.s);
+        var ev = seq[cursor], node = byType[ev.t], col = streamColor(ev.s);
         if (node) {
           var cur = parseInt(node.countEl ? node.countEl.textContent : "0", 10) || 0;
           setCount(node, cur + 1);
@@ -451,8 +553,27 @@
         playing = false; playBtn.textContent = "▶ Replay";
       }
 
+      function setModeLabel() {
+        if (!modeBtn) return;
+        modeBtn.textContent = mode === "subject" ? "≡ by subject" : "⏱ by time";
+        modeBtn.title = mode === "subject"
+          ? "Replaying subject by subject — click for chronological order"
+          : "Replaying in time order — click to replay subject by subject";
+      }
+
       playBtn.addEventListener("click", function () { if (playing) stopPlay(); else play(); }, { signal: sig });
       range.addEventListener("input", function () { stopPlay(); lastBySubject = {}; recompute(parseInt(range.value, 10) || 0); }, { signal: sig });
+      if (modeBtn) {
+        setModeLabel();
+        modeBtn.addEventListener("click", function () {
+          stopPlay();
+          mode = mode === "subject" ? "time" : "subject";
+          localStorage.setItem(MODE_KEY, mode);
+          seq = orders[mode];
+          setModeLabel();
+          lastBySubject = {}; recompute(0);
+        }, { signal: sig });
+      }
       label.textContent = N + " / " + N;
     }
 

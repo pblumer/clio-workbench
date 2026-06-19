@@ -435,6 +435,21 @@ html, body {
 .proc-viewport.graph-dim .proc-edge.hot { opacity: 0.85; }
 .proc-viewport.graph-dim .proc-edge-label.hot { opacity: 1; }
 
+/* focus: spotlight one subject's path through the graph, tinted in its stream
+   colour (--stream-glow set per element by process.js). Persistent until cleared. */
+.proc-viewport.graph-focus .proc-node,
+.proc-viewport.graph-focus .proc-edge,
+.proc-viewport.graph-focus .proc-edge-label,
+.proc-viewport.graph-focus .proc-group { opacity: 0.08; transition: opacity .2s ease; }
+.proc-viewport.graph-focus .proc-node.focused { opacity: 1; }
+.proc-viewport.graph-focus .proc-edge.focused { opacity: 0.95; }
+.proc-viewport.graph-focus .proc-edge-label.focused { opacity: 1; }
+.proc-node.focused .proc-orb {
+  stroke: var(--stream-glow, var(--neon));
+  filter: drop-shadow(0 0 7px var(--stream-glow, var(--neon)));
+}
+.proc-edge.focused { stroke: var(--stream-glow, var(--neon)); }
+
 .proc-reset,
 .proc-fullscreen {
   position: absolute;
@@ -501,6 +516,18 @@ html, body {
 .tl-play:hover { box-shadow: var(--glow); }
 .tl-range { flex: 1; accent-color: var(--neon); }
 .tl-label { min-width: 78px; text-align: right; color: var(--text-dim); font-size: 11px; white-space: nowrap; }
+.tl-mode {
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--edge);
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 11px;
+}
+.tl-mode:hover { color: var(--neon); border-color: var(--neon-dim); box-shadow: var(--glow); }
 
 .lg-hint { color: var(--neon-dim); }
 .trunc-note { margin: 0 0 12px; font-size: 12px; color: #ff5a6e; font-weight: 600; animation: warnblink 1s steps(1) infinite; }
@@ -772,6 +799,7 @@ html, body {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .subj-chip:hover { border-color: currentColor; box-shadow: 0 0 8px -2px currentColor; }
+.subj-chip.active { border-color: currentColor; box-shadow: 0 0 10px -1px currentColor; background: rgba(56, 225, 255, 0.08); }
 .subj-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
 .subj-name { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
 .subj-n { color: var(--text-dim); font-size: 10px; }
