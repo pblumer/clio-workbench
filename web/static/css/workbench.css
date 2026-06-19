@@ -645,7 +645,7 @@ html, body {
 /* rich hover card — event metadata + payload */
 .dot-card {
   position: absolute;
-  pointer-events: none;
+  pointer-events: auto;
   z-index: 6;
   max-width: 340px;
   max-height: 320px;
