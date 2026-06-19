@@ -435,21 +435,6 @@ html, body {
 .proc-viewport.graph-dim .proc-edge.hot { opacity: 0.85; }
 .proc-viewport.graph-dim .proc-edge-label.hot { opacity: 1; }
 
-/* focus: spotlight one subject's path through the graph, tinted in its stream
-   colour (--stream-glow set per element by process.js). Persistent until cleared. */
-.proc-viewport.graph-focus .proc-node,
-.proc-viewport.graph-focus .proc-edge,
-.proc-viewport.graph-focus .proc-edge-label,
-.proc-viewport.graph-focus .proc-group { opacity: 0.08; transition: opacity .2s ease; }
-.proc-viewport.graph-focus .proc-node.focused { opacity: 1; }
-.proc-viewport.graph-focus .proc-edge.focused { opacity: 0.95; }
-.proc-viewport.graph-focus .proc-edge-label.focused { opacity: 1; }
-.proc-node.focused .proc-orb {
-  stroke: var(--stream-glow, var(--neon));
-  filter: drop-shadow(0 0 7px var(--stream-glow, var(--neon)));
-}
-.proc-edge.focused { stroke: var(--stream-glow, var(--neon)); }
-
 .proc-reset,
 .proc-fullscreen {
   position: absolute;
@@ -516,7 +501,12 @@ html, body {
 .tl-play:hover { box-shadow: var(--glow); }
 .tl-range { flex: 1; accent-color: var(--neon); }
 .tl-label { min-width: 78px; text-align: right; color: var(--text-dim); font-size: 11px; white-space: nowrap; }
-.tl-mode {
+
+/* Stream-Walk controls: the Solo toggle, and subject steppers that only appear
+   while a single subject is being walked. */
+.tl-walk,
+.tl-subj-prev,
+.tl-subj-next {
   cursor: pointer;
   white-space: nowrap;
   padding: 3px 9px;
@@ -525,9 +515,82 @@ html, body {
   background: none;
   color: var(--text-dim);
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
 }
-.tl-mode:hover { color: var(--neon); border-color: var(--neon-dim); box-shadow: var(--glow); }
+.tl-walk:hover,
+.tl-subj-prev:hover,
+.tl-subj-next:hover { color: var(--neon); border-color: var(--neon-dim); box-shadow: var(--glow); }
+.proc-timeline:not(.walking) .tl-subj-prev,
+.proc-timeline:not(.walking) .tl-subj-next,
+.proc-timeline:not(.walking) .tl-pin,
+.proc-timeline:not(.walking) .tl-order { display: none; }
+.proc-timeline.walking .tl-walk { color: var(--neon); border-color: var(--neon-dim); }
+.tl-pin {
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--edge);
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+}
+.tl-pin:hover:not(:disabled) { color: var(--neon); border-color: var(--neon-dim); box-shadow: var(--glow); }
+.tl-pin:disabled { opacity: 0.4; cursor: not-allowed; }
+.tl-order {
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--edge);
+  background: rgba(8, 14, 28, 0.8);
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+}
+.tl-order:hover { color: var(--neon); border-color: var(--neon-dim); }
+
+/* The persistent "ghost trail" of a walked subject: lit nodes/edges stay glowing
+   in the subject's stream colour while the rest of the graph is dimmed. */
+.proc-node.walk-lit .proc-orb {
+  filter: drop-shadow(0 0 7px var(--stream-glow, var(--neon)));
+  stroke: var(--stream-glow, var(--neon));
+}
+.proc-edge.walk-edge { stroke: var(--stream-glow, var(--neon)); }
+.proc-viewport.graph-dim .proc-node.walk-lit { opacity: 1; }
+.proc-viewport.graph-dim .proc-edge.walk-edge { opacity: 0.95; }
+
+/* Compare overlay: per-subject coloured rings on visited nodes (nested where
+   journeys overlap) and fanned, colour-matched edges. The compare layer and
+   ringed nodes stay bright while the rest of the graph is dimmed. */
+.cmp-ring { fill: none; stroke-width: 2.5; }
+.proc-cmp-edges .cmp-edge { stroke-width: 3; opacity: 0.9; stroke-linecap: round; }
+.proc-viewport.graph-dim .proc-node.cmp-on { opacity: 1; }
+
+/* Pinned-subject legend, top-left of the graph. */
+.proc-pins {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 60%;
+}
+.pin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--edge);
+  background: rgba(5, 7, 15, 0.82);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.pin-chip:hover { border-color: currentColor; box-shadow: 0 0 8px -2px currentColor; }
+.pin-dot { width: 9px; height: 9px; border-radius: 50%; }
+.pin-name { color: var(--text); }
 
 .lg-hint { color: var(--neon-dim); }
 .trunc-note { margin: 0 0 12px; font-size: 12px; color: #ff5a6e; font-weight: 600; animation: warnblink 1s steps(1) infinite; }
@@ -800,7 +863,6 @@ html, body {
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .subj-chip:hover { border-color: currentColor; box-shadow: 0 0 8px -2px currentColor; }
-.subj-chip.active { border-color: currentColor; box-shadow: 0 0 10px -1px currentColor; background: rgba(56, 225, 255, 0.08); }
 .subj-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
 .subj-name { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 28ch; }
 .subj-n { color: var(--text-dim); font-size: 10px; }

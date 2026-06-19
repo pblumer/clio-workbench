@@ -55,30 +55,11 @@
 
   // streamColor maps a subject to a stable, vivid hue so every event of the same
   // stream (one employee's process) is tinted alike. MUST stay byte-for-byte in
-  // sync with the copies in subjects.js and the (now removed) local one below.
+  // sync with the copy in subjects.js.
   function streamColor(s) {
     var h = 0;
     for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 360;
     return "hsl(" + h + ", 90%, 64%)";
-  }
-
-  // groupBySubject returns a stable reordering of the time-ordered replay where
-  // all events of one subject run consecutively (subjects in first-seen order,
-  // events within a subject keep their time order). It is the "by subject"
-  // replay schedule.
-  function groupBySubject(arr) {
-    var by = {}, order = [];
-    for (var i = 0; i < arr.length; i++) {
-      var s = arr[i].s;
-      if (!(s in by)) { by[s] = []; order.push(s); }
-      by[s].push(arr[i]);
-    }
-    var out = [];
-    for (var k = 0; k < order.length; k++) {
-      var g = by[order[k]];
-      for (var j = 0; j < g.length; j++) out.push(g[j]);
-    }
-    return out;
   }
 
   // openInspector loads the event list for a type into the drawer.
@@ -100,6 +81,12 @@
     }
     var ac = new AbortController(), sig = ac.signal;
     var playTimer = null;
+    // Stream-Walk (subject-solo) is active: hover-highlight steps aside so it
+    // doesn't fight the walk's own dim/lit bookkeeping. Set by setupReplay.
+    var walkActive = false;
+    // Per-frame hook the simulation calls after laying out the real edges, so
+    // the compare-mode overlay edges track the floating nodes. Set by setupReplay.
+    var extraRender = null;
 
     var W = svg.viewBox.baseVal.width, H = svg.viewBox.baseVal.height;
     var cx = W / 2, cy = H / 2;
@@ -155,8 +142,8 @@
       ed.len = LEN * (1.45 - 0.7 * r);  // …and sit shorter (tight central spine)
     });
 
-    // The ordered event stream (shared by the timeline replay and the
-    // click-to-focus-a-subject feature below).
+    // The ordered event stream, parsed once and shared by the timeline replay
+    // and the Stream-Walk below.
     var replay = [];
     var replayScript = graph.querySelector(".proc-replay");
     if (replayScript) {
@@ -186,6 +173,24 @@
     function localPoint(evt) {
       var sp = svgPoint(evt);
       return { x: (sp.x - view.tx) / view.k, y: (sp.y - view.ty) / view.k };
+    }
+    // frameNodes pans/zooms the viewport so the given nodes fill it (with
+    // padding) — used to frame the soloed subject's path in Stream-Walk.
+    function frameNodes(list) {
+      if (!list.length) return;
+      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      list.forEach(function (n) {
+        minX = Math.min(minX, n.x - n.r); minY = Math.min(minY, n.y - n.r);
+        maxX = Math.max(maxX, n.x + n.r); maxY = Math.max(maxY, n.y + n.r);
+      });
+      var pad = 70;
+      minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+      var bw = (maxX - minX) || 1, bh = (maxY - minY) || 1;
+      var k = Math.max(ZMIN, Math.min(ZMAX, Math.min(W / bw, H / bh)));
+      view.k = k;
+      view.tx = W / 2 - k * (minX + maxX) / 2;
+      view.ty = H / 2 - k * (minY + maxY) / 2;
+      applyView();
     }
 
     svg.addEventListener("wheel", function (evt) {
@@ -267,6 +272,7 @@
       return v === "all" ? Infinity : (parseInt(v, 10) || 1);
     }
     function highlight(node) {
+      if (walkActive) return; // Stream-Walk owns the spotlight
       var d = depth(), seenN = {}, hotN = [node], hotE = [];
       seenN[node.type] = true;
       var frontier = [node], step = 0;
@@ -285,81 +291,14 @@
       hotE.forEach(function (ed) { ed.path.classList.add("hot"); if (ed.label) ed.label.classList.add("hot"); });
     }
     function clearHighlight() {
+      if (walkActive) return; // leave the Stream-Walk dim in place
       viewport.classList.remove("graph-dim");
       viewport.querySelectorAll(".hot").forEach(function (el) { el.classList.remove("hot"); });
     }
 
-    // ---- focus a subject: spotlight just one stream's path through the graph ----
-    // Clicking a subject in the legend (subjects.js) dispatches "clio:focus-subject".
-    // We light up only the nodes and directly-follows edges that subject travels,
-    // tinted in its stream colour, and frame them in the viewport.
-    var focusedSubject = null;
-    function clearFocus() {
-      focusedSubject = null;
-      viewport.classList.remove("graph-focus");
-      viewport.querySelectorAll(".focused").forEach(function (el) {
-        el.classList.remove("focused");
-        el.style.removeProperty("--stream-glow");
-      });
-    }
-    // frameNodes pans/zooms the viewport so the given nodes fill it (with padding).
-    function frameNodes(list) {
-      if (!list.length) return;
-      var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-      list.forEach(function (n) {
-        minX = Math.min(minX, n.x - n.r); minY = Math.min(minY, n.y - n.r);
-        maxX = Math.max(maxX, n.x + n.r); maxY = Math.max(maxY, n.y + n.r);
-      });
-      var pad = 70;
-      minX -= pad; minY -= pad; maxX += pad; maxY += pad;
-      var bw = (maxX - minX) || 1, bh = (maxY - minY) || 1;
-      var k = Math.max(ZMIN, Math.min(ZMAX, Math.min(W / bw, H / bh)));
-      view.k = k;
-      view.tx = W / 2 - k * (minX + maxX) / 2;
-      view.ty = H / 2 - k * (minY + maxY) / 2;
-      applyView();
-    }
-    function focusSubject(subject) {
-      clearFocus();
-      if (!subject) return;
-      focusedSubject = subject;
-      var col = streamColor(subject);
-      var nodeSet = {}, edgeSet = {}, prevType = null;
-      for (var i = 0; i < replay.length; i++) {
-        if (replay[i].s !== subject) continue;
-        var t = replay[i].t;
-        nodeSet[t] = true;
-        if (prevType && prevType !== t) edgeSet[prevType + " -> " + t] = true;
-        prevType = t;
-      }
-      var members = [];
-      Object.keys(nodeSet).forEach(function (t) {
-        var n = byType[t];
-        if (!n) return;
-        n.el.classList.add("focused");
-        n.el.style.setProperty("--stream-glow", col);
-        members.push(n);
-      });
-      Object.keys(edgeSet).forEach(function (key) {
-        var ed = edgeByKey[key];
-        if (!ed) return;
-        ed.path.classList.add("focused");
-        ed.path.style.setProperty("--stream-glow", col);
-        if (ed.label) ed.label.classList.add("focused");
-      });
-      if (!members.length) { clearFocus(); return; }
-      viewport.classList.add("graph-focus");
-      frameNodes(members);
-    }
-    document.addEventListener("clio:focus-subject", function (e) {
-      var d = e.detail || {};
-      focusSubject(d.s || null);
-    }, { signal: sig });
-
     var resetBtn = graph.querySelector(".proc-reset");
     if (resetBtn) {
       resetBtn.addEventListener("click", function () {
-        clearFocus();
         view.k = 1; view.tx = 0; view.ty = 0; applyView(); reheat();
       }, { signal: sig });
     }
@@ -438,6 +377,7 @@
         grp.rect.setAttribute("height", (maxY - minY) + 2 * pad + gap);
         grp.label.setAttribute("x", minX - pad); grp.label.setAttribute("y", minY - pad - gap);
       }
+      if (extraRender) extraRender(); // compare-overlay edges follow the layout
     }
     function step() {
       var fx = new Float64Array(nodes.length), fy = new Float64Array(nodes.length);
@@ -492,16 +432,11 @@
       var playBtn = bar.querySelector(".tl-play");
       var range = bar.querySelector(".tl-range");
       var label = bar.querySelector(".tl-label");
-      var modeBtn = bar.querySelector(".tl-mode");
       if (!N || !playBtn || !range) { bar.style.display = "none"; return; }
 
-      // Two replay schedules over the same events: chronological ("time") and
-      // grouped per subject ("subject"). The active one is `seq`; switching
-      // resets the cursor since the ordering changed. The choice persists.
-      var MODE_KEY = "clio.replayMode";
-      var orders = { time: replay, subject: groupBySubject(replay) };
-      var mode = localStorage.getItem(MODE_KEY) === "subject" ? "subject" : "time";
-      var seq = orders[mode];
+      var walkBtn = bar.querySelector(".tl-walk");
+      var prevBtn = bar.querySelector(".tl-subj-prev");
+      var nextBtn = bar.querySelector(".tl-subj-next");
 
       var cursor = N, playing = false, lastBySubject = {};
 
@@ -513,9 +448,12 @@
         setTimeout(function () { el.classList.remove(cls); }, 520);
       }
 
+      function startTimer(fn) { playTimer = setInterval(fn, 220); }
+      function clearTimer() { if (playTimer) { clearInterval(playTimer); playTimer = null; } }
+
       function recompute(c) {
         var counts = {};
-        for (var i = 0; i < c; i++) counts[seq[i].t] = (counts[seq[i].t] || 0) + 1;
+        for (var i = 0; i < c; i++) counts[replay[i].t] = (counts[replay[i].t] || 0) + 1;
         nodes.forEach(function (n) { setCount(n, counts[n.type] || 0); });
         cursor = c; range.value = c;
         label.textContent = c + " / " + N;
@@ -523,7 +461,7 @@
 
       function stepOnce() {
         if (cursor >= N) { stopPlay(); return; }
-        var ev = seq[cursor], node = byType[ev.t], col = streamColor(ev.s);
+        var ev = replay[cursor], node = byType[ev.t], col = streamColor(ev.s);
         if (node) {
           var cur = parseInt(node.countEl ? node.countEl.textContent : "0", 10) || 0;
           setCount(node, cur + 1);
@@ -543,37 +481,323 @@
         label.textContent = cursor + " / " + N + (ev.ts ? "  ·  " + ev.ts : "");
       }
 
-      function play() {
-        if (cursor >= N) { lastBySubject = {}; recompute(0); }
-        playing = true; playBtn.textContent = "⏸ Pause";
-        playTimer = setInterval(stepOnce, 220);
+      // ---- Stream-Walk: solo one subject's trace through the graph ----
+      // The whole graph dims; one employee's path lights up step by step in its
+      // stream colour, leaving a persistent "ghost trail" of where it has been,
+      // and auto-advances to the next subject. See docs/WORKBENCH.md §1.1.
+      var bySubject = {}, firstSeen = [];
+      for (var si = 0; si < N; si++) {
+        var ss = replay[si].s;
+        if (!bySubject[ss]) { bySubject[ss] = []; firstSeen.push(ss); }
+        bySubject[ss].push(replay[si]);
       }
-      function stopPlay() {
-        if (playTimer) { clearInterval(playTimer); playTimer = null; }
-        playing = false; playBtn.textContent = "▶ Replay";
+      // Per-subject variant (its type sequence) and how common that variant is
+      // across the population — the raw material for the walk-order modes.
+      var variantOf = {}, variantPop = {}, seenIndex = {};
+      firstSeen.forEach(function (s, i) {
+        seenIndex[s] = i;
+        var seq = bySubject[s].map(function (e) { return e.t; }).join(" → ");
+        variantOf[s] = seq;
+        variantPop[seq] = (variantPop[seq] || 0) + 1;
+      });
+      // orderSubjects returns the subjects in the chosen walk order:
+      //  · chrono  — first-seen, i.e. chronologically by first event (default;
+      //              the replay is already timestamp-ordered)
+      //  · variant — common variants first, identical journeys adjacent, so
+      //              patterns cluster
+      //  · rare    — odd-one-out: rarest variant first, anomalies up front
+      function orderSubjects(mode) {
+        var arr = firstSeen.slice();
+        if (mode === "rare") {
+          arr.sort(function (a, b) {
+            return (variantPop[variantOf[a]] - variantPop[variantOf[b]]) ||
+              (bySubject[a].length - bySubject[b].length) || (seenIndex[a] - seenIndex[b]);
+          });
+        } else if (mode === "variant") {
+          arr.sort(function (a, b) {
+            return (variantPop[variantOf[b]] - variantPop[variantOf[a]]) ||
+              (variantOf[a] < variantOf[b] ? -1 : variantOf[a] > variantOf[b] ? 1 : 0) ||
+              (seenIndex[a] - seenIndex[b]);
+          });
+        }
+        return arr; // "chrono" = first-seen order
+      }
+      var walkOrder = "chrono";
+      var subjOrder = orderSubjects(walkOrder);
+      var wi = 0, wj = 0, holdTicks = 0, walkLit = [], origMax = range.max;
+
+      function clearWalkLit() {
+        for (var i = 0; i < walkLit.length; i++) walkLit[i].classList.remove("walk-lit", "walk-edge");
+        walkLit = [];
+      }
+      function litAdd(el, cls) {
+        if (!el || el.classList.contains(cls)) return;
+        el.classList.add(cls); walkLit.push(el);
+      }
+      function walkLabel() {
+        var subj = subjOrder[wi] || "", evs = bySubject[subj] || [];
+        var ts = wj > 0 && evs[wj - 1] ? evs[wj - 1].ts : (evs[0] ? evs[0].ts : "");
+        var unique = variantPop[variantOf[subj]] === 1 ? "  ·  ◇ unique" : "";
+        label.textContent = subj + "  ·  " + wj + " / " + evs.length +
+          "  ·  [" + (wi + 1) + " / " + subjOrder.length + "]" + unique + (ts ? "  ·  " + ts : "");
+      }
+      // walkRenderTo paints the current subject's trail up to its j-th event
+      // (deterministic — used on load and when scrubbing the range).
+      function walkRenderTo(j) {
+        var subj = subjOrder[wi], evs = bySubject[subj], col = streamColor(subj);
+        if (j < 0) j = 0; if (j > evs.length) j = evs.length;
+        clearWalkLit();
+        nodes.forEach(function (n) { setCount(n, 0); });
+        var prevType = null;
+        for (var k = 0; k < j; k++) {
+          var node = byType[evs[k].t];
+          if (node) {
+            setCount(node, (parseInt(node.countEl ? node.countEl.textContent : "0", 10) || 0) + 1);
+            node.el.style.setProperty("--stream-glow", col);
+            litAdd(node.el, "walk-lit");
+          }
+          if (prevType && prevType !== evs[k].t) {
+            var ed = edgeByKey[prevType + " -> " + evs[k].t];
+            if (ed) { ed.path.style.setProperty("--stream-glow", col); litAdd(ed.path, "walk-edge"); }
+          }
+          prevType = evs[k].t;
+        }
+        wj = j; range.max = evs.length; range.value = wj; walkLabel();
+      }
+      function loadSubject(i, full) {
+        wi = ((i % subjOrder.length) + subjOrder.length) % subjOrder.length;
+        holdTicks = 0;
+        walkRenderTo(full ? bySubject[subjOrder[wi]].length : 0);
+        updatePinBtn();
+        // On a deliberate load (enter/step), frame the subject's path; during
+        // auto-play we leave the view put so paths light across the full graph.
+        if (full) {
+          var seen = {}, members = [];
+          bySubject[subjOrder[wi]].forEach(function (ev) {
+            if (!seen[ev.t] && byType[ev.t]) { seen[ev.t] = true; members.push(byType[ev.t]); }
+          });
+          frameNodes(members);
+        }
+      }
+      function walkTick() {
+        var subj = subjOrder[wi], evs = bySubject[subj], col = streamColor(subj);
+        if (wj >= evs.length) { // subject done — hold a beat, then advance
+          if (wi >= subjOrder.length - 1) { stopPlay(); return; }
+          if (++holdTicks >= 3) loadSubject(wi + 1, false);
+          return;
+        }
+        var ev = evs[wj], node = byType[ev.t];
+        if (node) {
+          setCount(node, (parseInt(node.countEl ? node.countEl.textContent : "0", 10) || 0) + 1);
+          node.el.style.setProperty("--stream-glow", col);
+          litAdd(node.el, "walk-lit");
+          flash(node.el, "flash");
+        }
+        if (wj > 0 && evs[wj - 1].t !== ev.t) {
+          var ed = edgeByKey[evs[wj - 1].t + " -> " + ev.t];
+          if (ed) { ed.path.style.setProperty("--stream-glow", col); litAdd(ed.path, "walk-edge"); flash(ed.path, "pulse"); }
+        }
+        document.dispatchEvent(new CustomEvent("clio:replay-step",
+          { detail: { s: ev.s, t: ev.t, ts: ev.ts } }));
+        wj++; range.value = wj; walkLabel();
+      }
+      function enterWalk() {
+        stopPlay(); clearHighlight(); // drop any lingering hover spotlight first
+        walkActive = true;
+        viewport.classList.add("graph-dim");
+        bar.classList.add("walking");
+        walkBtn.textContent = "✕ Solo"; walkBtn.title = "Exit Stream-Walk";
+        origMax = range.max;
+        loadSubject(0, true); // show the first subject's full trace at a glance
+        playBtn.textContent = "▶ Walk";
+      }
+      function exitWalk() {
+        walkActive = false;
+        stopPlay(); clearWalkLit(); clearCompare();
+        viewport.classList.remove("graph-dim");
+        bar.classList.remove("walking");
+        walkBtn.textContent = "⛓ Solo"; walkBtn.title = "Stream-Walk: follow one subject through the graph";
+        range.max = origMax;
+        recompute(N); // restore the full aggregate counts and range
+        view.k = 1; view.tx = 0; view.ty = 0; applyView(); reheat(); // un-frame
+        playBtn.textContent = "▶ Replay";
       }
 
-      function setModeLabel() {
-        if (!modeBtn) return;
-        modeBtn.textContent = mode === "subject" ? "≡ by subject" : "⏱ by time";
-        modeBtn.title = mode === "subject"
-          ? "Replaying subject by subject — click for chronological order"
-          : "Replaying in time order — click to replay subject by subject";
+      // ---- Compare: pin up to 3 subjects and overlay their full traces ----
+      // Each pinned subject is drawn as concentric coloured rings on the nodes it
+      // visits (overlap reads as nested rings) plus fanned, colour-matched
+      // overlay edges that follow the force layout via extraRender. Built on the
+      // walk: you pin whichever subject you are currently soloing.
+      var SVGNS = "http://www.w3.org/2000/svg";
+      var pinned = [], cmpG = null, cmpEdges = [];
+      var pinBtn = bar.querySelector(".tl-pin");
+      var pinsBox = graph.querySelector(".proc-pins");
+
+      function cmpLayer() {
+        if (!cmpG) {
+          cmpG = document.createElementNS(SVGNS, "g");
+          cmpG.setAttribute("class", "proc-cmp-edges");
+          viewport.insertBefore(cmpG, viewport.firstChild); // beneath the nodes
+        }
+        return cmpG;
+      }
+      // cmpPath is edgePath with a per-slot lateral offset so the pinned subjects'
+      // shared transitions fan out into parallel, separately-coloured lines.
+      function cmpPath(f, t, slot) {
+        if (f === t) {
+          var x = f.x, y = f.y - f.r;
+          return "M" + (x - 9) + " " + y + " C" + (x - 46) + " " + (y - 58) +
+            " " + (x + 46) + " " + (y - 58) + " " + (x + 9) + " " + y;
+        }
+        var dx = t.x - f.x, dy = t.y - f.y, dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        var ux = dx / dist, uy = dy / dist, px = -uy, py = ux, off = (slot - 1) * 9;
+        var x1 = f.x + ux * f.r, y1 = f.y + uy * f.r, x2 = t.x - ux * t.r, y2 = t.y - uy * t.r;
+        var mx = (x1 + x2) / 2 + px * off, my = (y1 + y2) / 2 + py * off;
+        return "M" + x1 + " " + y1 + " Q" + mx + " " + my + " " + x2 + " " + y2;
+      }
+      function updateCmpEdges() {
+        for (var i = 0; i < cmpEdges.length; i++) {
+          cmpEdges[i].path.setAttribute("d", cmpPath(cmpEdges[i].from, cmpEdges[i].to, cmpEdges[i].slot));
+        }
+      }
+      function renderCompare() {
+        viewport.querySelectorAll(".cmp-ring").forEach(function (el) { el.remove(); });
+        viewport.querySelectorAll(".proc-node.cmp-on").forEach(function (el) { el.classList.remove("cmp-on"); });
+        cmpEdges = [];
+        if (cmpG) cmpG.textContent = "";
+        var ringStack = {}; // node type → rings already drawn there (sets radius)
+        pinned.forEach(function (subj, slot) {
+          var evs = bySubject[subj], col = streamColor(subj), prevType = null, seenEdge = {};
+          evs.forEach(function (ev) {
+            var node = byType[ev.t];
+            if (node) {
+              var k = ringStack[ev.t] || 0;
+              if (k <= slot) { // one ring per pinned subject passing through
+                var ring = document.createElementNS(SVGNS, "circle");
+                ring.setAttribute("class", "cmp-ring");
+                ring.setAttribute("cx", node.ox); ring.setAttribute("cy", node.oy);
+                ring.setAttribute("r", node.r + 5 + k * 4);
+                ring.setAttribute("stroke", col);
+                node.el.appendChild(ring);
+                node.el.classList.add("cmp-on");
+                ringStack[ev.t] = k + 1;
+              }
+            }
+            if (prevType && prevType !== ev.t && byType[prevType] && node) {
+              var key = prevType + " -> " + ev.t;
+              if (!seenEdge[key]) {
+                seenEdge[key] = true;
+                var p = document.createElementNS(SVGNS, "path");
+                p.setAttribute("class", "cmp-edge"); p.setAttribute("fill", "none");
+                p.setAttribute("stroke", col);
+                cmpLayer().appendChild(p);
+                cmpEdges.push({ path: p, from: byType[prevType], to: node, slot: slot });
+              }
+            }
+            prevType = ev.t;
+          });
+        });
+        extraRender = cmpEdges.length ? updateCmpEdges : null;
+        updateCmpEdges();
+        renderPins();
+        reheat();
+      }
+      function renderPins() {
+        if (!pinsBox) return;
+        pinsBox.textContent = "";
+        pinned.forEach(function (subj) {
+          var chip = document.createElement("button");
+          chip.type = "button"; chip.className = "pin-chip"; chip.style.color = streamColor(subj);
+          chip.title = "Unpin " + subj;
+          var dot = document.createElement("span");
+          dot.className = "pin-dot"; dot.style.background = streamColor(subj);
+          var nm = document.createElement("span");
+          nm.className = "pin-name"; nm.textContent = subj;
+          chip.appendChild(dot); chip.appendChild(nm);
+          chip.appendChild(document.createTextNode(" ✕"));
+          chip.addEventListener("click", function () { unpin(subj); }, { signal: sig });
+          pinsBox.appendChild(chip);
+        });
+        pinsBox.style.display = pinned.length ? "" : "none";
+      }
+      function isPinned(subj) { return pinned.indexOf(subj) !== -1; }
+      function pin(subj) {
+        if (isPinned(subj) || pinned.length >= 3) return;
+        pinned.push(subj); renderCompare(); updatePinBtn();
+      }
+      function unpin(subj) {
+        var i = pinned.indexOf(subj);
+        if (i === -1) return;
+        pinned.splice(i, 1); renderCompare(); updatePinBtn();
+      }
+      function clearCompare() {
+        pinned = []; cmpEdges = []; extraRender = null;
+        viewport.querySelectorAll(".cmp-ring").forEach(function (el) { el.remove(); });
+        viewport.querySelectorAll(".proc-node.cmp-on").forEach(function (el) { el.classList.remove("cmp-on"); });
+        if (cmpG) cmpG.textContent = "";
+        renderPins(); updatePinBtn();
+      }
+      function updatePinBtn() {
+        if (!pinBtn) return;
+        if (isPinned(subjOrder[wi])) { pinBtn.textContent = "📌 Unpin"; pinBtn.disabled = false; }
+        else { pinBtn.textContent = "📌 Pin"; pinBtn.disabled = pinned.length >= 3; }
+      }
+
+      function play() {
+        if (walkActive) {
+          if (wj >= bySubject[subjOrder[wi]].length) {
+            // at the very end of the last subject → restart the whole tour
+            if (wi >= subjOrder.length - 1) loadSubject(0, false);
+            else loadSubject(wi, false);
+          }
+          playing = true; playBtn.textContent = "⏸ Pause";
+          startTimer(walkTick);
+          return;
+        }
+        if (cursor >= N) { lastBySubject = {}; recompute(0); }
+        playing = true; playBtn.textContent = "⏸ Pause";
+        startTimer(stepOnce);
+      }
+      function stopPlay() {
+        clearTimer();
+        playing = false;
+        playBtn.textContent = walkActive ? "▶ Walk" : "▶ Replay";
       }
 
       playBtn.addEventListener("click", function () { if (playing) stopPlay(); else play(); }, { signal: sig });
-      range.addEventListener("input", function () { stopPlay(); lastBySubject = {}; recompute(parseInt(range.value, 10) || 0); }, { signal: sig });
-      if (modeBtn) {
-        setModeLabel();
-        modeBtn.addEventListener("click", function () {
-          stopPlay();
-          mode = mode === "subject" ? "time" : "subject";
-          localStorage.setItem(MODE_KEY, mode);
-          seq = orders[mode];
-          setModeLabel();
-          lastBySubject = {}; recompute(0);
-        }, { signal: sig });
-      }
+      range.addEventListener("input", function () {
+        stopPlay();
+        if (walkActive) { walkRenderTo(parseInt(range.value, 10) || 0); return; }
+        lastBySubject = {}; recompute(parseInt(range.value, 10) || 0);
+      }, { signal: sig });
+      if (walkBtn) walkBtn.addEventListener("click", function () { if (walkActive) exitWalk(); else enterWalk(); }, { signal: sig });
+      if (prevBtn) prevBtn.addEventListener("click", function () { if (walkActive) { stopPlay(); loadSubject(wi - 1, true); } }, { signal: sig });
+      if (nextBtn) nextBtn.addEventListener("click", function () { if (walkActive) { stopPlay(); loadSubject(wi + 1, true); } }, { signal: sig });
+      if (pinBtn) pinBtn.addEventListener("click", function () {
+        if (!walkActive) return;
+        var subj = subjOrder[wi];
+        if (isPinned(subj)) unpin(subj); else pin(subj);
+      }, { signal: sig });
+      var orderSel = bar.querySelector(".tl-order");
+      if (orderSel) orderSel.addEventListener("change", function () {
+        walkOrder = orderSel.value;
+        subjOrder = orderSubjects(walkOrder);
+        if (walkActive) { stopPlay(); loadSubject(0, true); }
+      }, { signal: sig });
+      // ---- keyboard tour: only while soloing, never while typing in a field ----
+      document.addEventListener("keydown", function (e) {
+        if (!walkActive || e.metaKey || e.ctrlKey || e.altKey) return;
+        var tag = (e.target && e.target.tagName || "").toLowerCase();
+        if (tag === "input" || tag === "select" || tag === "textarea" || (e.target && e.target.isContentEditable)) return;
+        switch (e.key) {
+          case " ": case "Spacebar": e.preventDefault(); if (playing) stopPlay(); else play(); break;
+          case "j": case "ArrowRight": e.preventDefault(); stopPlay(); loadSubject(wi + 1, true); break;
+          case "k": case "ArrowLeft": e.preventDefault(); stopPlay(); loadSubject(wi - 1, true); break;
+          case "p": case "P": e.preventDefault();
+            if (isPinned(subjOrder[wi])) unpin(subjOrder[wi]); else pin(subjOrder[wi]); break;
+          default: return;
+        }
+      }, { signal: sig });
       label.textContent = N + " / " + N;
     }
 
