@@ -73,10 +73,19 @@
     <script type="application/json" class="proc-replay">{{.ReplayJSON}}</script>
     <div class="proc-timeline">
       <button type="button" class="tl-play" title="Replay the event stream">▶ Replay</button>
+      <button type="button" class="tl-subj-prev" title="Previous subject" aria-label="Previous subject">⏮</button>
+      <button type="button" class="tl-subj-next" title="Next subject" aria-label="Next subject">⏭</button>
       <input class="tl-range" type="range" min="0" max="{{.Events}}" value="{{.Events}}" step="1">
       <span class="tl-label"></span>
-      <button type="button" class="tl-mode" title="Replay order">⏱ by time</button>
+      <select class="tl-order" aria-label="Walk order" title="Order subjects are walked in">
+        <option value="chrono">chronological</option>
+        <option value="variant">by variant</option>
+        <option value="rare">rare first</option>
+      </select>
+      <button type="button" class="tl-pin" title="Pin this subject to compare its trace (up to 3)">📌 Pin</button>
+      <button type="button" class="tl-walk" title="Stream-Walk: follow one subject through the graph">⛓ Solo</button>
     </div>
+    <div class="proc-pins" aria-label="Pinned subjects" style="display:none"></div>
   </div>
 
   <div class="proc-legend">
@@ -87,7 +96,7 @@
     <span class="lg lg-start">▸ start</span>
     <span class="lg lg-end">◉ end</span>
     <span class="lg lg-flow">→ directly-follows (count)</span>
-    <span class="lg lg-hint">✋ drag · click a node → its events &amp; data</span>
+    <span class="lg lg-hint">✋ drag · click a node → its events &amp; data · ⌨ in Solo: space ⏯ · j/k subject · p pin</span>
   </div>
 
   <div class="proc-subjects" aria-label="Subjects in this process"></div>

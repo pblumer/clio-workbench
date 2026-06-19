@@ -25,12 +25,6 @@
       { target: "#inspector", swap: "innerHTML" });
   }
 
-  // focusSubject tells the process graph (process.js) to spotlight one stream's
-  // path; passing null clears the focus.
-  function focusSubject(subject) {
-    document.dispatchEvent(new CustomEvent("clio:focus-subject", { detail: { s: subject } }));
-  }
-
   function init(container) {
     if (container._subjInit) return;
     container._subjInit = true;
@@ -55,7 +49,6 @@
     order.sort(function (a, b) { return counts[b] - counts[a] || (a < b ? -1 : 1); });
 
     var total = order.length;
-    var activeChip = null; // the chip currently focusing the graph, if any
     var list = document.createElement("div");
     list.className = "subj-list";
     order.forEach(function (s) {
@@ -76,21 +69,7 @@
       chip.appendChild(dot);
       chip.appendChild(name);
       chip.appendChild(n);
-      // A click always opens this subject's events in the inspector and focuses
-      // the graph on its path; clicking the focused chip again clears the focus.
-      chip.addEventListener("click", function () {
-        openSubject(s);
-        if (activeChip === chip) {
-          chip.classList.remove("active");
-          activeChip = null;
-          focusSubject(null);
-          return;
-        }
-        if (activeChip) activeChip.classList.remove("active");
-        activeChip = chip;
-        chip.classList.add("active");
-        focusSubject(s);
-      });
+      chip.addEventListener("click", function () { openSubject(s); });
       list.appendChild(chip);
     });
 

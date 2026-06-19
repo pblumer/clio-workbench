@@ -45,6 +45,24 @@ Gegenprobe (Soll/Ist), nicht als Ausgangspunkt.
 
 Die Workbench ersetzt das `/ui` **nicht** und berührt ADR-020 nicht.
 
+### 1.1 Die Workbench als Labor
+
+Neben dem gestaltenden Entwurf hat die Workbench ein zweites, gleichrangiges
+Ziel: Sie ist ein **Labor zum Erforschen von Event Sourcing**. Wer verstehen
+will, wie sich ein Aggregat über die Zeit verhält, wie aus einzelnen Events ein
+Prozess emergiert oder warum reale Abläufe vom gedachten Modell abweichen,
+braucht Werkzeuge zum *Beobachten, Zerlegen und Durchspielen* echter
+Event-Ströme — kein weiteres Betriebs-Dashboard, sondern eine Werkbank, an der
+man Hypothesen über Event-Daten bilden und prüfen kann.
+
+Konkret heißt das: Event-Daten sollen sich nicht nur statisch ansehen, sondern
+**aktiv durchforschen** lassen — der entdeckte Prozess-Graph, der
+Timeline-Replay, die Varianten und die Subject-Streams sind die ersten
+Laborgeräte. Künftige Analyse-Funktionen (z.B. einzelne Subjects gezielt durch
+den Graphen verfolgen, Streams solo abspielen, Pfade vergleichen) zahlen auf
+genau dieses Ziel ein. Die Gegenprobe aus Abschnitt 7 ist der Spezialfall, bei
+dem die Forschung einen konkreten Entwurf als Messlatte hat.
+
 ---
 
 ## 2. Leitprinzipien
