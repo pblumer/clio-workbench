@@ -94,6 +94,26 @@
 </div>
 {{- end}}
 
+{{/* ── Sidebar · Teststudio: entry point + intro ── */}}
+{{define "view-studio-nav" -}}
+<p class="wb-hint">Belebe dein Modell: prüfe Payloads und Abläufe gegen den
+  Entwurf (Teststudio §3). Heute verfügbar: der Schema-Test.</p>
+<ul class="wb-nav">
+  <li><button type="button" class="wb-nav-item" data-open-tab="schema-test">
+    <span class="wb-nav-icon">✓</span>Schema-Test
+  </button></li>
+</ul>
+{{- end}}
+
+{{/* ── Editor: Schema-Test ── */}}
+{{define "view-schema-test" -}}
+<div id="schema-test-slot" class="wb-fill"
+     hx-get="/studio/schema-test" hx-trigger="load"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
 {{/* ── Panel: Conformance check (Soll/Ist) ── */}}
 {{define "view-conformance" -}}
 <p class="wb-hint">Lade ein BPMN-Template hoch, um zu prüfen, ob die realen Events

@@ -104,6 +104,11 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("POST /environments/activate", s.handleActivateEnvironment)
 	s.mux.HandleFunc("POST /environments/delete", s.handleDeleteEnvironment)
 	s.mux.HandleFunc("POST /conformance", s.handleConformance)
+
+	// Test Studio (docs/TESTSTUDIO.md): schema-test (WP-2).
+	s.mux.HandleFunc("GET /studio/schema-test", s.handleStudioSchema)
+	s.mux.HandleFunc("GET /studio/schema-test/fields", s.handleStudioSchemaFields)
+	s.mux.HandleFunc("POST /studio/schema-test", s.handleStudioSchemaCheck)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)

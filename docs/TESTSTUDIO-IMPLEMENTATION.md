@@ -62,7 +62,8 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
     v1, hält das Binary abhängigkeitsfrei und spiegelt exakt `schemagen.propSchema`.
 - **Abnahme:** `go test ./internal/validate` grün, Coverage ≥ 98 %; positive und
   negative Fälle je Regel; Sequenzen mit/ohne Start, Sackgasse, unbekannter Typ.
-- **Status:** ⬜ offen → wird in diesem PR begonnen.
+- **Status:** ✅ fertig. `internal/validate` mit `Machine`/`CheckSequence` und
+  `CheckPayload`, 98,3 % Coverage.
 
 ### WP-2 · Studio-Shell + Schema-Test-Ansicht · **S–M**
 
@@ -73,6 +74,10 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
   (`GET/POST /studio/schema-test`) nach `FRAMEWORK.md`.
 - **Abnahme:** Tab erscheint, valide/invalide Payload erzeugt grün/rot;
   Handler-Tests mit `httptest`; keine Framework-Änderung nötig.
+- **Status:** ✅ fertig. Activity „Teststudio" + Editor-Tab *Schema-Test*
+  (`internal/server/studio.go`, `web/templates/studio.html`); Modell- und
+  Event-Typ-Auswahl mit Schema-Vorschau, feldgenaue Ergebnisse über
+  `internal/validate`. `studio.go` zu 100 % getestet.
 
 ---
 
@@ -174,8 +179,8 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
 
 | WP | Stufe | Größe | Status |
 |---|---|---|---|
-| WP-1 `internal/validate` | T0 | M | 🟡 in Arbeit |
-| WP-2 Studio-Shell + Schema-Test | T0 | S–M | ⬜ |
+| WP-1 `internal/validate` | T0 | M | ✅ fertig |
+| WP-2 Studio-Shell + Schema-Test | T0 | S–M | ✅ fertig |
 | WP-3 `internal/scenario` | T1 | M | ⬜ |
 | WP-4 Szenario-Editor + Pfad | T1 | M–L | ⬜ |
 | WP-5 `internal/simulator` | T2 | M–L | ⬜ |

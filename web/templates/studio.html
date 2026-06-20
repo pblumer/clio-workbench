@@ -1,0 +1,82 @@
+{{/*
+  studio.html — fragments for the Test Studio (see internal/server/studio.go).
+
+  WP-2: the schema-test view (docs/TESTSTUDIO.md §3.1). These fragments are
+  loaded into the #schema-test-slot editor pane defined in views.html.
+*/}}
+
+{{/* ── Schema-test form (loaded into the editor pane) ── */}}
+{{define "studio-schema" -}}
+<p class="wb-hint">Prüfe eine <code>data</code>-Payload gegen das Schema eines
+  Event-Typs deines Modells (Teststudio §3.1). Rein lokal — keine Clio nötig.</p>
+{{if not .Drafts}}
+  <p class="wb-hint">Noch keine Modelle. Lege links unter <strong>Modelle</strong>
+    eines an und beschreibe seine Event-Typen mit Feldern.</p>
+{{else}}
+<form class="st-form" hx-post="/studio/schema-test" hx-target="#st-result" hx-swap="innerHTML">
+  <label>
+    <span>Modell</span>
+    <select name="draft" hx-get="/studio/schema-test/fields"
+            hx-target="#st-fields" hx-swap="innerHTML" hx-trigger="change">
+      {{- range .Drafts}}
+      <option value="{{.ID}}" {{if eq .ID $.DraftID}}selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <div id="st-fields">
+    {{template "studio-schema-fields" .}}
+  </div>
+  <label>
+    <span>data <small>(JSON)</small></span>
+    <textarea name="data" rows="10" class="st-data" spellcheck="false" placeholder="{ }">{{.Data}}</textarea>
+  </label>
+  <button type="submit" class="btn-primary">Prüfen</button>
+</form>
+<div id="st-result" class="st-result"></div>
+{{end}}
+{{- end}}
+
+{{/* ── Event-type select + schema preview (reloaded on model/type change) ── */}}
+{{define "studio-schema-fields" -}}
+{{if .Steps}}
+<label>
+  <span>Event-Typ</span>
+  <select name="step" hx-get="/studio/schema-test/fields"
+          hx-target="#st-fields" hx-swap="innerHTML" hx-trigger="change"
+          hx-include="[name='draft']">
+    {{- range .Steps}}
+    <option value="{{.ID}}" {{if eq .ID $.StepID}}selected{{end}}>{{.Name}}</option>
+    {{- end}}
+  </select>
+</label>
+<details class="st-schema">
+  <summary>erwartetes Schema</summary>
+  <pre class="wb-output">{{.Schema}}</pre>
+</details>
+{{else}}
+<p class="wb-hint">Dieses Modell hat noch keine benannten Event-Typen mit Feldern.
+  Lege sie im Editor an.</p>
+<input type="hidden" name="step" value="">
+{{end}}
+{{- end}}
+
+{{/* ── Result of one check ── */}}
+{{define "studio-schema-result" -}}
+{{if .Message}}
+  <p class="panel-hint bpmn-state bpmn-state-error">{{.Message}}</p>
+{{else if .Checked}}
+  {{if .OK}}
+    <p class="st-ok">✓ Payload ist konform.</p>
+  {{else}}
+    <p class="st-bad">✗ {{len .Errors}} Abweichung(en):</p>
+    <ul class="ref-list">
+      {{- range .Errors}}
+      <li class="ref-item">
+        {{if .Field}}<code>{{.Field}}</code>{{else}}<em>payload</em>{{end}}
+        <span class="conf-dev">{{.Rule}}: {{.Message}}</span>
+      </li>
+      {{- end}}
+    </ul>
+  {{end}}
+{{end}}
+{{- end}}

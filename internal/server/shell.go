@@ -86,12 +86,19 @@ func contributions() ([]Activity, []View, []View) {
 				{ID: "queries", Title: "Queries", Body: "view-queries"},
 			},
 		},
+		{
+			ID: "studio", Title: "Teststudio", Icon: "⚗",
+			Views: []View{
+				{ID: "studio-nav", Title: "Teststudio", Body: "view-studio-nav"},
+			},
+		},
 	}
 
 	editor := []View{
 		{ID: "space", Title: "Event Space", Icon: "✦", Body: "view-space", Default: true},
 		{ID: "process", Title: "Process", Icon: "❖", Body: "view-process"},
 		{ID: "relations", Title: "Relationships", Icon: "⇄", Body: "view-relations"},
+		{ID: "schema-test", Title: "Schema-Test", Icon: "✓", Body: "view-schema-test"},
 	}
 
 	panel := []View{
