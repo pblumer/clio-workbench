@@ -7,6 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="stylesheet" href="/static/css/workbench.css">
   <script src="/static/js/htmx.min.js" defer></script>
+  <script src="/static/js/shell.js" defer></script>
   <script src="/static/js/process.js" defer></script>
   <script src="/static/js/subjects.js" defer></script>
   <script src="/static/js/inspector-follow.js" defer></script>
@@ -15,173 +16,161 @@
 <body>
   <div class="starfield" aria-hidden="true"></div>
 
-  <header class="hud-bar">
-    <div class="brand">
-      <span class="brand-mark">◇</span>
-      <span class="brand-name">CLIO&nbsp;WORKBENCH</span>
-      <span class="brand-sub">event-model drafting board</span>
-    </div>
-    <div class="status">
-      <span id="connection-slot"
-            hx-get="/connection"
-            hx-trigger="load, clio-changed from:body"
-            hx-target="this"
-            hx-swap="innerHTML">
-        <span class="pill pill-checking"><span class="pill-dot" aria-hidden="true"></span>CHECKING…</span>
-      </span>
+  <div class="wb-shell" data-panel="closed">
 
-      <details class="conn-menu">
-        <summary class="conn-btn" title="Add or change the Clio server">⚙&nbsp;Server</summary>
-        <div class="conn-pop">
-          <h3 class="conn-pop-title">Clio server</h3>
-          <p class="conn-pop-hint">
-            Point the Workbench at a running Clio. The token is kept
-            <strong>server-side</strong>.
-          </p>
-          <form class="connect-form"
-                hx-post="/connect"
-                hx-target="#connection-slot"
-                hx-swap="innerHTML"
-                hx-on::after-request="if(event.detail.successful) this.closest('details').removeAttribute('open')">
-            <label>
-              <span>URL</span>
-              <input type="url" name="url" placeholder="http://localhost:3000"
-                     value="{{.ClioURL}}" list="clio-servers" autocomplete="off">
-              {{- if .Servers}}
-              <datalist id="clio-servers">
-                {{- range .Servers}}<option value="{{.}}"></option>{{end}}
-              </datalist>
-              {{- end}}
-            </label>
-            {{- if .Servers}}
-            <div class="server-presets">
-              {{- range .Servers}}
-              <button type="button" class="server-chip"
-                      onclick="this.closest('form').querySelector('input[name=url]').value='{{.}}'">{{.}}</button>
-              {{- end}}
-            </div>
-            {{- end}}
-            <label>
-              <span>Token
-                {{- if .HasToken}} <small>(set — blank clears)</small>
-                {{- else}} <small>(optional)</small>{{end}}</span>
-              <input type="password" name="token" placeholder="bearer token" autocomplete="off">
-            </label>
-            <div class="connect-actions">
-              <button type="submit" class="btn-primary">Connect</button>
-              <button type="button" class="btn-link"
-                      hx-post="/disconnect"
-                      hx-target="#connection-slot"
-                      hx-swap="innerHTML"
-                      hx-on::after-request="this.closest('details').removeAttribute('open')">Disconnect</button>
-            </div>
-          </form>
+    {{/* ── Title bar ─────────────────────────────────────────────── */}}
+    <header class="wb-titlebar">
+      <div class="brand">
+        <span class="brand-mark">◇</span>
+        <span class="brand-name">CLIO&nbsp;WORKBENCH</span>
+        <span class="brand-sub">event-model drafting board</span>
+      </div>
+    </header>
+
+    {{/* ── Activity bar ──────────────────────────────────────────── */}}
+    <nav class="wb-activitybar" aria-label="Activities">
+      {{- range $i, $a := .Activities}}
+      <button type="button" class="wb-activity{{if eq $i 0}} is-active{{end}}"
+              data-activity="{{$a.ID}}" data-title="{{$a.Title}}"
+              title="{{$a.Title}}" aria-label="{{$a.Title}}">
+        <span class="wb-activity-icon">{{$a.Icon}}</span>
+      </button>
+      {{- end}}
+    </nav>
+
+    {{/* ── Sidebar ───────────────────────────────────────────────── */}}
+    <aside class="wb-sidebar" aria-label="Sidebar">
+      <div class="wb-sidebar-head">
+        <span class="wb-sidebar-title">{{with index .Activities 0}}{{.Title}}{{end}}</span>
+        <button type="button" class="wb-icon-btn wb-collapse" title="Sidebar einklappen"
+                aria-label="Collapse sidebar">‹</button>
+      </div>
+      <div class="wb-sidebar-body">
+        {{- range $i, $a := .Activities}}
+        <div class="wb-activity-group{{if eq $i 0}} is-active{{end}}" data-activity-group="{{$a.ID}}">
+          {{- range $a.Views}}
+          <section class="wb-sidebar-view">
+            <h2 class="wb-view-title">{{.Title}}</h2>
+            <div class="wb-view-body">{{partial .Body $}}</div>
+          </section>
+          {{- end}}
         </div>
-      </details>
-    </div>
-  </header>
+        {{- end}}
+      </div>
+    </aside>
 
-  <main class="grid">
-    <section class="panel events-panel" id="environments-slot"
-             hx-get="/environments"
-             hx-trigger="load"
-             hx-target="this"
-             hx-swap="innerHTML">
-      <div class="events-head"><h2 class="panel-title">Environment</h2></div>
-      <p class="panel-hint">loading…</p>
-    </section>
+    {{/* ── Main: editor + bottom panel ───────────────────────────── */}}
+    <main class="wb-main">
+      <section class="wb-editor" aria-label="Editor">
+        <div class="wb-tabs" role="tablist">
+          {{- range .Editor}}
+          <button type="button" class="wb-tab{{if .Default}} is-active{{end}}"
+                  role="tab" data-tab="{{.ID}}">
+            <span class="wb-tab-icon">{{.Icon}}</span>{{.Title}}
+          </button>
+          {{- end}}
+        </div>
+        <div class="wb-panes">
+          {{- range .Editor}}
+          <section class="wb-pane{{if .Default}} is-active{{end}}" role="tabpanel" data-pane="{{.ID}}">
+            {{partial .Body $}}
+          </section>
+          {{- end}}
+        </div>
+      </section>
 
-    <section class="panel events-panel" id="queries-slot"
-             hx-get="/queries"
-             hx-trigger="load, clio-changed from:body, scope-changed from:body"
-             hx-target="this"
-             hx-swap="innerHTML">
-      <div class="events-head"><h2 class="panel-title">Queries</h2></div>
-      <p class="panel-hint">loading…</p>
-    </section>
+      <section class="wb-panel" aria-label="Panel">
+        <div class="wb-panel-head">
+          <div class="wb-panel-tabs" role="tablist">
+            {{- range .Panel}}
+            <button type="button" class="wb-ptab{{if .Default}} is-active{{end}}"
+                    role="tab" data-ptab="{{.ID}}">
+              <span class="wb-tab-icon">{{.Icon}}</span>{{.Title}}
+            </button>
+            {{- end}}
+          </div>
+          <button type="button" class="wb-icon-btn wb-panel-close" title="Panel schließen"
+                  aria-label="Close panel">⌄</button>
+        </div>
+        <div class="wb-panel-panes">
+          {{- range .Panel}}
+          <section class="wb-ppane{{if .Default}} is-active{{end}}" role="tabpanel" data-ppane="{{.ID}}">
+            {{partial .Body $}}
+          </section>
+          {{- end}}
+        </div>
+      </section>
+    </main>
 
-    <section class="panel">
-      <h2 class="panel-title">New model</h2>
-      <p class="panel-hint">
-        Start a draft: an entity lifecycle (e.g. <code>Order</code>) or a
-        process (e.g. <code>Checkout</code>). Nodes are states/steps, edges are
-        event types.
-      </p>
-      <form class="new-form"
-            hx-post="/drafts"
-            hx-target="#drafts"
-            hx-swap="outerHTML"
-            hx-on::after-request="if(event.detail.successful) this.reset()">
-        <label>
-          <span>Name</span>
-          <input type="text" name="name" placeholder="Order" required autocomplete="off">
-        </label>
-        <label>
-          <span>Kind</span>
-          <select name="kind">
-            <option value="entity">Entity lifecycle</option>
-            <option value="process">Process</option>
-          </select>
-        </label>
-        <label>
-          <span>Namespace <small>(optional)</small></span>
-          <input type="text" name="namespace" placeholder="order" autocomplete="off">
-        </label>
-        <button type="submit" class="btn-primary">Create draft</button>
-      </form>
-    </section>
+    {{/* ── Status bar ────────────────────────────────────────────── */}}
+    <footer class="wb-statusbar">
+      <div class="wb-status-left">
+        <span id="connection-slot"
+              hx-get="/connection"
+              hx-trigger="load, clio-changed from:body"
+              hx-target="this"
+              hx-swap="innerHTML">
+          <span class="pill pill-checking"><span class="pill-dot" aria-hidden="true"></span>CHECKING…</span>
+        </span>
 
-    <section class="panel">
-      <h2 class="panel-title">Drafts</h2>
-      {{template "drafts.html" .Drafts}}
-    </section>
+        <details class="conn-menu">
+          <summary class="conn-btn" title="Add or change the Clio server">⚙&nbsp;Server</summary>
+          <div class="conn-pop">
+            <h3 class="conn-pop-title">Clio server</h3>
+            <p class="conn-pop-hint">
+              Point the Workbench at a running Clio. The token is kept
+              <strong>server-side</strong>.
+            </p>
+            <form class="connect-form"
+                  hx-post="/connect"
+                  hx-target="#connection-slot"
+                  hx-swap="innerHTML"
+                  hx-on::after-request="if(event.detail.successful) this.closest('details').removeAttribute('open')">
+              <label>
+                <span>URL</span>
+                <input type="url" name="url" placeholder="http://localhost:3000"
+                       value="{{.ClioURL}}" list="clio-servers" autocomplete="off">
+                {{- if .Servers}}
+                <datalist id="clio-servers">
+                  {{- range .Servers}}<option value="{{.}}"></option>{{end}}
+                </datalist>
+                {{- end}}
+              </label>
+              {{- if .Servers}}
+              <div class="server-presets">
+                {{- range .Servers}}
+                <button type="button" class="server-chip"
+                        onclick="this.closest('form').querySelector('input[name=url]').value='{{.}}'">{{.}}</button>
+                {{- end}}
+              </div>
+              {{- end}}
+              <label>
+                <span>Token
+                  {{- if .HasToken}} <small>(set — blank clears)</small>
+                  {{- else}} <small>(optional)</small>{{end}}</span>
+                <input type="password" name="token" placeholder="bearer token" autocomplete="off">
+              </label>
+              <div class="connect-actions">
+                <button type="submit" class="btn-primary">Connect</button>
+                <button type="button" class="btn-link"
+                        hx-post="/disconnect"
+                        hx-target="#connection-slot"
+                        hx-swap="innerHTML"
+                        hx-on::after-request="this.closest('details').removeAttribute('open')">Disconnect</button>
+              </div>
+            </form>
+          </div>
+        </details>
+      </div>
 
-    <section class="panel events-panel" id="events-slot"
-             hx-get="/space"
-             hx-trigger="load, clio-changed from:body, scope-changed from:body"
-             hx-target="this"
-             hx-swap="innerHTML">
-      <div class="events-head"><h2 class="panel-title">Event space</h2></div>
-      <p class="panel-hint">loading…</p>
-    </section>
-
-    <section class="panel events-panel" id="process-slot"
-             hx-get="/process"
-             hx-trigger="load, clio-changed from:body, scope-changed from:body"
-             hx-target="this"
-             hx-swap="innerHTML">
-      <div class="events-head"><h2 class="panel-title">Process</h2></div>
-      <p class="panel-hint">loading…</p>
-    </section>
-
-    <section class="panel events-panel" id="relations-slot"
-             hx-get="/relations"
-             hx-trigger="load, clio-changed from:body, scope-changed from:body"
-             hx-target="this"
-             hx-swap="innerHTML">
-      <div class="events-head"><h2 class="panel-title">Relationships</h2></div>
-      <p class="panel-hint">loading…</p>
-    </section>
-
-    <section class="panel events-panel">
-      <div class="events-head"><h2 class="panel-title">Conformance</h2></div>
-      <p class="panel-hint">Upload a BPMN template to check whether the real events follow it (deviations are highlighted). The lane/participant subject scopes the check.</p>
-      <form class="conf-form"
-            hx-post="/conformance"
-            hx-target="#conformance-result"
-            hx-swap="innerHTML"
-            hx-encoding="multipart/form-data">
-        <input type="file" name="bpmn" accept=".bpmn,.xml,application/xml,text/xml" required>
-        <button type="submit" class="btn-primary">Check conformance</button>
-      </form>
-      <div id="conformance-result"></div>
-    </section>
-  </main>
-
-  <footer class="hud-foot">
-    <span>data · <code>{{.DataDir}}</code></span>
-    <span>Stufe 0 — Gerüst</span>
-  </footer>
+      <div class="wb-status-right">
+        <button type="button" class="wb-status-btn wb-panel-toggle" title="Panel umschalten"
+                aria-label="Toggle panel">≡ Panel</button>
+        <span class="wb-status-item">data · <code>{{.DataDir}}</code></span>
+        <span class="wb-status-item wb-stage">{{.Stufe}}</span>
+      </div>
+    </footer>
+  </div>
 
   <aside id="inspector" class="inspector" aria-label="Event inspector"></aside>
 </body>

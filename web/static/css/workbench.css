@@ -1099,3 +1099,207 @@ html, body {
   letter-spacing: 1px;
 }
 .hud-foot code { color: var(--text); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Workbench shell — a VS-Code-style frame (activity bar · sidebar · editor ·
+   panel · status bar) over the space look. Driven by the contribution
+   registry (internal/server/shell.go) and shell.js. See docs/FRAMEWORK.md.
+   ════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --wb-activity-w: 52px;
+  --wb-sidebar-w: 304px;
+  --wb-title-h: 40px;
+  --wb-status-h: 28px;
+  --wb-panel-h: 260px;
+}
+
+/* The shell owns the viewport; the starfield shows through translucent areas. */
+body { height: 100vh; overflow: hidden; }
+
+.wb-shell {
+  display: grid;
+  grid-template-columns: var(--wb-activity-w) var(--wb-sidebar-w) 1fr;
+  grid-template-rows: var(--wb-title-h) 1fr var(--wb-status-h);
+  grid-template-areas:
+    "title  title   title"
+    "act    sidebar main"
+    "status status  status";
+  height: 100vh;
+  width: 100vw;
+}
+.wb-shell[data-sidebar="collapsed"] { grid-template-columns: var(--wb-activity-w) 0 1fr; }
+.wb-shell[data-panel="closed"] .wb-panel { display: none; }
+
+/* ── Title bar ── */
+.wb-titlebar {
+  grid-area: title;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--edge);
+  background: linear-gradient(180deg, rgba(11, 18, 34, 0.92), rgba(5, 7, 15, 0.55));
+}
+
+/* ── Activity bar ── */
+.wb-activitybar {
+  grid-area: act;
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 6px; gap: 4px;
+  border-right: 1px solid var(--edge);
+  background: rgba(7, 11, 22, 0.6);
+}
+.wb-activity {
+  position: relative;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-dim); font-size: 20px; line-height: 1;
+  border-radius: 9px;
+  transition: color .15s ease, background .15s ease;
+}
+.wb-activity:hover { color: var(--text); background: rgba(56, 225, 255, 0.06); }
+.wb-activity.is-active { color: var(--neon); text-shadow: var(--glow); }
+.wb-activity.is-active::before {
+  content: ""; position: absolute; left: -6px; top: 8px; bottom: 8px;
+  width: 2px; border-radius: 2px; background: var(--neon); box-shadow: var(--glow);
+}
+
+/* ── Sidebar ── */
+.wb-sidebar {
+  grid-area: sidebar;
+  display: flex; flex-direction: column; min-width: 0;
+  border-right: 1px solid var(--edge);
+  background: var(--bg-panel);
+  backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+.wb-sidebar-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px; border-bottom: 1px solid var(--edge); flex: 0 0 auto;
+}
+.wb-sidebar-title {
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--neon); text-shadow: var(--glow);
+}
+.wb-sidebar-body { flex: 1 1 auto; overflow-y: auto; padding: 14px; }
+.wb-activity-group { display: none; }
+.wb-activity-group.is-active { display: block; }
+.wb-sidebar-view + .wb-sidebar-view { margin-top: 22px; }
+.wb-view-title {
+  margin: 0 0 10px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-dim);
+}
+.wb-subhead {
+  margin: 18px 0 10px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Forschung nav (sidebar list that focuses an editor tab) */
+.wb-nav { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.wb-nav-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 11px; border: 1px solid var(--edge); border-radius: 8px;
+  background: rgba(8, 14, 28, 0.6); color: var(--text);
+  font: inherit; text-align: left; cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.wb-nav-item:hover { border-color: var(--neon-dim); box-shadow: 0 0 14px rgba(56, 225, 255, 0.12); }
+.wb-nav-icon { color: var(--neon); width: 18px; text-align: center; }
+
+/* ── Main: editor over bottom panel ── */
+.wb-main { grid-area: main; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.wb-editor { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+
+.wb-tabs {
+  display: flex; align-items: stretch; gap: 1px; flex: 0 0 auto;
+  border-bottom: 1px solid var(--edge); background: rgba(7, 11, 22, 0.5);
+  overflow-x: auto;
+}
+.wb-tab {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border: none; border-right: 1px solid var(--edge);
+  background: none; color: var(--text-dim); font: inherit; cursor: pointer;
+  white-space: nowrap;
+  transition: color .15s ease, background .15s ease;
+}
+.wb-tab:hover { color: var(--text); background: rgba(56, 225, 255, 0.05); }
+.wb-tab.is-active {
+  color: var(--neon); background: var(--bg-panel);
+  box-shadow: inset 0 2px 0 var(--neon);
+}
+.wb-tab-icon { color: inherit; }
+
+.wb-panes { flex: 1 1 auto; min-height: 0; position: relative; }
+.wb-pane { display: none; position: absolute; inset: 0; overflow: auto; padding: 18px 20px; }
+.wb-pane.is-active { display: block; }
+.wb-fill { min-height: 100%; }
+
+/* ── Bottom panel ── */
+.wb-panel {
+  flex: 0 0 var(--wb-panel-h); display: flex; flex-direction: column; min-height: 0;
+  border-top: 1px solid var(--edge); background: rgba(7, 11, 22, 0.55);
+}
+.wb-panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  border-bottom: 1px solid var(--edge); flex: 0 0 auto;
+}
+.wb-panel-tabs { display: flex; }
+.wb-ptab {
+  padding: 7px 14px; border: none; background: none; color: var(--text-dim);
+  font: inherit; cursor: pointer; letter-spacing: 1px;
+  display: flex; align-items: center; gap: 7px;
+}
+.wb-ptab:hover { color: var(--text); }
+.wb-ptab.is-active { color: var(--neon); box-shadow: inset 0 -2px 0 var(--neon); }
+.wb-panel-panes { flex: 1 1 auto; min-height: 0; position: relative; }
+.wb-ppane { display: none; position: absolute; inset: 0; overflow: auto; padding: 16px 18px; }
+.wb-ppane.is-active { display: block; }
+.wb-output {
+  margin: 10px 0 0; padding: 10px; max-height: 100%; overflow: auto;
+  border: 1px solid var(--edge); border-radius: 8px;
+  background: rgba(5, 10, 20, 0.7); color: var(--text-dim);
+  font-size: 12px; white-space: pre-wrap;
+}
+
+/* ── Status bar ── */
+.wb-statusbar {
+  grid-area: status;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px; border-top: 1px solid var(--edge);
+  background: linear-gradient(180deg, rgba(11, 18, 34, 0.9), rgba(5, 7, 15, 0.6));
+  font-size: 12px; letter-spacing: 1px;
+}
+.wb-status-left, .wb-status-right { display: flex; align-items: center; gap: 12px; }
+.wb-status-item { color: var(--text-dim); }
+.wb-status-item code { color: var(--text); }
+.wb-stage { color: var(--neon-dim); }
+.wb-status-btn {
+  background: none; border: 1px solid var(--edge); border-radius: 6px;
+  color: var(--text-dim); font: inherit; padding: 2px 9px; cursor: pointer; letter-spacing: 1px;
+}
+.wb-status-btn:hover { color: var(--neon); border-color: var(--neon-dim); }
+
+/* In the status bar the connect menu must open upward, not down. */
+.wb-statusbar .conn-pop { top: auto; bottom: calc(100% + 10px); }
+
+/* Shared small icon button (sidebar collapse, panel close). */
+.wb-icon-btn {
+  background: none; border: 1px solid transparent; border-radius: 6px;
+  color: var(--text-dim); font-size: 14px; line-height: 1; cursor: pointer;
+  width: 24px; height: 24px;
+}
+.wb-icon-btn:hover { color: var(--neon); border-color: var(--neon-dim); }
+
+.wb-hint { margin: 0 0 14px; color: var(--text-dim); font-size: 13px; }
+.wb-hint code { color: var(--text); }
+
+@media (max-width: 760px) {
+  .wb-shell, .wb-shell[data-sidebar="collapsed"] {
+    grid-template-columns: var(--wb-activity-w) 1fr;
+    grid-template-areas:
+      "title  title"
+      "act    main"
+      "status status";
+  }
+  .wb-sidebar { display: none; }
+}

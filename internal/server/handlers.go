@@ -28,12 +28,19 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, "list drafts", err)
 		return
 	}
-	s.render(w, "index.html", indexData{
-		ClioURL:  s.clio.BaseURL(),
-		HasToken: s.clio.HasToken(),
-		Servers:  s.cfg.Servers,
-		DataDir:  s.cfg.DataDir,
-		Drafts:   drafts,
+	activities, editor, panel := contributions()
+	s.render(w, "index.html", shellData{
+		indexData: indexData{
+			ClioURL:  s.clio.BaseURL(),
+			HasToken: s.clio.HasToken(),
+			Servers:  s.cfg.Servers,
+			DataDir:  s.cfg.DataDir,
+			Drafts:   drafts,
+		},
+		Activities: activities,
+		Editor:     editor,
+		Panel:      panel,
+		Stufe:      "Stufe 0 — Gerüst",
 	})
 }
 

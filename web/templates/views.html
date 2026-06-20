@@ -1,0 +1,118 @@
+{{/*
+  views.html — bodies for the contributed Views (see internal/server/shell.go).
+
+  Each template here is named by a View's .Body and is rendered by the shell via
+  the {{partial}} func with the shellData root as its data context (`.`). The
+  bodies keep the original fragment slot ids (#events-slot, #process-slot, …)
+  and their htmx triggers, so the analysis fragments and their JS are reused
+  verbatim inside the new chrome.
+*/}}
+
+{{/* ── Sidebar · Forschung: a generated nav that focuses an editor tab ── */}}
+{{define "view-explore-nav" -}}
+<p class="wb-hint">Öffne eine Analyse-Ansicht im Editor. Umfang und Queries
+  (links unter <strong>Umgebung</strong>) speisen jede Ansicht.</p>
+<ul class="wb-nav">
+  {{- range .Editor}}
+  <li><button type="button" class="wb-nav-item" data-open-tab="{{.ID}}">
+    <span class="wb-nav-icon">{{.Icon}}</span>{{.Title}}
+  </button></li>
+  {{- end}}
+</ul>
+{{- end}}
+
+{{/* ── Sidebar · Modelle: new-model form + drafts list ── */}}
+{{define "view-models" -}}
+<form class="new-form"
+      hx-post="/drafts"
+      hx-target="#drafts"
+      hx-swap="outerHTML"
+      hx-on::after-request="if(event.detail.successful) this.reset()">
+  <label>
+    <span>Name</span>
+    <input type="text" name="name" placeholder="Order" required autocomplete="off">
+  </label>
+  <label>
+    <span>Kind</span>
+    <select name="kind">
+      <option value="entity">Entity lifecycle</option>
+      <option value="process">Process</option>
+    </select>
+  </label>
+  <label>
+    <span>Namespace <small>(optional)</small></span>
+    <input type="text" name="namespace" placeholder="order" autocomplete="off">
+  </label>
+  <button type="submit" class="btn-primary">Create draft</button>
+</form>
+<div class="wb-subhead">Drafts</div>
+{{template "drafts.html" .Drafts}}
+{{- end}}
+
+{{/* ── Sidebar · Umgebung: environment selector ── */}}
+{{define "view-environments" -}}
+<div id="environments-slot"
+     hx-get="/environments" hx-trigger="load"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Sidebar · Umgebung: query pipeline ── */}}
+{{define "view-queries" -}}
+<div id="queries-slot"
+     hx-get="/queries" hx-trigger="load, clio-changed from:body, scope-changed from:body"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Event Space ── */}}
+{{define "view-space" -}}
+<div id="events-slot" class="wb-fill"
+     hx-get="/space" hx-trigger="load, clio-changed from:body, scope-changed from:body"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Process viewer ── */}}
+{{define "view-process" -}}
+<div id="process-slot" class="wb-fill"
+     hx-get="/process" hx-trigger="load, clio-changed from:body, scope-changed from:body"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Relationships ── */}}
+{{define "view-relations" -}}
+<div id="relations-slot" class="wb-fill"
+     hx-get="/relations" hx-trigger="load, clio-changed from:body, scope-changed from:body"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Panel: Conformance check (Soll/Ist) ── */}}
+{{define "view-conformance" -}}
+<p class="wb-hint">Lade ein BPMN-Template hoch, um zu prüfen, ob die realen Events
+  ihm folgen (Abweichungen werden hervorgehoben). Das Lane-/Participant-Subject
+  bestimmt den geprüften Bereich.</p>
+<form class="conf-form"
+      hx-post="/conformance"
+      hx-target="#conformance-result"
+      hx-swap="innerHTML"
+      hx-encoding="multipart/form-data">
+  <input type="file" name="bpmn" accept=".bpmn,.xml,application/xml,text/xml" required>
+  <button type="submit" class="btn-primary">Check conformance</button>
+</form>
+<div id="conformance-result"></div>
+{{- end}}
+
+{{/* ── Panel: Output / scratch log ── */}}
+{{define "view-output" -}}
+<p class="wb-hint">Arbeitsbereich-Ausgabe. Datenablage:
+  <code>{{.DataDir}}</code></p>
+<pre id="wb-output" class="wb-output" aria-live="polite"></pre>
+{{- end}}
