@@ -142,6 +142,10 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("POST /studio/push/arm", s.handlePushArm)
 	s.mux.HandleFunc("POST /studio/push/disarm", s.handlePushDisarm)
 	s.mux.HandleFunc("POST /studio/push/run", s.handlePushRun)
+
+	// Test Studio: Soll/Ist Gegenprobe on the shared engine (WP-9).
+	s.mux.HandleFunc("GET /studio/gegenprobe", s.handleGegenprobe)
+	s.mux.HandleFunc("POST /studio/gegenprobe/run", s.handleGegenprobeRun)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)

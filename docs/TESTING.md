@@ -24,7 +24,7 @@ go tool cover -html=cover.out                  # zeilengenau im Browser
 | `internal/producergen` | 99,3 % |
 | `internal/clio` | 98,2 % |
 | `internal/schemagen` | 98,5 % |
-| `internal/server` | 97,8 % |
+| `internal/server` | 97,9 % |
 | `internal/envstore` | 97,1 % |
 | `internal/testreport` | 96,8 % |
 | `internal/scenario` | 95,3 % |

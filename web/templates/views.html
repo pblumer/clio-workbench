@@ -114,6 +114,9 @@
   <li><button type="button" class="wb-nav-item" data-open-tab="push">
     <span class="wb-nav-icon">⇪</span>Instanz / Push
   </button></li>
+  <li><button type="button" class="wb-nav-item" data-open-tab="gegenprobe">
+    <span class="wb-nav-icon">⚖</span>Gegenprobe
+  </button></li>
 </ul>
 {{- end}}
 
@@ -139,6 +142,15 @@
 {{define "view-push" -}}
 <div id="push-slot" class="wb-fill"
      hx-get="/studio/push" hx-trigger="load, clio-changed from:body"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Gegenprobe (Soll/Ist) ── */}}
+{{define "view-gegenprobe" -}}
+<div id="gegen-slot" class="wb-fill"
+     hx-get="/studio/gegenprobe" hx-trigger="load"
      hx-target="this" hx-swap="innerHTML">
   <p class="wb-hint">loading…</p>
 </div>

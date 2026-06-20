@@ -1,6 +1,6 @@
 # Teststudio — Implementierungs-Roadmap & Arbeitspakete
 
-**Status:** `IN ARBEIT` · **Bezug:** [`TESTSTUDIO.md`](TESTSTUDIO.md) (Konzept) · [`TESTING.md`](TESTING.md) (Test-Politik)
+**Status:** `ABGESCHLOSSEN` (WP-1…WP-9) · **Bezug:** [`TESTSTUDIO.md`](TESTSTUDIO.md) (Konzept) · [`TESTING.md`](TESTING.md) (Test-Politik)
 
 Dieses Dokument übersetzt das Konzept aus [`TESTSTUDIO.md`](TESTSTUDIO.md) in
 konkrete, abnahmefähige **Arbeitspakete (WP)**. Jedes WP ist für sich
@@ -198,6 +198,17 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
   **eine** Engine aus WP-1 ziehen, statt zwei Implementierungen zu pflegen
   (`TESTSTUDIO.md` §6, §10/T5).
 - **Abnahme:** bestehende Gegenprobe-Tests bleiben grün; Doppel-Logik entfernt.
+- **Status:** ✅ fertig — mit einer bewussten Präzisierung. Neue
+  **Draft-native Gegenprobe** (`gegenprobe.go`): liest reale Events einer Instanz
+  (scoped auf das Subject-Präfix des Modells), gruppiert sie pro Subject und
+  prüft jede Sequenz mit **`validate.CheckSequence`** — die Soll-Seite
+  (Szenarien/Generator/Push) und die Ist-Seite teilen damit dieselbe Engine. Sie
+  beantwortet die drei §7-Fragen (abweichende Subjects, toter Entwurf, unbekannte
+  Typen). Die ältere BPMN-Upload-Konformität (`conformance.go` /
+  `process.CheckConformance`) ist ein **anderer Algorithmus** (linearer
+  Sequenz-Matcher über ein BPMN, kein Graph-Walk) und bleibt als eigenes
+  Workbench-Feature — sie ist keine Doppel-Logik, die sich sinnvoll
+  zusammenführen ließe. Tests grün, `gegenprobe.go` zu 100 %.
 
 ---
 
@@ -224,4 +235,8 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
 | WP-6 Mutation + Report | T2 | M | ✅ fertig |
 | WP-7 `internal/producergen` | T3 | L | ✅ fertig |
 | WP-8 Push / Round-Trip + Scope | T4 | M–L | ✅ fertig |
-| WP-9 Gegenprobe konsolidieren | T5 | M | ⬜ |
+| WP-9 Gegenprobe konsolidieren | T5 | M | ✅ fertig |
+
+**Alle Arbeitspakete (T0–T5) sind abgeschlossen.** Das Teststudio steht: Engine,
+Schema-Test, Szenarien, Generator + Report, Producer-Code, Instanz-Push und die
+Soll/Ist-Gegenprobe — Soll- und Ist-Seite auf derselben `internal/validate`-Engine.

@@ -364,6 +364,62 @@
 {{end}}
 {{- end}}
 
+{{/* ── Gegenprobe Soll/Ist (WP-9) ── */}}
+{{define "gegenprobe-form" -}}
+<p class="wb-hint">Soll/Ist: liest die realen Events einer verbundenen Clio und prüft
+  jede Subject-Sequenz gegen die Zustandsmaschine deines Modells — mit derselben
+  Engine wie die Szenarien (Teststudio §7).</p>
+{{if not .Drafts}}
+  <p class="wb-hint">Noch keine Modelle. Lege links unter <strong>Modelle</strong> eines an.</p>
+{{else}}
+<form class="st-form gen-form" hx-post="/studio/gegenprobe/run" hx-target="#gegen-result" hx-swap="innerHTML">
+  <label>
+    <span>Modell</span>
+    <select name="draft">
+      {{- range .Drafts}}
+      <option value="{{.ID}}" {{if eq .ID $.DraftID}}selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <button type="submit" class="btn-primary">Gegen reale Events prüfen</button>
+</form>
+<div id="gegen-result" class="st-result"></div>
+{{end}}
+{{- end}}
+
+{{define "gegenprobe-result" -}}
+{{if eq .State "ok"}}
+  {{if eq .Subjects 0}}
+    <p class="panel-hint">Keine Events unter <code>{{if .Scope}}{{.Scope}}{{else}}/{{end}}</code> gefunden.</p>
+  {{else}}
+  <div class="gen-summary">
+    <span class="gen-stat {{if eq .Conforming .Subjects}}gen-ok{{else}}gen-bad{{end}}">{{.Conforming}}/{{.Subjects}} Subjects konform ({{.FitPct}}%)</span>
+    {{if .Scope}}<span class="gen-stat">Scope <code>{{.Scope}}</code></span>{{end}}
+  </div>
+  {{if .Deviations}}
+  <h3 class="rel-sub">Abweichende Subjects <small>(Ist widerspricht Soll)</small></h3>
+  <ul class="ref-list">
+    {{- range .Deviations}}
+    <li class="ref-item"><code class="ref-from">{{.Subject}}</code> <span class="conf-dev">{{.Reason}}</span></li>
+    {{- end}}
+  </ul>
+  {{else}}
+  <p class="panel-hint">Keine Abweichungen — jedes Subject folgt dem Entwurf. 🎉</p>
+  {{end}}
+  {{if .UnusedTypes}}
+  <h3 class="rel-sub">Toter Entwurf <small>(Event-Typen, die real nie vorkommen)</small></h3>
+  <ul class="ref-list">{{range .UnusedTypes}}<li class="ref-item"><code>{{.}}</code></li>{{end}}</ul>
+  {{end}}
+  {{if .UnknownTypes}}
+  <h3 class="rel-sub">Unbekannte Event-Typen <small>(real vorhanden, fehlen im Modell)</small></h3>
+  <ul class="ref-list">{{range .UnknownTypes}}<li class="ref-item"><code>{{.}}</code></li>{{end}}</ul>
+  {{end}}
+  {{end}}
+{{else}}
+  <p class="panel-hint bpmn-state bpmn-state-{{.State}}">{{.Message}}</p>
+{{end}}
+{{- end}}
+
 {{/* ── Result of one check ── */}}
 {{define "studio-schema-result" -}}
 {{if .Message}}
