@@ -191,7 +191,7 @@ Tests sind ein **eigenes** versionierbares Artefakt neben dem Draft, nicht Teil
 des Modells. Sie referenzieren das Modell, kopieren es aber nicht.
 
 ```go
-// Skizze — finale Form offen (Abschnitt 10)
+// Skizze — finale Form offen (Abschnitt 12)
 type Suite struct {
     ID, Name   string
     DraftID    string      // welches Modell wird geprüft
@@ -317,7 +317,84 @@ Regressionsnachweis tauglich.
 
 ---
 
-## 9. UI & Einbettung in die Shell
+## 9. Producer-Code in mehreren Sprachen & Plattformen
+
+Ein bestandener Test beweist, dass das *Modell* trägt. Den **Producer** — den
+Code, der die Events tatsächlich an Clio anhängt — muss aber noch jemand
+schreiben. Das Studio bietet ihn als generiertes **Beispiel/Gerüst** an: aus
+demselben Modell, gegen das die Szenarien prüfen, entsteht Producer-Code in
+mehreren Sprachen und für mehrere Plattformen — **konform per Konstruktion**.
+
+Das schließt die Schleife *Entwurf → Bauen → Testen*: Weil Producer-Code und
+Tests aus derselben Quelle stammen, emittiert der generierte Producer genau die
+Events, die die Szenarien validieren — und das Studio kann es beweisen
+(Abschnitt 9.3).
+
+### 9.1 Was generiert wird
+
+Pro Event-Typ erzeugt das Studio aus dem Modell:
+
+- einen **typisierten** Payload-Träger (Struct/Klasse/Interface) aus dem
+  `data`-JSON-Schema des Event-Typs;
+- einen **Aufruf** gegen Clios öffentlichen Append-/Create-Endpunkt, der das
+  CloudEvents-Envelope korrekt füllt (`type`, `subject`, `data`, ggf.
+  `source`/`id`);
+- einen **Subject-Helfer** aus dem Subject-Stil des Modells (`/orders/{id}`),
+  damit Subjects nicht von Hand zusammengestückelt werden;
+- **Auth** über Bearer-Token, das aus Env/Config gelesen wird — **nie**
+  hartkodiert im Snippet.
+
+Optional füllt der Schema-Faker (Abschnitt 4.2) die Beispielaufrufe mit
+schema-gültigen Beispieldaten, sodass das Snippet **sofort lauffähig** gegen
+eine Clio ist, nicht nur ein Gerippe.
+
+### 9.2 Sprachen & Plattformen
+
+Je Sprache ein eigenes, eingebettetes `text/template` — kein Build-Step, kein
+CDN, alles im Binary:
+
+| Sprache / Plattform | Variante |
+|---|---|
+| Go | `net/http` |
+| TypeScript / JavaScript | Node (`fetch`/`undici`) **und** Browser-`fetch` |
+| Python | `requests` / `httpx` |
+| Java | `java.net.http.HttpClient` |
+| C# / .NET | `HttpClient` |
+| Rust | `reqwest` |
+| `curl` / Shell | kleinster gemeinsamer Nenner; taugt zugleich als Smoke-Test |
+| CloudEvents-SDK | wo ein offizielles SDK existiert (Clio ist CloudEvents-basiert) |
+
+Die Liste ist eine Empfehlung, kein Versprechen — welche Sprachen v1 ausliefert,
+ist eine offene Frage (Abschnitt 12).
+
+### 9.3 Designentscheidungen & ehrliche Einordnung
+
+- **Generiert aus dem Entwurf**, wie Schemas und Doku (`WORKBENCH.md` §6). Der
+  Entwurf bleibt die Quelle der Wahrheit; der Code wird daraus *erzeugt*.
+- **Gerüst, kein SDK.** Es sind **Beispiele/Startpunkte** zum Kopieren — kein
+  versioniertes, gepflegtes SDK. Sie zeigen die *Form*; ab dem Kopieren gehört
+  der Code der Entwicklerin. Das ehrlich zu benennen verhindert die falsche
+  Erwartung einer mitwachsenden Client-Bibliothek.
+- **Nur die öffentliche API.** Die Templates rufen ausschließlich dokumentierte
+  HTTP-Endpunkte; das Token kommt aus der Umgebung des *Producers*, nie inline.
+- **Beweisbar korrekt, nicht nur plausibel.** Das Studio kann einen generierten
+  Beispielaufruf gegen eine **Wegwerf-Instanz** (Abschnitt 7) absetzen und das
+  angehängte Event mit der Engine (Abschnitt 6) zurückprüfen — so ist belegt,
+  dass das Beispiel wirklich konforme Events erzeugt.
+
+### 9.4 Abgrenzung — Studio oder Workbench-Export?
+
+Producer-Code ist streng genommen ein **Generierungs-Artefakt** wie der
+Schema-/Doku-Export (`WORKBENCH.md` §6) und könnte ebenso dort sitzen. Er steht
+hier, weil seine Daseinsberechtigung das *Testen* ist: Der Producer ist das
+Gegenstück, das die Szenarien validieren, und entsteht aus derselben Quelle. Wo
+das Feature am Ende in der UI hängt (Studio-Tab vs. Export-Dialog), ist eine
+Detailfrage; die Generierungslogik (`internal/producergen`) ist davon
+unabhängig.
+
+---
+
+## 10. UI & Einbettung in die Shell
 
 Das Studio fügt sich in die VS-Code-Schale ein (`FRAMEWORK.md`) — kein
 Sonderweg:
@@ -326,7 +403,8 @@ Sonderweg:
 - **Sidebar**: Suites & Szenarien (anlegen, auswählen, Seed setzen), Test-Scope
   (Wegwerf-Ziel, Subject-Präfix).
 - **Editor-Tabs**: *Generator* (Strom erzeugen & vorschauen), *Szenario-Editor*,
-  *Pfad-Ansicht* (durchlaufener Pfad im Graphen, Space-Look).
+  *Pfad-Ansicht* (durchlaufener Pfad im Graphen, Space-Look), *Producer-Code*
+  (Sprachumschalter, Snippet pro Event-Typ, „kopieren"/„herunterladen").
 - **Panel unten**: *Testlauf* (Ergebnisliste, rot/grün) neben dem bestehenden
   *Output*/*Konformität* — fachlich derselbe Ort wie die Gegenprobe.
 
@@ -334,7 +412,7 @@ Eine neue Ansicht ist nach `FRAMEWORK.md` je ein Handler + ein Body-Template in
 `views.html` + ein `View`-Eintrag in `contributions()`. Keine
 Framework-Änderung nötig.
 
-### 9.1 Vorgeschlagene Go-Pakete
+### 10.1 Vorgeschlagene Go-Pakete
 
 Konsistent mit der bestehenden Paketnamensgebung (`schemagen`, `bpmngen`,
 `process`, `store`, …):
@@ -344,8 +422,9 @@ Konsistent mit der bestehenden Paketnamensgebung (`schemagen`, `bpmngen`,
 | `internal/scenario` | Datenmodell + Store für Suites/Cases (analog `store`/`envstore`) |
 | `internal/simulator` | Graph-Walk + Payload-Faker + Mutation (Abschnitt 4) |
 | `internal/validate` | Schema-, Übergangs-, Invarianten-Engine (Abschnitt 6); **geteilt** mit der Gegenprobe |
+| `internal/producergen` | Producer-Code je Sprache/Plattform aus dem Modell (Abschnitt 9) |
 | `internal/testreport` | Report-Rendering Markdown/JSON (Abschnitt 8) |
-| `internal/server` | Handler + Shell-Beiträge (Abschnitt 9) |
+| `internal/server` | Handler + Shell-Beiträge (Abschnitt 10) |
 
 `internal/validate` ist bewusst das gemeinsame Herz: Die Gegenprobe
 (`conformance.go`) soll künftig dieselbe Übergangs-/Schema-Prüfung nutzen, statt
@@ -353,7 +432,7 @@ eine zweite Implementierung zu pflegen.
 
 ---
 
-## 10. Roadmap (Clio-Stufenlogik)
+## 11. Roadmap (Clio-Stufenlogik)
 
 Greift in die Workbench-Stufen (`WORKBENCH.md` §8): das Studio setzt sinnvoll
 nach **Stufe 2** (Event-Typen & Schemas existieren) auf.
@@ -364,15 +443,18 @@ nach **Stufe 2** (Event-Typen & Schemas existieren) auf.
   Szenario-Editor, Sequenz-Tests (3.2/3.3), Pfad-Ansicht im Graphen.
 - **Stufe T2 — Generator.** Graph-Walk + Schema-Faker + Mutation (Abschnitt 4),
   property-based Stichproben, Report (Abschnitt 8).
-- **Stufe T3 — Instanz-Integration.** Betanken/Fixtures und Round-Trip gegen
+- **Stufe T3 — Producer-Code.** `internal/producergen`: Beispiel-Producer je
+  Sprache/Plattform aus dem Modell (Abschnitt 9), mit dem Schema-Faker gefüllt
+  und über die Engine als konform belegt.
+- **Stufe T4 — Instanz-Integration.** Betanken/Fixtures und Round-Trip gegen
   eine **Wegwerf-Instanz** mit erzwungenem Test-Scope (Abschnitt 7).
-- **Stufe T4 — Konsolidierung.** Die Gegenprobe (`WORKBENCH.md` §7) auf
+- **Stufe T5 — Konsolidierung.** Die Gegenprobe (`WORKBENCH.md` §7) auf
   `internal/validate` umstellen, sodass Soll-Tests und Ist-Prüfung denselben
   Code teilen.
 
 ---
 
-## 11. Offene Fragen
+## 12. Offene Fragen
 
 1. **JSON-Schema-Bibliothek.** Welche reine-Go-Bibliothek („embedbar, kein CDN,
    kompatible Lizenz") für die Validierung — und deckt sie den Schema-Dialekt
@@ -392,3 +474,11 @@ nach **Stufe 2** (Event-Typen & Schemas existieren) auf.
 6. **Determinismus über Versionen.** Bleibt ein Seed stabil, wenn sich die
    Generator-Logik ändert? Vermutlich nein — wie wird das im Report kenntlich
    gemacht, damit ein „grün→rot" nicht fälschlich als Regression gilt?
+7. **Producer-Sprachen in v1.** Welche der Sprachen/Plattformen aus Abschnitt 9.2
+   liefert v1 aus — und nach welchem Kriterium (Verbreitung in der Clio-Nutzung,
+   Wartbarkeit der Templates)? Lieber wenige, gepflegte Beispiele als viele
+   halbgare.
+8. **Producer-Code: Studio oder Export?** Hängt der Producer-Code am Studio-Tab
+   oder am Workbench-Export-Dialog (`WORKBENCH.md` §6)? Die Logik
+   (`internal/producergen`) ist davon unabhängig — es ist eine reine
+   UI-/Einordnungsfrage (Abschnitt 9.4).
