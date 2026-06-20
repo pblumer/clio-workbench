@@ -90,6 +90,11 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
 - Datei-Store unter `WORKBENCH_DATA` (atomare JSON-Writes), analog
   `internal/store` / `internal/envstore`.
 - **Abnahme:** Round-Trip Speichern/Laden, Validierung, Drift-Flag; Coverage-Latte.
+- **Status:** ✅ fertig. `internal/scenario` mit `Suite`/`Case`/`Step`/
+  `Expectation`, Datei-Store unter `<DataDir>/scenarios/` (Unterverzeichnis, damit
+  Suiten nicht in die Draft-Liste geraten), `Validate`, sowie `DraftRev`/`Drift`
+  (Fingerprint nur über test-relevante Modellinhalte, ignoriert Layout/Zeit).
+  95,3 % Coverage.
 
 ### WP-4 · Szenario-Editor + Sequenz-Tests + Pfad-Ansicht · **M–L**
 
@@ -181,7 +186,7 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
 |---|---|---|---|
 | WP-1 `internal/validate` | T0 | M | ✅ fertig |
 | WP-2 Studio-Shell + Schema-Test | T0 | S–M | ✅ fertig |
-| WP-3 `internal/scenario` | T1 | M | ⬜ |
+| WP-3 `internal/scenario` | T1 | M | ✅ fertig |
 | WP-4 Szenario-Editor + Pfad | T1 | M–L | ⬜ |
 | WP-5 `internal/simulator` | T2 | M–L | ⬜ |
 | WP-6 Mutation + Report | T2 | M | ⬜ |

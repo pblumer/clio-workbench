@@ -242,6 +242,16 @@ func TestCheckPayloadInvalidJSON(t *testing.T) {
 	}
 }
 
+func TestCheckStringFormatDateTime(t *testing.T) {
+	fs := []model.Field{{Name: "ts", Type: "string", Format: "date-time"}}
+	if errs, _ := CheckPayload(fs, json.RawMessage(`{"ts":"2026-06-20T10:00:00Z"}`)); len(errs) != 0 {
+		t.Fatalf("valid date-time string should pass: %+v", errs)
+	}
+	if errs, _ := CheckPayload(fs, json.RawMessage(`{"ts":"nope"}`)); !hasError(errs, "ts", "format") {
+		t.Fatalf("invalid date-time string should fail")
+	}
+}
+
 func TestCheckStringFormatUnknownPasses(t *testing.T) {
 	errs, err := CheckPayload([]model.Field{{Name: "x", Type: "string", Format: "phone"}}, json.RawMessage(`{"x":"whatever"}`))
 	if err != nil || len(errs) != 0 {

@@ -18,11 +18,13 @@ go tool cover -html=cover.out                  # zeilengenau im Browser
 | `internal/config` | 100,0 % |
 | `internal/model` | 100,0 % |
 | `internal/bpmngen` | 100,0 % |
+| `internal/validate` | 100,0 % |
 | `internal/process` | 99,6 % |
 | `internal/clio` | 98,5 % |
 | `internal/schemagen` | 98,5 % |
-| `internal/server` | 98,4 % |
+| `internal/server` | 98,5 % |
 | `internal/envstore` | 97,1 % |
+| `internal/scenario` | 95,3 % |
 | `internal/store` | 95,2 % |
 | `cmd/clio-workbench` | 82,8 % (`run()` 96 %) |
 
@@ -84,6 +86,13 @@ Zwei wiederkehrende Gründe für „echte" Unerreichbarkeit:
 ### `internal/envstore/envstore.go` (`save`)
 - `json.MarshalIndent`-Fehler (reiner Struct).
 - `os.WriteFile`/`os.Rename`-I/O-Fehler (root-uid, s. o.).
+
+### `internal/scenario/store.go`
+- `Delete` — der `os.Remove`-Fehler außer `ErrNotExist` (Schreibsperre; root-uid,
+  s. o.).
+- `write` — `os.CreateTemp`/`tmp.Write`/`tmp.Close`/`os.Rename`-I/O-Fehler
+  (root-uid, s. o.). Der `json.MarshalIndent`-Fehler **ist** gedeckt: eine
+  `Step.Data` mit ungültigem Roh-JSON lässt ihn fehlschlagen.
 
 ### `internal/schemagen/schemagen.go`
 - `SchemaCollection` — `json.MarshalIndent`-Fehler; marshalt `json.RawMessage`
