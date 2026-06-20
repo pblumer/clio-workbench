@@ -1,0 +1,63 @@
+{
+  "id": "order-lifecycle",
+  "name": "Order Lifecycle",
+  "kind": "entity",
+  "namespace": "order",
+  "subjectStyle": "/orders/{id}",
+  "nodes": [
+    {"id": "cart",      "label": "Warenkorb",    "start": true, "x": 100, "y": 100},
+    {"id": "placed",    "label": "Aufgegeben",   "x": 300, "y": 100},
+    {"id": "paid",      "label": "Bezahlt",      "x": 500, "y": 100},
+    {"id": "shipped",   "label": "Versendet",    "x": 700, "y": 100},
+    {"id": "completed", "label": "Abgeschlossen", "end": true, "x": 900, "y": 100},
+    {"id": "cancelled", "label": "Storniert",    "end": true, "x": 500, "y": 300}
+  ],
+  "edges": [
+    {"id": "e1", "type": "order-placed",     "from": "cart",    "to": "placed"},
+    {"id": "e2", "type": "order-paid",       "from": "placed",  "to": "paid"},
+    {"id": "e3", "type": "order-shipped",    "from": "paid",    "to": "shipped"},
+    {"id": "e4", "type": "order-delivered",  "from": "shipped", "to": "completed"},
+    {"id": "e5", "type": "order-cancelled",  "from": "cart",    "to": "cancelled"},
+    {"id": "e6", "type": "order-cancelled",  "from": "placed",  "to": "cancelled"}
+  ],
+  "steps": [
+    {
+      "id": "s1", "kind": "event", "name": "order-placed",
+      "phase": "active",
+      "fields": [
+        {"id": "f1", "name": "customerEmail", "type": "string",  "required": true, "format": "email"},
+        {"id": "f2", "name": "itemsCount",    "type": "integer", "required": true}
+      ]
+    },
+    {
+      "id": "s2", "kind": "event", "name": "order-paid",
+      "phase": "active",
+      "fields": [
+        {"id": "f3", "name": "amount", "type": "number",   "required": true},
+        {"id": "f4", "name": "paidAt", "type": "datetime", "required": true}
+      ]
+    },
+    {
+      "id": "s3", "kind": "event", "name": "order-shipped",
+      "phase": "active",
+      "fields": [
+        {"id": "f5", "name": "trackingId", "type": "string", "required": true, "format": "uuid"},
+        {"id": "f6", "name": "carrier",    "type": "string", "required": true, "enum": ["DHL", "UPS", "FedEx"]}
+      ]
+    },
+    {
+      "id": "s4", "kind": "event", "name": "order-delivered",
+      "phase": "complete",
+      "fields": [
+        {"id": "f7", "name": "deliveredAt", "type": "datetime", "required": true}
+      ]
+    },
+    {
+      "id": "s5", "kind": "event", "name": "order-cancelled",
+      "phase": "error",
+      "fields": [
+        {"id": "f8", "name": "reason", "type": "string", "required": true}
+      ]
+    }
+  ]
+}

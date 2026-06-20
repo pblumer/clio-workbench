@@ -1,0 +1,141 @@
+{
+  "id": "order-lifecycle-tests",
+  "name": "Order Lifecycle – Demo-Testsuite",
+  "draftId": "order-lifecycle",
+  "draftRev": "c6ac54f6d18d",
+  "createdAt": "2025-06-20T10:00:00Z",
+  "updatedAt": "2025-06-20T10:00:00Z",
+  "cases": [
+    {
+      "id": "happy-path-standard",
+      "name": "Happy Path – Standard Delivery",
+      "seed": 42,
+      "steps": [
+        {
+          "type": "order-placed",
+          "subject": "/orders/ORD-2025-001",
+          "data": {
+            "customerEmail": "alice@example.com",
+            "itemsCount": 3
+          }
+        },
+        {
+          "type": "order-paid",
+          "data": {
+            "amount": 149.99,
+            "paidAt": "2025-06-20T10:00:00Z"
+          }
+        },
+        {
+          "type": "order-shipped",
+          "data": {
+            "trackingId": "550e8400-e29b-41d4-a716-446655440000",
+            "carrier": "DHL"
+          }
+        },
+        {
+          "type": "order-delivered",
+          "data": {
+            "deliveredAt": "2025-06-22T14:30:00Z"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "accept",
+        "endState": "completed"
+      }
+    },
+    {
+      "id": "cancel-before-payment",
+      "name": "Stornierung vor Bezahlung",
+      "seed": 43,
+      "steps": [
+        {
+          "type": "order-placed",
+          "subject": "/orders/ORD-2025-002",
+          "data": {
+            "customerEmail": "bob@example.com",
+            "itemsCount": 1
+          }
+        },
+        {
+          "type": "order-cancelled",
+          "data": {
+            "reason": "Kunde hat abgelehnt"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "accept",
+        "endState": "cancelled"
+      }
+    },
+    {
+      "id": "invalid-sequence-ship-without-pay",
+      "name": "Falsche Sequenz – Lieferung ohne Bezahlung",
+      "seed": 44,
+      "steps": [
+        {
+          "type": "order-placed",
+          "subject": "/orders/ORD-2025-003",
+          "data": {
+            "customerEmail": "charlie@example.com",
+            "itemsCount": 2
+          }
+        },
+        {
+          "type": "order-shipped",
+          "data": {
+            "trackingId": "660e8400-e29b-41d4-a716-446655440001",
+            "carrier": "UPS"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "reject"
+      }
+    },
+    {
+      "id": "payload-missing-required-field",
+      "name": "Payload-Fehler – fehlende E-Mail",
+      "seed": 45,
+      "steps": [
+        {
+          "type": "order-placed",
+          "subject": "/orders/ORD-2025-004",
+          "data": {
+            "itemsCount": 2
+          }
+        },
+        {
+          "type": "order-paid",
+          "data": {
+            "amount": 99.00,
+            "paidAt": "2025-06-21T09:00:00Z"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "reject"
+      }
+    },
+    {
+      "id": "payload-type-mismatch",
+      "name": "Payload-Typ-Fehler – itemsCount als String",
+      "seed": 46,
+      "steps": [
+        {
+          "type": "order-placed",
+          "subject": "/orders/ORD-2025-005",
+          "data": {
+            "customerEmail": "dave@example.com",
+            "itemsCount": "drei"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "reject"
+      }
+    }
+  ]
+}
