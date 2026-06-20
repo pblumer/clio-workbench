@@ -9,6 +9,7 @@ import (
 
 	"github.com/pblumer/clio-workbench/internal/config"
 	"github.com/pblumer/clio-workbench/internal/envstore"
+	"github.com/pblumer/clio-workbench/internal/scenario"
 	"github.com/pblumer/clio-workbench/internal/store"
 )
 
@@ -25,7 +26,11 @@ func newBrokenStoreServer(t *testing.T) *Server {
 	if err != nil {
 		t.Fatalf("open envstore: %v", err)
 	}
-	srv, err := New(config.Config{Servers: []string{"x"}, EventCap: 10, DataDir: dir}, st, envs, discardLogger())
+	scen, err := scenario.Open(dir)
+	if err != nil {
+		t.Fatalf("open scenario store: %v", err)
+	}
+	srv, err := New(config.Config{Servers: []string{"x"}, EventCap: 10, DataDir: dir}, st, envs, scen, discardLogger())
 	if err != nil {
 		t.Fatalf("server.New: %v", err)
 	}
@@ -40,6 +45,11 @@ func TestStoreListFailuresAre500(t *testing.T) {
 	cases := []struct{ method, target string }{
 		{http.MethodGet, "/"},
 		{http.MethodGet, "/drafts"},
+		{http.MethodGet, "/studio/scenarios"},
+		{http.MethodGet, "/studio/generator"},
+		{http.MethodGet, "/studio/producer"},
+		{http.MethodGet, "/studio/push"},
+		{http.MethodGet, "/studio/gegenprobe"},
 	}
 	for _, c := range cases {
 		s := newBrokenStoreServer(t)

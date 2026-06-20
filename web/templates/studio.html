@@ -1,0 +1,442 @@
+{{/*
+  studio.html — fragments for the Test Studio (see internal/server/studio.go).
+
+  WP-2: the schema-test view (docs/TESTSTUDIO.md §3.1). These fragments are
+  loaded into the #schema-test-slot editor pane defined in views.html.
+*/}}
+
+{{/* ── Schema-test form (loaded into the editor pane) ── */}}
+{{define "studio-schema" -}}
+<p class="wb-hint">Prüfe eine <code>data</code>-Payload gegen das Schema eines
+  Event-Typs deines Modells (Teststudio §3.1). Rein lokal — keine Clio nötig.</p>
+{{if not .Drafts}}
+  <p class="wb-hint">Noch keine Modelle. Lege links unter <strong>Modelle</strong>
+    eines an und beschreibe seine Event-Typen mit Feldern.</p>
+{{else}}
+<form class="st-form" hx-post="/studio/schema-test" hx-target="#st-result" hx-swap="innerHTML">
+  <label>
+    <span>Modell</span>
+    <select name="draft" hx-get="/studio/schema-test/fields"
+            hx-target="#st-fields" hx-swap="innerHTML" hx-trigger="change">
+      {{- range .Drafts}}
+      <option value="{{.ID}}" {{if eq .ID $.DraftID}}selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <div id="st-fields">
+    {{template "studio-schema-fields" .}}
+  </div>
+  <label>
+    <span>data <small>(JSON)</small></span>
+    <textarea name="data" rows="10" class="st-data" spellcheck="false" placeholder="{ }">{{.Data}}</textarea>
+  </label>
+  <button type="submit" class="btn-primary">Prüfen</button>
+</form>
+<div id="st-result" class="st-result"></div>
+{{end}}
+{{- end}}
+
+{{/* ── Event-type select + schema preview (reloaded on model/type change) ── */}}
+{{define "studio-schema-fields" -}}
+{{if .Steps}}
+<label>
+  <span>Event-Typ</span>
+  <select name="step" hx-get="/studio/schema-test/fields"
+          hx-target="#st-fields" hx-swap="innerHTML" hx-trigger="change"
+          hx-include="[name='draft']">
+    {{- range .Steps}}
+    <option value="{{.ID}}" {{if eq .ID $.StepID}}selected{{end}}>{{.Name}}</option>
+    {{- end}}
+  </select>
+</label>
+<details class="st-schema">
+  <summary>erwartetes Schema</summary>
+  <pre class="wb-output">{{.Schema}}</pre>
+</details>
+{{else}}
+<p class="wb-hint">Dieses Modell hat noch keine benannten Event-Typen mit Feldern.
+  Lege sie im Editor an.</p>
+<input type="hidden" name="step" value="">
+{{end}}
+{{- end}}
+
+{{/* ── Scenario editor + sequence tests + path view (WP-4) ── */}}
+{{define "scenario-panel" -}}
+<p class="wb-hint">Beschreibe Abläufe als Szenarien und prüfe sie gegen die
+  Zustandsmaschine deines Modells (Teststudio §3.2/§3.3). Sequenz als Liste von
+  Event-Typen, getrennt durch <code>→</code>, Komma oder Zeilenumbruch.</p>
+{{if not .Drafts}}
+  <p class="wb-hint">Noch keine Modelle. Lege links unter <strong>Modelle</strong> eines an.</p>
+{{else}}
+<form class="st-form sc-pick">
+  <label>
+    <span>Modell</span>
+    <select name="draft" hx-get="/studio/scenarios" hx-target="#scenario-slot"
+            hx-swap="innerHTML" hx-trigger="change">
+      {{- range .Drafts}}
+      <option value="{{.ID}}" {{if eq .ID $.DraftID}}selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+  </label>
+  {{if .Suites}}
+  <label>
+    <span>Suite</span>
+    <select name="suite" hx-get="/studio/scenarios" hx-target="#scenario-slot"
+            hx-swap="innerHTML" hx-trigger="change" hx-include="[name='draft']">
+      {{- range .Suites}}
+      <option value="{{.ID}}" {{if eq .ID $.SuiteID}}selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+  </label>
+  {{end}}
+</form>
+
+<form class="sc-newsuite" hx-post="/studio/scenarios" hx-target="#scenario-slot" hx-swap="innerHTML"
+      hx-on::after-request="if(event.detail.successful) this.reset()">
+  <input type="hidden" name="draft" value="{{.DraftID}}">
+  <input type="text" name="name" placeholder="Neue Suite…" autocomplete="off">
+  <button type="submit" class="btn-primary">Suite anlegen</button>
+</form>
+
+{{if .Suite}}
+  {{if .Drift}}
+  <p class="panel-hint sc-drift">⚠ Diese Suite wurde gegen einen anderen Modellstand
+    geschrieben — Szenarien neu prüfen.</p>
+  {{end}}
+
+  <div class="sc-cases">
+    {{- if .Suite.Cases}}
+    <ul class="sc-caselist">
+      {{- range .Suite.Cases}}
+      <li class="sc-case">
+        <div class="sc-case-head">
+          <span class="sc-case-name">{{.Name}}</span>
+          <span class="sc-exp sc-exp-{{.Expect.Outcome}}">{{.Expect.Outcome}}{{if .Expect.EndState}} → {{.Expect.EndState}}{{end}}</span>
+          <button type="button" class="wb-icon-btn"
+                  hx-post="/studio/scenarios/{{$.Suite.ID}}/cases/{{.ID}}/delete"
+                  hx-target="#scenario-slot" hx-swap="innerHTML" title="löschen">✕</button>
+        </div>
+        <div class="sc-seq step-seq">
+          {{- range $i, $t := .Steps}}{{if $i}}<span class="prev-arrow">→</span>{{end}}<span class="prev-ev">{{$t.Type}}</span>{{end}}
+        </div>
+      </li>
+      {{- end}}
+    </ul>
+    {{- else}}
+    <p class="step-empty">Noch keine Szenarien in dieser Suite.</p>
+    {{- end}}
+  </div>
+
+  <form class="sc-newcase" hx-post="/studio/scenarios/{{.Suite.ID}}/cases"
+        hx-target="#scenario-slot" hx-swap="innerHTML"
+        hx-on::after-request="if(event.detail.successful) this.reset()">
+    <input type="text" name="name" placeholder="Szenario-Name" autocomplete="off" required>
+    <textarea name="sequence" rows="2" class="st-data" spellcheck="false"
+              placeholder="order-created → order-paid → order-shipped"></textarea>
+    <div class="sc-newcase-row">
+      <select name="outcome">
+        <option value="accept">soll akzeptiert werden</option>
+        <option value="reject">soll abgelehnt werden</option>
+      </select>
+      <select name="endState">
+        <option value="">— Endzustand egal —</option>
+        {{- range .Nodes}}
+        <option value="{{.ID}}">{{.Label}}</option>
+        {{- end}}
+      </select>
+      <button type="submit" class="btn-primary">Szenario hinzufügen</button>
+    </div>
+  </form>
+
+  <div class="sc-run">
+    <button type="button" class="btn-primary"
+            hx-post="/studio/scenarios/{{.Suite.ID}}/run"
+            hx-target="#sc-results" hx-swap="innerHTML">▶ Alle prüfen</button>
+    <button type="button" class="wb-icon-btn"
+            hx-post="/studio/scenarios/{{.Suite.ID}}/delete?draft={{.DraftID}}"
+            hx-target="#scenario-slot" hx-swap="innerHTML"
+            hx-confirm="Diese Suite löschen?" title="Suite löschen">🗑</button>
+  </div>
+  <div id="sc-results" class="st-result"></div>
+{{end}}
+{{end}}
+{{- end}}
+
+{{/* ── Run results: pass/fail + path per case ── */}}
+{{define "scenario-results" -}}
+{{if .Message}}<p class="panel-hint bpmn-state bpmn-state-error">{{.Message}}</p>{{end}}
+{{if .Ran}}
+  {{- if not .Results}}
+  <p class="step-empty">Keine Szenarien zum Prüfen.</p>
+  {{- else}}
+  <ul class="sc-results">
+    {{- range .Results}}
+    <li class="sc-result sc-result-{{if .Pass}}ok{{else}}bad{{end}}">
+      <div class="sc-result-head">
+        <span class="sc-badge">{{if .Pass}}✓{{else}}✗{{end}}</span>
+        <span class="sc-case-name">{{.Name}}</span>
+      </div>
+      <div class="sc-result-detail">{{.Detail}}</div>
+      {{if .Path}}
+      <div class="sc-seq step-seq">
+        {{- range $i, $n := .Path}}{{if $i}}<span class="prev-arrow">→</span>{{end}}<span class="prev-ev">{{$n}}</span>{{end}}
+      </div>
+      {{end}}
+    </li>
+    {{- end}}
+  </ul>
+  {{- end}}
+{{end}}
+{{- end}}
+
+{{/* ── Generator: property sampling + report (WP-6) ── */}}
+{{define "generator-form" -}}
+<p class="wb-hint">Erzeuge Seed-deterministisch Ströme aus deinem Modell, prüfe sie
+  als Stichprobe gegen den Entwurf und belege, dass Mutationen abgelehnt werden
+  (Teststudio §4/§8). Gleicher Seed ⇒ identischer Lauf.</p>
+{{if not .Drafts}}
+  <p class="wb-hint">Noch keine Modelle. Lege links unter <strong>Modelle</strong> eines an.</p>
+{{else}}
+<form class="st-form gen-form" hx-post="/studio/generator/run" hx-target="#gen-result" hx-swap="innerHTML">
+  <label>
+    <span>Modell</span>
+    <select name="draft">
+      {{- range .Drafts}}
+      <option value="{{.ID}}" {{if eq .ID $.DraftID}}selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <div class="gen-row">
+    <label><span>Seed</span><input type="number" name="seed" value="{{.Seed}}"></label>
+    <label><span>Stichproben</span><input type="number" name="samples" value="{{.Samples}}" min="1" max="1000"></label>
+    <button type="submit" class="btn-primary">Generieren &amp; prüfen</button>
+  </div>
+</form>
+<div id="gen-result" class="st-result"></div>
+{{end}}
+{{- end}}
+
+{{define "generator-result" -}}
+{{with .Run}}
+{{if .Note}}<p class="panel-hint bpmn-state bpmn-state-error">{{.Note}}</p>{{end}}
+<div class="gen-summary">
+  <span class="gen-stat {{if eq .Failed 0}}gen-ok{{else}}gen-bad{{end}}">{{.Passed}}/{{.Samples}} gültig</span>
+  <span class="gen-stat">Kanten-Überdeckung {{.CoveredEdges}}/{{.TotalEdges}} ({{.CoveragePct}}%)</span>
+</div>
+
+{{if .Failures}}
+<h3 class="rel-sub">Fehlgeschlagene Stichproben</h3>
+<ul class="ref-list">
+  {{- range .Failures}}
+  <li class="ref-item"><code>seed {{.Seed}}</code> <span class="sc-seq step-seq">{{range $i,$t := .Sequence}}{{if $i}}<span class="prev-arrow">→</span>{{end}}<span class="prev-ev">{{$t}}</span>{{end}}</span> <span class="conf-dev">{{.Reason}}</span></li>
+  {{- end}}
+</ul>
+{{end}}
+
+{{if .Negatives}}
+<h3 class="rel-sub">Negativ-Prüfungen <small>(Mutationen müssen abgelehnt werden)</small></h3>
+<ul class="sc-results">
+  {{- range .Negatives}}
+  <li class="sc-result sc-result-{{if .Rejected}}ok{{else}}bad{{end}}">
+    <div class="sc-result-head"><span class="sc-badge">{{if .Rejected}}✓{{else}}✗{{end}}</span><span class="sc-case-name">{{.Kind}}</span></div>
+    <div class="sc-result-detail">{{.Desc}}{{if .Reason}} — {{.Reason}}{{end}}</div>
+  </li>
+  {{- end}}
+</ul>
+{{end}}
+{{end}}
+<div class="gen-downloads">
+  <a class="btn-link" href="/studio/generator/report?format=md&draft={{.DraftID}}&seed={{.Seed}}&samples={{.Samples}}">⬇ Report (Markdown)</a>
+  <a class="btn-link" href="/studio/generator/report?format=json&draft={{.DraftID}}&seed={{.Seed}}&samples={{.Samples}}">⬇ Report (JSON)</a>
+</div>
+{{- end}}
+
+{{/* ── Producer-Code (WP-7) ── */}}
+{{define "producer-panel" -}}
+<p class="wb-hint">Beispiel-Producer aus deinem Modell — der Code, der die Events
+  an Clio anhängt (Teststudio §9). Gerüst zum Kopieren, kein gepflegtes SDK; liest
+  <code>CLIO_URL</code>/<code>CLIO_API_TOKEN</code> aus der Umgebung.</p>
+{{if not .Drafts}}
+  <p class="wb-hint">Noch keine Modelle. Lege links unter <strong>Modelle</strong> eines an.</p>
+{{else}}
+<form class="st-form pr-pick">
+  <label>
+    <span>Modell</span>
+    <select name="draft" hx-get="/studio/producer" hx-target="#producer-slot"
+            hx-swap="innerHTML" hx-trigger="change" hx-include="[name='lang']">
+      {{- range .Drafts}}
+      <option value="{{.ID}}" {{if eq .ID $.DraftID}}selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <label>
+    <span>Sprache</span>
+    <select name="lang" hx-get="/studio/producer" hx-target="#producer-slot"
+            hx-swap="innerHTML" hx-trigger="change" hx-include="[name='draft']">
+      {{- range .Langs}}
+      <option value="{{.ID}}" {{if eq .ID $.Lang}}selected{{end}}>{{.Title}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <a class="btn-link" href="/studio/producer/download?draft={{.DraftID}}&lang={{.Lang}}">⬇ {{.Filename}}</a>
+</form>
+{{if .Err}}
+  <p class="panel-hint bpmn-state bpmn-state-error">{{.Err}}</p>
+{{else}}
+  <pre class="pr-code wb-output">{{.Code}}</pre>
+{{end}}
+{{end}}
+{{- end}}
+
+{{/* ── Instanz / Push (WP-8) ── */}}
+{{define "push-panel" -}}
+<p class="wb-hint">Generierte Ströme in eine Clio-Instanz schreiben und zurücklesen
+  (Teststudio §7). <strong>Achtung:</strong> Clio ist append-only — gepushte
+  Testdaten lassen sich <em>nicht</em> löschen. Subjects werden automatisch unter
+  <code>/_test/&lt;run-id&gt;/…</code> isoliert.</p>
+
+{{if eq .Server ""}}
+  <p class="panel-hint bpmn-state bpmn-state-offline">Kein Server verbunden. Wähle
+    unten in der Statusleiste einen <strong>Clio-Server</strong> — am besten eine
+    Wegwerf-Instanz.</p>
+{{else}}
+  <p class="push-server">Aktiver Server: <code>{{.Server}}</code></p>
+  {{if not .Armed}}
+    <div class="push-gate push-gate-locked">
+      <span class="push-lock">🔒 Diese Instanz ist <strong>nicht</strong> als Wegwerf bestätigt.</span>
+      <button type="button" class="btn-primary"
+              hx-post="/studio/push/arm" hx-target="#push-slot" hx-swap="innerHTML"
+              hx-include="closest .push-panel-body"
+              hx-confirm="Bestätige: {{.Server}} ist eine WEGWERF-Instanz. Gepushte Testdaten bleiben dort dauerhaft (append-only).">
+        Als Wegwerf-Instanz bestätigen
+      </button>
+    </div>
+  {{else}}
+    <div class="push-gate push-gate-armed">
+      <span class="push-lock">🔓 Wegwerf-Instanz bestätigt.</span>
+      <button type="button" class="wb-icon-btn"
+              hx-post="/studio/push/disarm" hx-target="#push-slot" hx-swap="innerHTML"
+              hx-include="closest .push-panel-body" title="Bestätigung aufheben">✕</button>
+    </div>
+  {{end}}
+
+  <div class="push-panel-body">
+    {{if .Drafts}}
+    <form class="st-form gen-form" {{if not .Armed}}hidden{{end}}
+          hx-post="/studio/push/run" hx-target="#push-result" hx-swap="innerHTML">
+      <label>
+        <span>Modell</span>
+        <select name="draft">
+          {{- range .Drafts}}
+          <option value="{{.ID}}" {{if eq .ID $.DraftID}}selected{{end}}>{{.Name}}</option>
+          {{- end}}
+        </select>
+      </label>
+      <div class="gen-row">
+        <label><span>Seed</span><input type="number" name="seed" value="{{.Seed}}"></label>
+        <label><span>Subjects</span><input type="number" name="samples" value="{{.Samples}}" min="1" max="1000"></label>
+        <button type="submit" class="btn-primary">In Wegwerf-Instanz pushen</button>
+      </div>
+    </form>
+    {{else}}
+    <input type="hidden" name="draft" value="">
+    <p class="wb-hint">Noch keine Modelle. Lege links unter <strong>Modelle</strong> eines an.</p>
+    {{end}}
+  </div>
+  <div id="push-result" class="st-result"></div>
+{{end}}
+{{- end}}
+
+{{define "push-result" -}}
+{{if .Message}}<p class="panel-hint bpmn-state bpmn-state-error">{{.Message}}</p>{{end}}
+{{if .Error}}<p class="st-bad">✗ {{.Error}}</p>{{end}}
+{{if .Pushed}}
+<div class="gen-summary">
+  <span class="gen-stat gen-ok">{{.Pushed}} Events in {{.Subjects}} Subjects gepusht</span>
+  <span class="gen-stat">Namespace <code>{{.Prefix}}</code></span>
+</div>
+{{if .RoundTrip}}
+  <p class="push-roundtrip">Round-Trip: <strong>{{.ReadBack}}</strong> Events zurückgelesen,
+    <strong>{{.Conform}}/{{.SubjectsBack}}</strong> Subjects konform zum Modell.</p>
+{{else}}
+  <p class="panel-hint">Round-Trip-Lesen nicht möglich (Instanz nicht lesbar).</p>
+{{end}}
+{{end}}
+{{- end}}
+
+{{/* ── Gegenprobe Soll/Ist (WP-9) ── */}}
+{{define "gegenprobe-form" -}}
+<p class="wb-hint">Soll/Ist: liest die realen Events einer verbundenen Clio und prüft
+  jede Subject-Sequenz gegen die Zustandsmaschine deines Modells — mit derselben
+  Engine wie die Szenarien (Teststudio §7).</p>
+{{if not .Drafts}}
+  <p class="wb-hint">Noch keine Modelle. Lege links unter <strong>Modelle</strong> eines an.</p>
+{{else}}
+<form class="st-form gen-form" hx-post="/studio/gegenprobe/run" hx-target="#gegen-result" hx-swap="innerHTML">
+  <label>
+    <span>Modell</span>
+    <select name="draft">
+      {{- range .Drafts}}
+      <option value="{{.ID}}" {{if eq .ID $.DraftID}}selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <button type="submit" class="btn-primary">Gegen reale Events prüfen</button>
+</form>
+<div id="gegen-result" class="st-result"></div>
+{{end}}
+{{- end}}
+
+{{define "gegenprobe-result" -}}
+{{if eq .State "ok"}}
+  {{if eq .Subjects 0}}
+    <p class="panel-hint">Keine Events unter <code>{{if .Scope}}{{.Scope}}{{else}}/{{end}}</code> gefunden.</p>
+  {{else}}
+  <div class="gen-summary">
+    <span class="gen-stat {{if eq .Conforming .Subjects}}gen-ok{{else}}gen-bad{{end}}">{{.Conforming}}/{{.Subjects}} Subjects konform ({{.FitPct}}%)</span>
+    {{if .Scope}}<span class="gen-stat">Scope <code>{{.Scope}}</code></span>{{end}}
+  </div>
+  {{if .Deviations}}
+  <h3 class="rel-sub">Abweichende Subjects <small>(Ist widerspricht Soll)</small></h3>
+  <ul class="ref-list">
+    {{- range .Deviations}}
+    <li class="ref-item"><code class="ref-from">{{.Subject}}</code> <span class="conf-dev">{{.Reason}}</span></li>
+    {{- end}}
+  </ul>
+  {{else}}
+  <p class="panel-hint">Keine Abweichungen — jedes Subject folgt dem Entwurf. 🎉</p>
+  {{end}}
+  {{if .UnusedTypes}}
+  <h3 class="rel-sub">Toter Entwurf <small>(Event-Typen, die real nie vorkommen)</small></h3>
+  <ul class="ref-list">{{range .UnusedTypes}}<li class="ref-item"><code>{{.}}</code></li>{{end}}</ul>
+  {{end}}
+  {{if .UnknownTypes}}
+  <h3 class="rel-sub">Unbekannte Event-Typen <small>(real vorhanden, fehlen im Modell)</small></h3>
+  <ul class="ref-list">{{range .UnknownTypes}}<li class="ref-item"><code>{{.}}</code></li>{{end}}</ul>
+  {{end}}
+  {{end}}
+{{else}}
+  <p class="panel-hint bpmn-state bpmn-state-{{.State}}">{{.Message}}</p>
+{{end}}
+{{- end}}
+
+{{/* ── Result of one check ── */}}
+{{define "studio-schema-result" -}}
+{{if .Message}}
+  <p class="panel-hint bpmn-state bpmn-state-error">{{.Message}}</p>
+{{else if .Checked}}
+  {{if .OK}}
+    <p class="st-ok">✓ Payload ist konform.</p>
+  {{else}}
+    <p class="st-bad">✗ {{len .Errors}} Abweichung(en):</p>
+    <ul class="ref-list">
+      {{- range .Errors}}
+      <li class="ref-item">
+        {{if .Field}}<code>{{.Field}}</code>{{else}}<em>payload</em>{{end}}
+        <span class="conf-dev">{{.Rule}}: {{.Message}}</span>
+      </li>
+      {{- end}}
+    </ul>
+  {{end}}
+{{end}}
+{{- end}}

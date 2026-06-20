@@ -1293,6 +1293,81 @@ body { height: 100vh; overflow: hidden; }
 .wb-hint { margin: 0 0 14px; color: var(--text-dim); font-size: 13px; }
 .wb-hint code { color: var(--text); }
 
+/* Test Studio — schema-test (WP-2) */
+.st-form { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+.st-form > label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-dim); }
+.st-form select, .st-data {
+  background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px;
+  padding: 8px 10px; color: var(--text); font: inherit; font-size: 12px;
+}
+.st-data { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; resize: vertical; }
+.st-form select:focus, .st-data:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
+.st-schema summary { cursor: pointer; color: var(--neon-dim); font-size: 11px; letter-spacing: 1px; }
+.st-schema summary:hover { color: var(--neon); }
+.st-result { margin-top: 16px; }
+.st-ok { color: var(--good); font-weight: 600; }
+.st-bad { color: #ff5a6e; font-weight: 600; }
+
+/* Test Studio — scenarios (WP-4) */
+.sc-pick { flex-direction: row; flex-wrap: wrap; gap: 14px; max-width: none; }
+.sc-newsuite, .sc-newcase { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; max-width: 720px; }
+.sc-newcase { flex-direction: column; }
+.sc-newcase-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.sc-newsuite input, .sc-newcase input[type=text], .sc-newcase select {
+  background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px;
+  padding: 7px 10px; color: var(--text); font: inherit; font-size: 12px;
+}
+.sc-newsuite input { flex: 1; }
+.sc-newcase input[name=name] { flex: 1; }
+.sc-drift { color: var(--warn); }
+.sc-caselist, .sc-results { list-style: none; margin: 12px 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sc-case, .sc-result { border: 1px solid var(--edge); border-radius: 9px; padding: 8px 12px; background: rgba(8, 14, 28, 0.6); }
+.sc-case-head, .sc-result-head { display: flex; align-items: center; gap: 10px; }
+.sc-case-name { font-weight: 600; flex: 1; }
+.sc-exp { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--edge); color: var(--text-dim); }
+.sc-exp-reject { color: var(--warn); border-color: rgba(255, 207, 92, 0.4); }
+.sc-seq { margin-top: 6px; }
+.sc-run { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.sc-result-detail { color: var(--text-dim); font-size: 12px; margin: 4px 0; }
+.sc-badge { font-weight: 700; }
+.sc-result-ok .sc-badge { color: var(--good); }
+.sc-result-bad { border-color: rgba(255, 90, 110, 0.45); }
+.sc-result-bad .sc-badge { color: #ff5a6e; }
+
+/* Test Studio — generator (WP-6) */
+.gen-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.gen-row label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-dim); }
+.gen-form input[type=number] {
+  background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px;
+  padding: 7px 10px; color: var(--text); font: inherit; font-size: 12px; width: 120px;
+}
+.gen-form input:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
+.gen-summary { display: flex; flex-wrap: wrap; gap: 12px; margin: 4px 0 12px; }
+.gen-stat { font-size: 12px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--edge); color: var(--text-dim); }
+.gen-ok { color: var(--good); border-color: rgba(70, 240, 160, 0.45); }
+.gen-bad { color: #ff5a6e; border-color: rgba(255, 90, 110, 0.45); }
+.gen-downloads { display: flex; gap: 16px; margin-top: 16px; }
+.btn-link { color: var(--neon-dim); font-size: 12px; text-decoration: none; }
+.btn-link:hover { color: var(--neon); text-shadow: var(--glow); }
+
+/* Test Studio — producer code (WP-7) */
+.pr-pick { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 14px; max-width: none; }
+.pr-pick select {
+  background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px;
+  padding: 7px 10px; color: var(--text); font: inherit; font-size: 12px;
+}
+.pr-code { max-height: none; max-width: 100%; overflow: auto; white-space: pre; tab-size: 4; }
+
+/* Test Studio — instance push (WP-8) */
+.push-server { font-size: 12px; color: var(--text-dim); }
+.push-server code { color: var(--accent); }
+.push-gate { display: flex; align-items: center; gap: 12px; margin: 10px 0; padding: 10px 12px; border: 1px solid var(--edge); border-radius: 9px; }
+.push-gate-locked { border-color: rgba(255, 207, 92, 0.45); }
+.push-gate-armed { border-color: rgba(70, 240, 160, 0.45); }
+.push-lock { font-size: 12px; }
+.push-gate-armed .push-lock { color: var(--good); }
+.push-roundtrip { font-size: 12px; color: var(--text-dim); margin-top: 10px; }
+
 @media (max-width: 760px) {
   .wb-shell, .wb-shell[data-sidebar="collapsed"] {
     grid-template-columns: var(--wb-activity-w) 1fr;

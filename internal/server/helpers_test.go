@@ -13,6 +13,7 @@ import (
 
 	"github.com/pblumer/clio-workbench/internal/config"
 	"github.com/pblumer/clio-workbench/internal/envstore"
+	"github.com/pblumer/clio-workbench/internal/scenario"
 	"github.com/pblumer/clio-workbench/internal/store"
 )
 
@@ -40,7 +41,11 @@ func newTestServer(t *testing.T, cfg config.Config) *Server {
 	if err != nil {
 		t.Fatalf("open envstore: %v", err)
 	}
-	srv, err := New(cfg, st, envs, discardLogger())
+	scen, err := scenario.Open(dir)
+	if err != nil {
+		t.Fatalf("open scenario store: %v", err)
+	}
+	srv, err := New(cfg, st, envs, scen, discardLogger())
 	if err != nil {
 		t.Fatalf("server.New: %v", err)
 	}

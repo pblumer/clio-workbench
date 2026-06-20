@@ -18,11 +18,16 @@ go tool cover -html=cover.out                  # zeilengenau im Browser
 | `internal/config` | 100,0 % |
 | `internal/model` | 100,0 % |
 | `internal/bpmngen` | 100,0 % |
+| `internal/validate` | 100,0 % |
 | `internal/process` | 99,6 % |
-| `internal/clio` | 98,5 % |
+| `internal/simulator` | 99,4 % |
+| `internal/producergen` | 99,3 % |
+| `internal/clio` | 98,2 % |
 | `internal/schemagen` | 98,5 % |
-| `internal/server` | 98,4 % |
+| `internal/server` | 97,9 % |
 | `internal/envstore` | 97,1 % |
+| `internal/testreport` | 96,8 % |
+| `internal/scenario` | 95,3 % |
 | `internal/store` | 95,2 % |
 | `cmd/clio-workbench` | 82,8 % (`run()` 96 %) |
 
@@ -65,6 +70,17 @@ Zwei wiederkehrende Gründe für „echte" Unerreichbarkeit:
   unmittelbar vorausgehenden `Get` lesbar war). `saveDraft` selbst ist über
   `handleSaveMeta` (invalide Namespace) zu 100 % gedeckt.
 - `environments.go` — `s.envs.Upsert`-Schreibfehler (Platten-I/O).
+- `generator.go` — der `run.JSON()`-Fehlerzweig im Report-Download: ein
+  `testreport.Run` ist stets marshalbar (toter Defensivcode).
+- `producer.go` — die `producergen.Generate`-Fehlerzweige in `handleProducer`
+  und `handleProducerDownload`: die Sprache ist über `pickLang`/`SupportedLang`
+  bereits validiert, `Generate` schlägt damit nicht mehr fehl (Defensivcode).
+- `scenarios.go` — die `s.scenarios.Save`-Fehlerzweige in
+  create-suite/add-case/delete-case und der `s.scenarios.Delete`-Fehler
+  (außer `ErrNotFound`) in delete-suite: scheitern nur per I/O (root-uid,
+  unmöglich) — analog zu `editor.go`. Validierungs- und Decode-Fehlerpfade
+  (`store.Get`/`scenarios.Get`/`List` auf korrupter Datei → 400/500) sind
+  gedeckt.
 - `inspector.go` — `json.Indent`-Fallback, der gelingt, obwohl das vorherige
   Streaming-Decode fehlschlug: widersprüchlich (beide validieren dasselbe JSON).
 - `process.go` — `json.Marshal` eines internen `[]rep`-Structs.
@@ -76,6 +92,8 @@ Zwei wiederkehrende Gründe für „echte" Unerreichbarkeit:
   `http.NewRequestWithContext`-Fehlerpfad. Alle Aufrufer prüfen `base != ""`
   bereits und bauen die URL aus genau dieser validierten Base; nur über eine
   TOCTOU-Race zwischen zwei `Snapshot()`-Aufrufen erreichbar.
+- `AppendEvent` — `http.NewRequestWithContext`-Fehlerpfad; Methode und URL sind
+  konstant gültig, daher unerreichbar.
 
 ### `internal/store/store.go` (`write`)
 - `json.MarshalIndent`-Fehler (`*model.Draft` ist voll marshalbar).
@@ -84,6 +102,26 @@ Zwei wiederkehrende Gründe für „echte" Unerreichbarkeit:
 ### `internal/envstore/envstore.go` (`save`)
 - `json.MarshalIndent`-Fehler (reiner Struct).
 - `os.WriteFile`/`os.Rename`-I/O-Fehler (root-uid, s. o.).
+
+### `internal/scenario/store.go`
+- `Delete` — der `os.Remove`-Fehler außer `ErrNotExist` (Schreibsperre; root-uid,
+  s. o.).
+- `write` — `os.CreateTemp`/`tmp.Write`/`tmp.Close`/`os.Rename`-I/O-Fehler
+  (root-uid, s. o.). Der `json.MarshalIndent`-Fehler **ist** gedeckt: eine
+  `Step.Data` mit ungültigem Roh-JSON lässt ihn fehlschlagen.
+
+### `internal/simulator/simulator.go`
+- `pickEdge` — der abschließende `return edges[len(edges)-1]`: `weightOf` ist
+  stets ≥ 1, also `total ≥ 1`, und die gewichtete Schleife trifft immer vorher
+  zu. Defensiver, toter Rückgabewert (vom Compiler verlangt).
+
+### `internal/producergen/producergen.go`
+- `genGo` — der `format.Source`-Fehlerzweig; der erzeugte Go-Code ist stets
+  parsebar (toter Defensivcode). Der Test belegt zusätzlich gofmt-Stabilität.
+
+### `internal/testreport/testreport.go`
+- `Run.JSON` — `json.MarshalIndent`-Fehler; `Run` ist ein reiner Struct und
+  stets marshalbar (toter Defensivcode).
 
 ### `internal/schemagen/schemagen.go`
 - `SchemaCollection` — `json.MarshalIndent`-Fehler; marshalt `json.RawMessage`

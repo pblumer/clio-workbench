@@ -94,6 +94,86 @@
 </div>
 {{- end}}
 
+{{/* ── Sidebar · Teststudio: entry point + intro ── */}}
+{{define "view-studio-nav" -}}
+<p class="wb-hint">Belebe dein Modell: prüfe Payloads und Abläufe gegen den
+  Entwurf (Teststudio §3).</p>
+<ul class="wb-nav">
+  <li><button type="button" class="wb-nav-item" data-open-tab="schema-test">
+    <span class="wb-nav-icon">✓</span>Schema-Test
+  </button></li>
+  <li><button type="button" class="wb-nav-item" data-open-tab="scenario-test">
+    <span class="wb-nav-icon">❏</span>Szenarien
+  </button></li>
+  <li><button type="button" class="wb-nav-item" data-open-tab="generator">
+    <span class="wb-nav-icon">⚙</span>Generator
+  </button></li>
+  <li><button type="button" class="wb-nav-item" data-open-tab="producer">
+    <span class="wb-nav-icon">⌗</span>Producer-Code
+  </button></li>
+  <li><button type="button" class="wb-nav-item" data-open-tab="push">
+    <span class="wb-nav-icon">⇪</span>Instanz / Push
+  </button></li>
+  <li><button type="button" class="wb-nav-item" data-open-tab="gegenprobe">
+    <span class="wb-nav-icon">⚖</span>Gegenprobe
+  </button></li>
+</ul>
+{{- end}}
+
+{{/* ── Editor: Generator (property sampling + report) ── */}}
+{{define "view-generator" -}}
+<div id="generator-slot" class="wb-fill"
+     hx-get="/studio/generator" hx-trigger="load"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Producer-Code ── */}}
+{{define "view-producer" -}}
+<div id="producer-slot" class="wb-fill"
+     hx-get="/studio/producer" hx-trigger="load"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Instanz / Push ── */}}
+{{define "view-push" -}}
+<div id="push-slot" class="wb-fill"
+     hx-get="/studio/push" hx-trigger="load, clio-changed from:body"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Gegenprobe (Soll/Ist) ── */}}
+{{define "view-gegenprobe" -}}
+<div id="gegen-slot" class="wb-fill"
+     hx-get="/studio/gegenprobe" hx-trigger="load"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Schema-Test ── */}}
+{{define "view-schema-test" -}}
+<div id="schema-test-slot" class="wb-fill"
+     hx-get="/studio/schema-test" hx-trigger="load"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Szenarien (scenario tests + path view) ── */}}
+{{define "view-scenario-test" -}}
+<div id="scenario-slot" class="wb-fill"
+     hx-get="/studio/scenarios" hx-trigger="load"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
 {{/* ── Panel: Conformance check (Soll/Ist) ── */}}
 {{define "view-conformance" -}}
 <p class="wb-hint">Lade ein BPMN-Template hoch, um zu prüfen, ob die realen Events

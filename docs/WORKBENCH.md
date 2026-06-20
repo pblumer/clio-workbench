@@ -270,6 +270,11 @@ tatsächlichen Typ-Sequenzen und vergleicht sie mit dem entworfenen Graphen:
 Das ist im Kern leichtes Conformance Checking und schließt den Kreis zwischen
 Entwurf und Realität. Kein Muss für v1, aber der natürliche Reifegrad.
 
+> Umgesetzt im Teststudio (`TESTSTUDIO-IMPLEMENTATION.md` WP-9): die
+> Draft-native Gegenprobe liest reale Events und prüft jede Subject-Sequenz mit
+> derselben `internal/validate`-Engine wie die Szenarien — Soll und Ist auf
+> einem Code.
+
 > Vorgelagert dazu steht das **Teststudio** ([`TESTSTUDIO.md`](TESTSTUDIO.md)):
 > Es prüft den Entwurf *ausführend und hypothetisch* — generiert konforme (und
 > bewusst kaputte) Ströme und spielt benannte Szenarien durch, **bevor** reale

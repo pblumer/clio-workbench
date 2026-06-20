@@ -14,6 +14,7 @@ import (
 	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/config"
 	"github.com/pblumer/clio-workbench/internal/envstore"
+	"github.com/pblumer/clio-workbench/internal/scenario"
 	"github.com/pblumer/clio-workbench/internal/schemagen"
 	"github.com/pblumer/clio-workbench/internal/store"
 	"github.com/pblumer/clio-workbench/web"
@@ -21,23 +22,31 @@ import (
 
 // Server holds the Workbench dependencies and routing.
 type Server struct {
-	cfg   config.Config
-	store *store.Store
-	envs  *envstore.Store
-	clio  *clio.Client
-	log   *slog.Logger
-	tmpl  *template.Template
-	mux   *http.ServeMux
+	cfg       config.Config
+	store     *store.Store
+	envs      *envstore.Store
+	scenarios *scenario.Store
+	clio      *clio.Client
+	log       *slog.Logger
+	tmpl      *template.Template
+	mux       *http.ServeMux
 
 	// pipeline is the in-memory chain of refinement queries that further
 	// narrow the active environment's scope (an exploration funnel). It is
 	// session state, deliberately not persisted: it resets on restart.
 	pipelineMu sync.Mutex
 	pipeline   []queryStage
+
+	// testScopeMu guards the Test Studio's push gate (docs/TESTSTUDIO.md §7.3):
+	// testScopeURL holds the Clio base URL that was explicitly confirmed as a
+	// throwaway instance for this session. Pushing is refused unless it matches
+	// the currently selected server, so switching servers disarms the gate.
+	testScopeMu  sync.Mutex
+	testScopeURL string
 }
 
 // New constructs a Server with routes registered.
-func New(cfg config.Config, st *store.Store, envs *envstore.Store, log *slog.Logger) (*Server, error) {
+func New(cfg config.Config, st *store.Store, envs *envstore.Store, scen *scenario.Store, log *slog.Logger) (*Server, error) {
 	// root is captured by the "partial" func below so the shell can render a
 	// View's body template chosen at runtime (the {{template}} action only
 	// accepts a constant name). It is assigned right after ParseFS.
@@ -58,13 +67,14 @@ func New(cfg config.Config, st *store.Store, envs *envstore.Store, log *slog.Log
 	}
 	root = tmpl
 	s := &Server{
-		cfg:   cfg,
-		store: st,
-		envs:  envs,
-		clio:  clio.New(cfg.ClioURL, cfg.ClioToken),
-		log:   log,
-		tmpl:  tmpl,
-		mux:   http.NewServeMux(),
+		cfg:       cfg,
+		store:     st,
+		envs:      envs,
+		scenarios: scen,
+		clio:      clio.New(cfg.ClioURL, cfg.ClioToken),
+		log:       log,
+		tmpl:      tmpl,
+		mux:       http.NewServeMux(),
 	}
 	if err := s.routes(); err != nil {
 		return nil, err
@@ -104,6 +114,38 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("POST /environments/activate", s.handleActivateEnvironment)
 	s.mux.HandleFunc("POST /environments/delete", s.handleDeleteEnvironment)
 	s.mux.HandleFunc("POST /conformance", s.handleConformance)
+
+	// Test Studio (docs/TESTSTUDIO.md): schema-test (WP-2).
+	s.mux.HandleFunc("GET /studio/schema-test", s.handleStudioSchema)
+	s.mux.HandleFunc("GET /studio/schema-test/fields", s.handleStudioSchemaFields)
+	s.mux.HandleFunc("POST /studio/schema-test", s.handleStudioSchemaCheck)
+
+	// Test Studio: scenario editor + sequence tests + path view (WP-4).
+	s.mux.HandleFunc("GET /studio/scenarios", s.handleScenarios)
+	s.mux.HandleFunc("POST /studio/scenarios", s.handleCreateSuite)
+	s.mux.HandleFunc("POST /studio/scenarios/{suite}/delete", s.handleDeleteSuite)
+	s.mux.HandleFunc("POST /studio/scenarios/{suite}/cases", s.handleAddCase)
+	s.mux.HandleFunc("POST /studio/scenarios/{suite}/cases/{case}/delete", s.handleDeleteCase)
+	s.mux.HandleFunc("POST /studio/scenarios/{suite}/run", s.handleRunSuite)
+
+	// Test Studio: generator — property sampling + mutation + report (WP-6).
+	s.mux.HandleFunc("GET /studio/generator", s.handleGenerator)
+	s.mux.HandleFunc("POST /studio/generator/run", s.handleGeneratorRun)
+	s.mux.HandleFunc("GET /studio/generator/report", s.handleGeneratorReport)
+
+	// Test Studio: producer-code generation (WP-7).
+	s.mux.HandleFunc("GET /studio/producer", s.handleProducer)
+	s.mux.HandleFunc("GET /studio/producer/download", s.handleProducerDownload)
+
+	// Test Studio: instance integration — push + round-trip (WP-8).
+	s.mux.HandleFunc("GET /studio/push", s.handlePush)
+	s.mux.HandleFunc("POST /studio/push/arm", s.handlePushArm)
+	s.mux.HandleFunc("POST /studio/push/disarm", s.handlePushDisarm)
+	s.mux.HandleFunc("POST /studio/push/run", s.handlePushRun)
+
+	// Test Studio: Soll/Ist Gegenprobe on the shared engine (WP-9).
+	s.mux.HandleFunc("GET /studio/gegenprobe", s.handleGegenprobe)
+	s.mux.HandleFunc("POST /studio/gegenprobe/run", s.handleGegenprobeRun)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)
