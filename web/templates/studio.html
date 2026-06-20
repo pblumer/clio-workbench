@@ -189,6 +189,68 @@
 {{end}}
 {{- end}}
 
+{{/* ── Generator: property sampling + report (WP-6) ── */}}
+{{define "generator-form" -}}
+<p class="wb-hint">Erzeuge Seed-deterministisch Ströme aus deinem Modell, prüfe sie
+  als Stichprobe gegen den Entwurf und belege, dass Mutationen abgelehnt werden
+  (Teststudio §4/§8). Gleicher Seed ⇒ identischer Lauf.</p>
+{{if not .Drafts}}
+  <p class="wb-hint">Noch keine Modelle. Lege links unter <strong>Modelle</strong> eines an.</p>
+{{else}}
+<form class="st-form gen-form" hx-post="/studio/generator/run" hx-target="#gen-result" hx-swap="innerHTML">
+  <label>
+    <span>Modell</span>
+    <select name="draft">
+      {{- range .Drafts}}
+      <option value="{{.ID}}" {{if eq .ID $.DraftID}}selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <div class="gen-row">
+    <label><span>Seed</span><input type="number" name="seed" value="{{.Seed}}"></label>
+    <label><span>Stichproben</span><input type="number" name="samples" value="{{.Samples}}" min="1" max="1000"></label>
+    <button type="submit" class="btn-primary">Generieren &amp; prüfen</button>
+  </div>
+</form>
+<div id="gen-result" class="st-result"></div>
+{{end}}
+{{- end}}
+
+{{define "generator-result" -}}
+{{with .Run}}
+{{if .Note}}<p class="panel-hint bpmn-state bpmn-state-error">{{.Note}}</p>{{end}}
+<div class="gen-summary">
+  <span class="gen-stat {{if eq .Failed 0}}gen-ok{{else}}gen-bad{{end}}">{{.Passed}}/{{.Samples}} gültig</span>
+  <span class="gen-stat">Kanten-Überdeckung {{.CoveredEdges}}/{{.TotalEdges}} ({{.CoveragePct}}%)</span>
+</div>
+
+{{if .Failures}}
+<h3 class="rel-sub">Fehlgeschlagene Stichproben</h3>
+<ul class="ref-list">
+  {{- range .Failures}}
+  <li class="ref-item"><code>seed {{.Seed}}</code> <span class="sc-seq step-seq">{{range $i,$t := .Sequence}}{{if $i}}<span class="prev-arrow">→</span>{{end}}<span class="prev-ev">{{$t}}</span>{{end}}</span> <span class="conf-dev">{{.Reason}}</span></li>
+  {{- end}}
+</ul>
+{{end}}
+
+{{if .Negatives}}
+<h3 class="rel-sub">Negativ-Prüfungen <small>(Mutationen müssen abgelehnt werden)</small></h3>
+<ul class="sc-results">
+  {{- range .Negatives}}
+  <li class="sc-result sc-result-{{if .Rejected}}ok{{else}}bad{{end}}">
+    <div class="sc-result-head"><span class="sc-badge">{{if .Rejected}}✓{{else}}✗{{end}}</span><span class="sc-case-name">{{.Kind}}</span></div>
+    <div class="sc-result-detail">{{.Desc}}{{if .Reason}} — {{.Reason}}{{end}}</div>
+  </li>
+  {{- end}}
+</ul>
+{{end}}
+{{end}}
+<div class="gen-downloads">
+  <a class="btn-link" href="/studio/generator/report?format=md&draft={{.DraftID}}&seed={{.Seed}}&samples={{.Samples}}">⬇ Report (Markdown)</a>
+  <a class="btn-link" href="/studio/generator/report?format=json&draft={{.DraftID}}&seed={{.Seed}}&samples={{.Samples}}">⬇ Report (JSON)</a>
+</div>
+{{- end}}
+
 {{/* ── Result of one check ── */}}
 {{define "studio-schema-result" -}}
 {{if .Message}}

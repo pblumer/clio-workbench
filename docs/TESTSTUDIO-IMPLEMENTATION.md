@@ -138,6 +138,12 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
   inkl. Seed und Kanten-Überdeckung.
 - **Abnahme:** mutierte Ströme werden zuverlässig **abgelehnt**; Report
   deterministisch reproduzierbar.
+- **Status:** ✅ fertig. `simulator.Mutations` (insert-unknown, swap-order,
+  drop-required, wrong-type) — die garantiert-invaliden werden im Test über
+  `validate` als abgelehnt belegt. `internal/testreport` rendert den Lauf als
+  Markdown/JSON (Seed, Pass/Fail, Kanten-Überdeckung, Negativ-Prüfungen). Neuer
+  Editor-Tab *Generator*: Seed + Stichprobenzahl, „Generieren & prüfen" zeigt
+  N/N gültig + Überdeckung + Negativ-Prüfungen, mit Report-Download (MD/JSON).
 
 ---
 
@@ -200,7 +206,7 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
 | WP-3 `internal/scenario` | T1 | M | ✅ fertig |
 | WP-4 Szenario-Editor + Pfad | T1 | M–L | ✅ fertig |
 | WP-5 `internal/simulator` | T2 | M–L | ✅ fertig |
-| WP-6 Mutation + Report | T2 | M | ⬜ |
+| WP-6 Mutation + Report | T2 | M | ✅ fertig |
 | WP-7 `internal/producergen` | T3 | L | ⬜ |
 | WP-8 Push / Round-Trip + Scope | T4 | M–L | ⬜ |
 | WP-9 Gegenprobe konsolidieren | T5 | M | ⬜ |

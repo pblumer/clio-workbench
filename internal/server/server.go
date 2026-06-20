@@ -120,6 +120,11 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("POST /studio/scenarios/{suite}/cases", s.handleAddCase)
 	s.mux.HandleFunc("POST /studio/scenarios/{suite}/cases/{case}/delete", s.handleDeleteCase)
 	s.mux.HandleFunc("POST /studio/scenarios/{suite}/run", s.handleRunSuite)
+
+	// Test Studio: generator — property sampling + mutation + report (WP-6).
+	s.mux.HandleFunc("GET /studio/generator", s.handleGenerator)
+	s.mux.HandleFunc("POST /studio/generator/run", s.handleGeneratorRun)
+	s.mux.HandleFunc("GET /studio/generator/report", s.handleGeneratorReport)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)

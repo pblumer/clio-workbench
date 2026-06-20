@@ -20,11 +20,12 @@ go tool cover -html=cover.out                  # zeilengenau im Browser
 | `internal/bpmngen` | 100,0 % |
 | `internal/validate` | 100,0 % |
 | `internal/process` | 99,6 % |
-| `internal/simulator` | 98,9 % |
+| `internal/simulator` | 99,4 % |
 | `internal/clio` | 98,5 % |
 | `internal/schemagen` | 98,5 % |
 | `internal/server` | 97,7 % |
 | `internal/envstore` | 97,1 % |
+| `internal/testreport` | 96,8 % |
 | `internal/scenario` | 95,3 % |
 | `internal/store` | 95,2 % |
 | `cmd/clio-workbench` | 82,8 % (`run()` 96 %) |
@@ -68,6 +69,8 @@ Zwei wiederkehrende Gründe für „echte" Unerreichbarkeit:
   unmittelbar vorausgehenden `Get` lesbar war). `saveDraft` selbst ist über
   `handleSaveMeta` (invalide Namespace) zu 100 % gedeckt.
 - `environments.go` — `s.envs.Upsert`-Schreibfehler (Platten-I/O).
+- `generator.go` — der `run.JSON()`-Fehlerzweig im Report-Download: ein
+  `testreport.Run` ist stets marshalbar (toter Defensivcode).
 - `scenarios.go` — die `s.scenarios.Save`-Fehlerzweige in
   create-suite/add-case/delete-case und der `s.scenarios.Delete`-Fehler
   (außer `ErrNotFound`) in delete-suite: scheitern nur per I/O (root-uid,
@@ -105,6 +108,10 @@ Zwei wiederkehrende Gründe für „echte" Unerreichbarkeit:
 - `pickEdge` — der abschließende `return edges[len(edges)-1]`: `weightOf` ist
   stets ≥ 1, also `total ≥ 1`, und die gewichtete Schleife trifft immer vorher
   zu. Defensiver, toter Rückgabewert (vom Compiler verlangt).
+
+### `internal/testreport/testreport.go`
+- `Run.JSON` — `json.MarshalIndent`-Fehler; `Run` ist ein reiner Struct und
+  stets marshalbar (toter Defensivcode).
 
 ### `internal/schemagen/schemagen.go`
 - `SchemaCollection` — `json.MarshalIndent`-Fehler; marshalt `json.RawMessage`

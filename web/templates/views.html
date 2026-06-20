@@ -105,7 +105,19 @@
   <li><button type="button" class="wb-nav-item" data-open-tab="scenario-test">
     <span class="wb-nav-icon">❏</span>Szenarien
   </button></li>
+  <li><button type="button" class="wb-nav-item" data-open-tab="generator">
+    <span class="wb-nav-icon">⚙</span>Generator
+  </button></li>
 </ul>
+{{- end}}
+
+{{/* ── Editor: Generator (property sampling + report) ── */}}
+{{define "view-generator" -}}
+<div id="generator-slot" class="wb-fill"
+     hx-get="/studio/generator" hx-trigger="load"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
 {{- end}}
 
 {{/* ── Editor: Schema-Test ── */}}
