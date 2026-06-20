@@ -155,5 +155,6 @@ web/                  embedded templates, CSS, htmx
                       templates/views.html: contributed View bodies
                       static/js/shell.js: shell chrome (tabs, sidebar, panel)
 docs/WORKBENCH.md     architecture & idea paper
+docs/TESTSTUDIO.md    the Test Studio: architecture & idea paper (testing models)
 docs/FRAMEWORK.md     the UI framework (shell regions + how to add a view)
 ```
