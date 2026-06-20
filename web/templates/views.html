@@ -45,6 +45,19 @@
   </label>
   <button type="submit" class="btn-primary">Create draft</button>
 </form>
+
+<form class="new-form import-form"
+      hx-post="/drafts/import"
+      hx-target="#drafts"
+      hx-swap="outerHTML"
+      hx-on::after-request="if(event.detail.successful) this.reset()">
+  <label>
+    <span>Import URL <small>(z.B. GitHub raw)</small></span>
+    <input type="url" name="url" placeholder="https://raw.githubusercontent.com/…/draft.json" required autocomplete="off">
+  </label>
+  <button type="submit" class="btn-primary">Import draft</button>
+</form>
+
 <div class="wb-subhead">Drafts</div>
 {{template "drafts.html" .Drafts}}
 {{- end}}

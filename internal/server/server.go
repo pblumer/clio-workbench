@@ -123,6 +123,7 @@ func (s *Server) routes() error {
 	// Test Studio: scenario editor + sequence tests + path view (WP-4).
 	s.mux.HandleFunc("GET /studio/scenarios", s.handleScenarios)
 	s.mux.HandleFunc("POST /studio/scenarios", s.handleCreateSuite)
+	s.mux.HandleFunc("POST /studio/scenarios/import", s.handleImportScenarioFromURL)
 	s.mux.HandleFunc("POST /studio/scenarios/{suite}/delete", s.handleDeleteSuite)
 	s.mux.HandleFunc("POST /studio/scenarios/{suite}/cases", s.handleAddCase)
 	s.mux.HandleFunc("POST /studio/scenarios/{suite}/cases/{case}/delete", s.handleDeleteCase)
@@ -148,6 +149,7 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("POST /studio/gegenprobe/run", s.handleGegenprobeRun)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
+	s.mux.HandleFunc("POST /drafts/import", s.handleImportDraftFromURL)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)
 	s.mux.HandleFunc("DELETE /drafts/{id}", s.handleDeleteDraft)
 

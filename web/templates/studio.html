@@ -98,6 +98,16 @@
   <button type="submit" class="btn-primary">Suite anlegen</button>
 </form>
 
+<form class="sc-newsuite sc-import"
+      hx-post="/studio/scenarios/import"
+      hx-target="#scenario-slot"
+      hx-swap="innerHTML"
+      hx-on::after-request="if(event.detail.successful) this.reset()">
+  <input type="hidden" name="draft" value="{{.DraftID}}">
+  <input type="url" name="url" placeholder="https://raw.githubusercontent.com/…/suite.json" required autocomplete="off">
+  <button type="submit" class="btn-primary">Suite importieren</button>
+</form>
+
 {{if .Suite}}
   {{if .Drift}}
   <p class="panel-hint sc-drift">⚠ Diese Suite wurde gegen einen anderen Modellstand
