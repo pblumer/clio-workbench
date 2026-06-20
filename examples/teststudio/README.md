@@ -1,6 +1,8 @@
 Test Studio Demo – Order Lifecycle
 =====================================
 
+> 🌐 **Language / Sprache:** English (below) · [Deutsch](#test-studio-demo--order-lifecycle-deutsch)
+
 This example gives a complete, self-contained demonstration of the Test
 Studio data model. It contains:
 
@@ -72,3 +74,84 @@ Suite overview
 
 The suite records `draftRev: c6ac54f6d18d`, so drift detection will fire if the
 model is edited without updating the tests.
+
+---
+
+Test Studio Demo – Order Lifecycle (Deutsch)
+============================================
+
+> 🌐 **Sprache / Language:** Deutsch (unten) · [English](#test-studio-demo--order-lifecycle)
+
+Dieses Beispiel ist eine vollständige, in sich geschlossene Demonstration des
+Test-Studio-Datenmodells. Es enthält:
+
+- **draft-order-lifecycle.json** — eine Modelldefinition für eine Bestell-Entität.
+- **suite-order-lifecycle-tests.json** — eine Szenario-Suite mit fünf Testfällen.
+- **LEARNING-PATH.md** / **LEARNING-PATH.en.md** — ein geführter, praktischer
+  Lernpfad ([Deutsch](LEARNING-PATH.md) · [English](LEARNING-PATH.en.md)), der
+  dich Lektion für Lektion durch jede Funktion des Test Studios führt — anhand
+  genau dieser beiden Dateien. Neu im Studio? Fang dort an.
+- **exercises/** — lauffähige Übungs-Artefakte zum Lernpfad: Payload-Sätze je
+  Event-Typ und eine importierbare Übungs-Suite mit den Lektions-Lösungen. Siehe
+  [`exercises/README.md`](exercises/README.md).
+
+Neu hier? Folge dem Lernpfad ([Deutsch](LEARNING-PATH.md) ·
+[English](LEARNING-PATH.en.md)) — er führt dich vom Prüfen einer einzelnen
+Payload bis zum Push gegen eine Instanz und der Soll/Ist-Gegenprobe, Schritt für
+Schritt.
+
+Importieren
+-----------
+
+Kopiere den Draft in dein Workbench-`DataDir`:
+
+  cp draft-order-lifecycle.json  <DataDir>/
+
+Kopiere die Suite in den Szenario-Store (ein Unterverzeichnis, damit sie nicht
+für einen Draft gehalten wird):
+
+  cp suite-order-lifecycle-tests.json  <DataDir>/scenarios/order-lifecycle-tests.json
+
+Starte die Workbench neu oder lade sie neu, um beide im Studio zu sehen.
+
+Draft im Überblick
+------------------
+
+Knoten
+  cart (Start) → placed → paid → shipped → completed (Ende)
+  cancelled (Ende)
+
+Übergänge (Event-Typ-Kanten)
+  order-placed      : cart       → placed
+  order-paid        : placed     → paid
+  order-shipped     : paid       → shipped
+  order-delivered   : shipped    → completed
+  order-cancelled   : cart       → cancelled
+  order-cancelled   : placed     → cancelled
+
+Event-Typ-Felder
+  order-placed       — customerEmail (string, required, Format email)
+                       itemsCount    (integer, required)
+  order-paid         — amount (number, required)
+                       paidAt (datetime, required)
+  order-shipped      — trackingId (string, required, Format uuid)
+                       carrier    (string, required, enum DHL/UPS/FedEx)
+  order-delivered    — deliveredAt (datetime, required)
+  order-cancelled    — reason (string, required)
+
+Suite im Überblick
+------------------
+
+"happy-path-standard" — gültiger Durchlauf, endet in *completed*, mit allen
+  Payloads.
+"cancel-before-payment" — gültige Stornierung aus *placed*, endet in *cancelled*.
+"invalid-sequence-ship-without-pay" — abgelehnt, weil *order-shipped* aus
+  *placed* ohne *order-paid* keinen gültigen Übergang hat.
+"payload-missing-required-field" — abgelehnt, weil die Payload das Pflichtfeld
+  `customerEmail` auslässt.
+"payload-type-mismatch" — abgelehnt, weil `itemsCount` ein String statt eines
+  Integers ist.
+
+Die Suite hält `draftRev: c6ac54f6d18d` fest, sodass die Drift-Erkennung
+anschlägt, wenn das Modell bearbeitet wird, ohne die Tests anzupassen.
+</content>
