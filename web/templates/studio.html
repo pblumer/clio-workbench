@@ -251,6 +251,43 @@
 </div>
 {{- end}}
 
+{{/* ── Producer-Code (WP-7) ── */}}
+{{define "producer-panel" -}}
+<p class="wb-hint">Beispiel-Producer aus deinem Modell — der Code, der die Events
+  an Clio anhängt (Teststudio §9). Gerüst zum Kopieren, kein gepflegtes SDK; liest
+  <code>CLIO_URL</code>/<code>CLIO_API_TOKEN</code> aus der Umgebung.</p>
+{{if not .Drafts}}
+  <p class="wb-hint">Noch keine Modelle. Lege links unter <strong>Modelle</strong> eines an.</p>
+{{else}}
+<form class="st-form pr-pick">
+  <label>
+    <span>Modell</span>
+    <select name="draft" hx-get="/studio/producer" hx-target="#producer-slot"
+            hx-swap="innerHTML" hx-trigger="change" hx-include="[name='lang']">
+      {{- range .Drafts}}
+      <option value="{{.ID}}" {{if eq .ID $.DraftID}}selected{{end}}>{{.Name}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <label>
+    <span>Sprache</span>
+    <select name="lang" hx-get="/studio/producer" hx-target="#producer-slot"
+            hx-swap="innerHTML" hx-trigger="change" hx-include="[name='draft']">
+      {{- range .Langs}}
+      <option value="{{.ID}}" {{if eq .ID $.Lang}}selected{{end}}>{{.Title}}</option>
+      {{- end}}
+    </select>
+  </label>
+  <a class="btn-link" href="/studio/producer/download?draft={{.DraftID}}&lang={{.Lang}}">⬇ {{.Filename}}</a>
+</form>
+{{if .Err}}
+  <p class="panel-hint bpmn-state bpmn-state-error">{{.Err}}</p>
+{{else}}
+  <pre class="pr-code wb-output">{{.Code}}</pre>
+{{end}}
+{{end}}
+{{- end}}
+
 {{/* ── Result of one check ── */}}
 {{define "studio-schema-result" -}}
 {{if .Message}}

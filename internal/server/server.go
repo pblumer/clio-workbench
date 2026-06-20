@@ -125,6 +125,10 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("GET /studio/generator", s.handleGenerator)
 	s.mux.HandleFunc("POST /studio/generator/run", s.handleGeneratorRun)
 	s.mux.HandleFunc("GET /studio/generator/report", s.handleGeneratorReport)
+
+	// Test Studio: producer-code generation (WP-7).
+	s.mux.HandleFunc("GET /studio/producer", s.handleProducer)
+	s.mux.HandleFunc("GET /studio/producer/download", s.handleProducerDownload)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)

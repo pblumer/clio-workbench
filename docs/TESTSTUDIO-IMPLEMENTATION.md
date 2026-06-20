@@ -159,6 +159,14 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
 - Editor-Tab *Producer-Code* mit Sprachumschalter, kopieren/herunterladen.
 - **Abnahme:** generierte Go-/curl-Beispiele kompilieren/laufen in einem Smoke-
   Test; Golden-File-Tests je Sprache.
+- **Status:** ✅ fertig. `internal/producergen` erzeugt **Go, TypeScript (fetch),
+  Python, curl** — pro Event-Typ ein typisierter Payload-Träger + Send-Funktion,
+  generischer CloudEvents-POST an `/api/v1/events`, Token aus `CLIO_*`-Env.
+  Ehrlich als Gerüst gerahmt (§9.3). Der Go-Output läuft durch `go/format` und
+  ist im Test als **valide & gofmt-stabil** belegt. Editor-Tab *Producer-Code*
+  mit Modell-/Sprachumschalter und Datei-Download. (Implementiert mit
+  `strings.Builder` statt `text/template` — die Zielsprachen-Klammern vertragen
+  sich schlecht mit Go-Template-Delimitern.)
 
 ---
 
@@ -207,6 +215,6 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
 | WP-4 Szenario-Editor + Pfad | T1 | M–L | ✅ fertig |
 | WP-5 `internal/simulator` | T2 | M–L | ✅ fertig |
 | WP-6 Mutation + Report | T2 | M | ✅ fertig |
-| WP-7 `internal/producergen` | T3 | L | ⬜ |
+| WP-7 `internal/producergen` | T3 | L | ✅ fertig |
 | WP-8 Push / Round-Trip + Scope | T4 | M–L | ⬜ |
 | WP-9 Gegenprobe konsolidieren | T5 | M | ⬜ |

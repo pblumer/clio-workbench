@@ -1350,6 +1350,14 @@ body { height: 100vh; overflow: hidden; }
 .btn-link { color: var(--neon-dim); font-size: 12px; text-decoration: none; }
 .btn-link:hover { color: var(--neon); text-shadow: var(--glow); }
 
+/* Test Studio — producer code (WP-7) */
+.pr-pick { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 14px; max-width: none; }
+.pr-pick select {
+  background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px;
+  padding: 7px 10px; color: var(--text); font: inherit; font-size: 12px;
+}
+.pr-code { max-height: none; max-width: 100%; overflow: auto; white-space: pre; tab-size: 4; }
+
 @media (max-width: 760px) {
   .wb-shell, .wb-shell[data-sidebar="collapsed"] {
     grid-template-columns: var(--wb-activity-w) 1fr;

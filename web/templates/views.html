@@ -108,6 +108,9 @@
   <li><button type="button" class="wb-nav-item" data-open-tab="generator">
     <span class="wb-nav-icon">⚙</span>Generator
   </button></li>
+  <li><button type="button" class="wb-nav-item" data-open-tab="producer">
+    <span class="wb-nav-icon">⌗</span>Producer-Code
+  </button></li>
 </ul>
 {{- end}}
 
@@ -115,6 +118,15 @@
 {{define "view-generator" -}}
 <div id="generator-slot" class="wb-fill"
      hx-get="/studio/generator" hx-trigger="load"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Producer-Code ── */}}
+{{define "view-producer" -}}
+<div id="producer-slot" class="wb-fill"
+     hx-get="/studio/producer" hx-trigger="load"
      hx-target="this" hx-swap="innerHTML">
   <p class="wb-hint">loading…</p>
 </div>
