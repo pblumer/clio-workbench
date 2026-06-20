@@ -270,6 +270,12 @@ tatsächlichen Typ-Sequenzen und vergleicht sie mit dem entworfenen Graphen:
 Das ist im Kern leichtes Conformance Checking und schließt den Kreis zwischen
 Entwurf und Realität. Kein Muss für v1, aber der natürliche Reifegrad.
 
+> Vorgelagert dazu steht das **Teststudio** ([`TESTSTUDIO.md`](TESTSTUDIO.md)):
+> Es prüft den Entwurf *ausführend und hypothetisch* — generiert konforme (und
+> bewusst kaputte) Ströme und spielt benannte Szenarien durch, **bevor** reale
+> Events existieren. Gegenprobe und Teststudio teilen sich dieselbe
+> Validierungs-Engine.
+
 ---
 
 ## 8. Roadmap (Clio-Stufenlogik)
