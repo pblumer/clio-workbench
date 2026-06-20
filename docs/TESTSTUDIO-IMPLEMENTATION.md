@@ -180,6 +180,13 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
   Nicht-Wegwerf-Server.
 - **Abnahme:** Push gegen httptest-Fake; Verweigerung ohne Test-Scope getestet;
   Round-Trip liest zurück und prüft mit WP-1.
+- **Status:** ✅ fertig. `clio.AppendEvent` (CloudEvents-POST) + Push-Tab:
+  **hartes Gate** (Push nur nach expliziter Wegwerf-Bestätigung der aktiven
+  Instanz; Serverwechsel entwaffnet automatisch) und **Auto-Präfix** aller
+  Subjects unter `/_test/<run-id>/…`. Round-Trip liest die gepushten Events
+  zurück und prüft jede Subject-Sequenz mit `validate`. Getestet mit einer
+  aufzeichnenden Fake-Clio (Append + Read-back), inkl. Gate-, Schreibfehler-
+  und Round-Trip-Fehlerpfaden.
 
 ---
 
@@ -216,5 +223,5 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
 | WP-5 `internal/simulator` | T2 | M–L | ✅ fertig |
 | WP-6 Mutation + Report | T2 | M | ✅ fertig |
 | WP-7 `internal/producergen` | T3 | L | ✅ fertig |
-| WP-8 Push / Round-Trip + Scope | T4 | M–L | ⬜ |
+| WP-8 Push / Round-Trip + Scope | T4 | M–L | ✅ fertig |
 | WP-9 Gegenprobe konsolidieren | T5 | M | ⬜ |

@@ -22,9 +22,9 @@ go tool cover -html=cover.out                  # zeilengenau im Browser
 | `internal/process` | 99,6 % |
 | `internal/simulator` | 99,4 % |
 | `internal/producergen` | 99,3 % |
-| `internal/clio` | 98,5 % |
+| `internal/clio` | 98,2 % |
 | `internal/schemagen` | 98,5 % |
-| `internal/server` | 97,6 % |
+| `internal/server` | 97,8 % |
 | `internal/envstore` | 97,1 % |
 | `internal/testreport` | 96,8 % |
 | `internal/scenario` | 95,3 % |
@@ -92,6 +92,8 @@ Zwei wiederkehrende Gründe für „echte" Unerreichbarkeit:
   `http.NewRequestWithContext`-Fehlerpfad. Alle Aufrufer prüfen `base != ""`
   bereits und bauen die URL aus genau dieser validierten Base; nur über eine
   TOCTOU-Race zwischen zwei `Snapshot()`-Aufrufen erreichbar.
+- `AppendEvent` — `http.NewRequestWithContext`-Fehlerpfad; Methode und URL sind
+  konstant gültig, daher unerreichbar.
 
 ### `internal/store/store.go` (`write`)
 - `json.MarshalIndent`-Fehler (`*model.Draft` ist voll marshalbar).

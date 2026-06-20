@@ -14,6 +14,7 @@ package clio
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -638,6 +639,42 @@ func (c *Client) ReadEventsByType(ctx context.Context, typ string, limit int) ([
 		return nil, fmt.Errorf("clio: read events by type: %w", err)
 	}
 	return events, nil
+}
+
+// appendPath is Clio's public event-append endpoint (structured CloudEvents).
+const appendPath = "/api/v1/events"
+
+// AppendEvent posts one CloudEvent (structured mode) to Clio. envelope is the
+// complete CloudEvents JSON object. The token is injected server-side.
+// ErrOffline / ErrUnauthorized are returned for those states; any other non-2xx
+// becomes an error so callers can surface a failed write.
+func (c *Client) AppendEvent(ctx context.Context, envelope []byte) error {
+	base, token := c.Snapshot()
+	if base == "" {
+		return ErrOffline
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, base+appendPath, bytes.NewReader(envelope))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/cloudevents+json")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := c.httpc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxDrain))
+	switch {
+	case resp.StatusCode >= 200 && resp.StatusCode < 300:
+		return nil
+	case resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden:
+		return ErrUnauthorized
+	default:
+		return fmt.Errorf("clio: append returned HTTP %d", resp.StatusCode)
+	}
 }
 
 // transportDetail produces a concise, token-free message for a transport-level

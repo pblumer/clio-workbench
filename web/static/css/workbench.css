@@ -1358,6 +1358,16 @@ body { height: 100vh; overflow: hidden; }
 }
 .pr-code { max-height: none; max-width: 100%; overflow: auto; white-space: pre; tab-size: 4; }
 
+/* Test Studio — instance push (WP-8) */
+.push-server { font-size: 12px; color: var(--text-dim); }
+.push-server code { color: var(--accent); }
+.push-gate { display: flex; align-items: center; gap: 12px; margin: 10px 0; padding: 10px 12px; border: 1px solid var(--edge); border-radius: 9px; }
+.push-gate-locked { border-color: rgba(255, 207, 92, 0.45); }
+.push-gate-armed { border-color: rgba(70, 240, 160, 0.45); }
+.push-lock { font-size: 12px; }
+.push-gate-armed .push-lock { color: var(--good); }
+.push-roundtrip { font-size: 12px; color: var(--text-dim); margin-top: 10px; }
+
 @media (max-width: 760px) {
   .wb-shell, .wb-shell[data-sidebar="collapsed"] {
     grid-template-columns: var(--wb-activity-w) 1fr;

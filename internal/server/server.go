@@ -36,6 +36,13 @@ type Server struct {
 	// session state, deliberately not persisted: it resets on restart.
 	pipelineMu sync.Mutex
 	pipeline   []queryStage
+
+	// testScopeMu guards the Test Studio's push gate (docs/TESTSTUDIO.md §7.3):
+	// testScopeURL holds the Clio base URL that was explicitly confirmed as a
+	// throwaway instance for this session. Pushing is refused unless it matches
+	// the currently selected server, so switching servers disarms the gate.
+	testScopeMu  sync.Mutex
+	testScopeURL string
 }
 
 // New constructs a Server with routes registered.
@@ -129,6 +136,12 @@ func (s *Server) routes() error {
 	// Test Studio: producer-code generation (WP-7).
 	s.mux.HandleFunc("GET /studio/producer", s.handleProducer)
 	s.mux.HandleFunc("GET /studio/producer/download", s.handleProducerDownload)
+
+	// Test Studio: instance integration — push + round-trip (WP-8).
+	s.mux.HandleFunc("GET /studio/push", s.handlePush)
+	s.mux.HandleFunc("POST /studio/push/arm", s.handlePushArm)
+	s.mux.HandleFunc("POST /studio/push/disarm", s.handlePushDisarm)
+	s.mux.HandleFunc("POST /studio/push/run", s.handlePushRun)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)

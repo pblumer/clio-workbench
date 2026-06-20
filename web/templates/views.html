@@ -111,6 +111,9 @@
   <li><button type="button" class="wb-nav-item" data-open-tab="producer">
     <span class="wb-nav-icon">⌗</span>Producer-Code
   </button></li>
+  <li><button type="button" class="wb-nav-item" data-open-tab="push">
+    <span class="wb-nav-icon">⇪</span>Instanz / Push
+  </button></li>
 </ul>
 {{- end}}
 
@@ -127,6 +130,15 @@
 {{define "view-producer" -}}
 <div id="producer-slot" class="wb-fill"
      hx-get="/studio/producer" hx-trigger="load"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Instanz / Push ── */}}
+{{define "view-push" -}}
+<div id="push-slot" class="wb-fill"
+     hx-get="/studio/push" hx-trigger="load, clio-changed from:body"
      hx-target="this" hx-swap="innerHTML">
   <p class="wb-hint">loading…</p>
 </div>

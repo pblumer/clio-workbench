@@ -48,6 +48,7 @@ func TestStoreListFailuresAre500(t *testing.T) {
 		{http.MethodGet, "/studio/scenarios"},
 		{http.MethodGet, "/studio/generator"},
 		{http.MethodGet, "/studio/producer"},
+		{http.MethodGet, "/studio/push"},
 	}
 	for _, c := range cases {
 		s := newBrokenStoreServer(t)

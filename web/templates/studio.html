@@ -288,6 +288,82 @@
 {{end}}
 {{- end}}
 
+{{/* ── Instanz / Push (WP-8) ── */}}
+{{define "push-panel" -}}
+<p class="wb-hint">Generierte Ströme in eine Clio-Instanz schreiben und zurücklesen
+  (Teststudio §7). <strong>Achtung:</strong> Clio ist append-only — gepushte
+  Testdaten lassen sich <em>nicht</em> löschen. Subjects werden automatisch unter
+  <code>/_test/&lt;run-id&gt;/…</code> isoliert.</p>
+
+{{if eq .Server ""}}
+  <p class="panel-hint bpmn-state bpmn-state-offline">Kein Server verbunden. Wähle
+    unten in der Statusleiste einen <strong>Clio-Server</strong> — am besten eine
+    Wegwerf-Instanz.</p>
+{{else}}
+  <p class="push-server">Aktiver Server: <code>{{.Server}}</code></p>
+  {{if not .Armed}}
+    <div class="push-gate push-gate-locked">
+      <span class="push-lock">🔒 Diese Instanz ist <strong>nicht</strong> als Wegwerf bestätigt.</span>
+      <button type="button" class="btn-primary"
+              hx-post="/studio/push/arm" hx-target="#push-slot" hx-swap="innerHTML"
+              hx-include="closest .push-panel-body"
+              hx-confirm="Bestätige: {{.Server}} ist eine WEGWERF-Instanz. Gepushte Testdaten bleiben dort dauerhaft (append-only).">
+        Als Wegwerf-Instanz bestätigen
+      </button>
+    </div>
+  {{else}}
+    <div class="push-gate push-gate-armed">
+      <span class="push-lock">🔓 Wegwerf-Instanz bestätigt.</span>
+      <button type="button" class="wb-icon-btn"
+              hx-post="/studio/push/disarm" hx-target="#push-slot" hx-swap="innerHTML"
+              hx-include="closest .push-panel-body" title="Bestätigung aufheben">✕</button>
+    </div>
+  {{end}}
+
+  <div class="push-panel-body">
+    {{if .Drafts}}
+    <form class="st-form gen-form" {{if not .Armed}}hidden{{end}}
+          hx-post="/studio/push/run" hx-target="#push-result" hx-swap="innerHTML">
+      <label>
+        <span>Modell</span>
+        <select name="draft">
+          {{- range .Drafts}}
+          <option value="{{.ID}}" {{if eq .ID $.DraftID}}selected{{end}}>{{.Name}}</option>
+          {{- end}}
+        </select>
+      </label>
+      <div class="gen-row">
+        <label><span>Seed</span><input type="number" name="seed" value="{{.Seed}}"></label>
+        <label><span>Subjects</span><input type="number" name="samples" value="{{.Samples}}" min="1" max="1000"></label>
+        <button type="submit" class="btn-primary">In Wegwerf-Instanz pushen</button>
+      </div>
+    </form>
+    {{else}}
+    <input type="hidden" name="draft" value="">
+    <p class="wb-hint">Noch keine Modelle. Lege links unter <strong>Modelle</strong> eines an.</p>
+    {{end}}
+  </div>
+  <div id="push-result" class="st-result"></div>
+{{end}}
+{{- end}}
+
+{{define "push-result" -}}
+{{if .Message}}<p class="panel-hint bpmn-state bpmn-state-error">{{.Message}}</p>{{end}}
+{{if .Error}}<p class="st-bad">✗ {{.Error}}</p>{{end}}
+{{if .Pushed}}
+<div class="gen-summary">
+  <span class="gen-stat gen-ok">{{.Pushed}} Events in {{.Subjects}} Subjects gepusht</span>
+  <span class="gen-stat">Namespace <code>{{.Prefix}}</code></span>
+</div>
+{{if .RoundTrip}}
+  <p class="push-roundtrip">Round-Trip: <strong>{{.ReadBack}}</strong> Events zurückgelesen,
+    <strong>{{.Conform}}/{{.SubjectsBack}}</strong> Subjects konform zum Modell.</p>
+{{else}}
+  <p class="panel-hint">Round-Trip-Lesen nicht möglich (Instanz nicht lesbar).</p>
+{{end}}
+{{end}}
+{{- end}}
+
 {{/* ── Result of one check ── */}}
 {{define "studio-schema-result" -}}
 {{if .Message}}
