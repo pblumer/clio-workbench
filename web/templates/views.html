@@ -97,10 +97,13 @@
 {{/* ── Sidebar · Teststudio: entry point + intro ── */}}
 {{define "view-studio-nav" -}}
 <p class="wb-hint">Belebe dein Modell: prüfe Payloads und Abläufe gegen den
-  Entwurf (Teststudio §3). Heute verfügbar: der Schema-Test.</p>
+  Entwurf (Teststudio §3).</p>
 <ul class="wb-nav">
   <li><button type="button" class="wb-nav-item" data-open-tab="schema-test">
     <span class="wb-nav-icon">✓</span>Schema-Test
+  </button></li>
+  <li><button type="button" class="wb-nav-item" data-open-tab="scenario-test">
+    <span class="wb-nav-icon">❏</span>Szenarien
   </button></li>
 </ul>
 {{- end}}
@@ -109,6 +112,15 @@
 {{define "view-schema-test" -}}
 <div id="schema-test-slot" class="wb-fill"
      hx-get="/studio/schema-test" hx-trigger="load"
+     hx-target="this" hx-swap="innerHTML">
+  <p class="wb-hint">loading…</p>
+</div>
+{{- end}}
+
+{{/* ── Editor: Szenarien (scenario tests + path view) ── */}}
+{{define "view-scenario-test" -}}
+<div id="scenario-slot" class="wb-fill"
+     hx-get="/studio/scenarios" hx-trigger="load"
      hx-target="this" hx-swap="innerHTML">
   <p class="wb-hint">loading…</p>
 </div>

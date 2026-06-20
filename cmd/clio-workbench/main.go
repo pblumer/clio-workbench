@@ -18,6 +18,7 @@ import (
 
 	"github.com/pblumer/clio-workbench/internal/config"
 	"github.com/pblumer/clio-workbench/internal/envstore"
+	"github.com/pblumer/clio-workbench/internal/scenario"
 	"github.com/pblumer/clio-workbench/internal/server"
 	"github.com/pblumer/clio-workbench/internal/store"
 )
@@ -44,7 +45,12 @@ func run(log *slog.Logger) error {
 		return err
 	}
 
-	srv, err := server.New(cfg, st, envs, log)
+	scen, err := scenario.Open(cfg.DataDir)
+	if err != nil {
+		return err
+	}
+
+	srv, err := server.New(cfg, st, envs, scen, log)
 	if err != nil {
 		return err
 	}

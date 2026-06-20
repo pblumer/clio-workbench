@@ -99,6 +99,7 @@ func contributions() ([]Activity, []View, []View) {
 		{ID: "process", Title: "Process", Icon: "❖", Body: "view-process"},
 		{ID: "relations", Title: "Relationships", Icon: "⇄", Body: "view-relations"},
 		{ID: "schema-test", Title: "Schema-Test", Icon: "✓", Body: "view-schema-test"},
+		{ID: "scenario-test", Title: "Szenarien", Icon: "❏", Body: "view-scenario-test"},
 	}
 
 	panel := []View{

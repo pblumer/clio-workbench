@@ -22,7 +22,7 @@ go tool cover -html=cover.out                  # zeilengenau im Browser
 | `internal/process` | 99,6 % |
 | `internal/clio` | 98,5 % |
 | `internal/schemagen` | 98,5 % |
-| `internal/server` | 98,5 % |
+| `internal/server` | 97,7 % |
 | `internal/envstore` | 97,1 % |
 | `internal/scenario` | 95,3 % |
 | `internal/store` | 95,2 % |
@@ -67,6 +67,12 @@ Zwei wiederkehrende Gründe für „echte" Unerreichbarkeit:
   unmittelbar vorausgehenden `Get` lesbar war). `saveDraft` selbst ist über
   `handleSaveMeta` (invalide Namespace) zu 100 % gedeckt.
 - `environments.go` — `s.envs.Upsert`-Schreibfehler (Platten-I/O).
+- `scenarios.go` — die `s.scenarios.Save`-Fehlerzweige in
+  create-suite/add-case/delete-case und der `s.scenarios.Delete`-Fehler
+  (außer `ErrNotFound`) in delete-suite: scheitern nur per I/O (root-uid,
+  unmöglich) — analog zu `editor.go`. Validierungs- und Decode-Fehlerpfade
+  (`store.Get`/`scenarios.Get`/`List` auf korrupter Datei → 400/500) sind
+  gedeckt.
 - `inspector.go` — `json.Indent`-Fallback, der gelingt, obwohl das vorherige
   Streaming-Decode fehlschlug: widersprüchlich (beide validieren dasselbe JSON).
 - `process.go` — `json.Marshal` eines internen `[]rep`-Structs.

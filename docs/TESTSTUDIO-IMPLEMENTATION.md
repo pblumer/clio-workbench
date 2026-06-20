@@ -104,6 +104,12 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
   Process-Rendering, Space-Look).
 - **Abnahme:** Szenario „Storno nach Versand verboten" (Beispiel §3.3) läuft rot
   mit korrekter Begründung; Handler-Tests.
+- **Status:** ✅ fertig. Editor-Tab *Szenarien* + Sidebar-Eintrag: Modell/Suite
+  wählen, Suiten & Szenarien anlegen/löschen, Sequenz als `→`/Komma-Liste,
+  Erwartung accept|reject + optionaler Endzustand. „Alle prüfen" läuft über
+  `validate.CheckSequence`; Ergebnisse rot/grün mit erster Abweichung **und**
+  dem durchlaufenen Pfad als eingefärbte Knotenkette. Drift-Warnung über
+  `scenario.Drift`. Scenario-Store via DI in `server.New` verdrahtet.
 
 ---
 
@@ -187,7 +193,7 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
 | WP-1 `internal/validate` | T0 | M | ✅ fertig |
 | WP-2 Studio-Shell + Schema-Test | T0 | S–M | ✅ fertig |
 | WP-3 `internal/scenario` | T1 | M | ✅ fertig |
-| WP-4 Szenario-Editor + Pfad | T1 | M–L | ⬜ |
+| WP-4 Szenario-Editor + Pfad | T1 | M–L | ✅ fertig |
 | WP-5 `internal/simulator` | T2 | M–L | ⬜ |
 | WP-6 Mutation + Report | T2 | M | ⬜ |
 | WP-7 `internal/producergen` | T3 | L | ⬜ |

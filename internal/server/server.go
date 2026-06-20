@@ -14,6 +14,7 @@ import (
 	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/config"
 	"github.com/pblumer/clio-workbench/internal/envstore"
+	"github.com/pblumer/clio-workbench/internal/scenario"
 	"github.com/pblumer/clio-workbench/internal/schemagen"
 	"github.com/pblumer/clio-workbench/internal/store"
 	"github.com/pblumer/clio-workbench/web"
@@ -21,13 +22,14 @@ import (
 
 // Server holds the Workbench dependencies and routing.
 type Server struct {
-	cfg   config.Config
-	store *store.Store
-	envs  *envstore.Store
-	clio  *clio.Client
-	log   *slog.Logger
-	tmpl  *template.Template
-	mux   *http.ServeMux
+	cfg       config.Config
+	store     *store.Store
+	envs      *envstore.Store
+	scenarios *scenario.Store
+	clio      *clio.Client
+	log       *slog.Logger
+	tmpl      *template.Template
+	mux       *http.ServeMux
 
 	// pipeline is the in-memory chain of refinement queries that further
 	// narrow the active environment's scope (an exploration funnel). It is
@@ -37,7 +39,7 @@ type Server struct {
 }
 
 // New constructs a Server with routes registered.
-func New(cfg config.Config, st *store.Store, envs *envstore.Store, log *slog.Logger) (*Server, error) {
+func New(cfg config.Config, st *store.Store, envs *envstore.Store, scen *scenario.Store, log *slog.Logger) (*Server, error) {
 	// root is captured by the "partial" func below so the shell can render a
 	// View's body template chosen at runtime (the {{template}} action only
 	// accepts a constant name). It is assigned right after ParseFS.
@@ -58,13 +60,14 @@ func New(cfg config.Config, st *store.Store, envs *envstore.Store, log *slog.Log
 	}
 	root = tmpl
 	s := &Server{
-		cfg:   cfg,
-		store: st,
-		envs:  envs,
-		clio:  clio.New(cfg.ClioURL, cfg.ClioToken),
-		log:   log,
-		tmpl:  tmpl,
-		mux:   http.NewServeMux(),
+		cfg:       cfg,
+		store:     st,
+		envs:      envs,
+		scenarios: scen,
+		clio:      clio.New(cfg.ClioURL, cfg.ClioToken),
+		log:       log,
+		tmpl:      tmpl,
+		mux:       http.NewServeMux(),
 	}
 	if err := s.routes(); err != nil {
 		return nil, err
@@ -109,6 +112,14 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("GET /studio/schema-test", s.handleStudioSchema)
 	s.mux.HandleFunc("GET /studio/schema-test/fields", s.handleStudioSchemaFields)
 	s.mux.HandleFunc("POST /studio/schema-test", s.handleStudioSchemaCheck)
+
+	// Test Studio: scenario editor + sequence tests + path view (WP-4).
+	s.mux.HandleFunc("GET /studio/scenarios", s.handleScenarios)
+	s.mux.HandleFunc("POST /studio/scenarios", s.handleCreateSuite)
+	s.mux.HandleFunc("POST /studio/scenarios/{suite}/delete", s.handleDeleteSuite)
+	s.mux.HandleFunc("POST /studio/scenarios/{suite}/cases", s.handleAddCase)
+	s.mux.HandleFunc("POST /studio/scenarios/{suite}/cases/{case}/delete", s.handleDeleteCase)
+	s.mux.HandleFunc("POST /studio/scenarios/{suite}/run", s.handleRunSuite)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)
