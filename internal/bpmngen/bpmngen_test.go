@@ -39,3 +39,34 @@ func TestGenerateBPMNRoundTrips(t *testing.T) {
 		}
 	}
 }
+
+// TestGenerateBPMNProcessFallsBackToName exercises the branch where the last
+// subject segment is empty or "{id}", so the participant name falls back to the
+// draft Name.
+func TestGenerateBPMNProcessFallsBackToName(t *testing.T) {
+	cases := []struct {
+		name         string
+		subjectStyle string
+	}{
+		{"empty subject style", ""},
+		{"trailing id placeholder", "/orders/{id}"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			d := model.Draft{
+				Name:         "My Fallback Process",
+				SubjectStyle: tc.subjectStyle,
+				Steps: []model.Step{
+					{Kind: model.StepEvent, Name: "order.created"},
+					{Kind: model.StepTask, Name: "ship"},
+					{Kind: model.StepEvent, Name: "order.shipped"},
+				},
+			}
+			xml := GenerateBPMN(d)
+			want := `name="My Fallback Process"`
+			if !strings.Contains(xml, want) {
+				t.Errorf("expected participant %s in generated BPMN, got:\n%s", want, xml)
+			}
+		})
+	}
+}
