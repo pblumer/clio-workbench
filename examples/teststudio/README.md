@@ -6,13 +6,18 @@ Studio data model. It contains:
 
 - **draft-order-lifecycle.json** — a model definition for an order entity.
 - **suite-order-lifecycle-tests.json** — a scenario suite with five test cases.
-- **LEARNING-PATH.md** — a guided, hands-on learning path (German) that walks you
-  through every Test Studio feature, lesson by lesson, using exactly these two
-  files. New to the Studio? Start there.
+- **LEARNING-PATH.md** / **LEARNING-PATH.en.md** — a guided, hands-on learning
+  path ([German](LEARNING-PATH.md) · [English](LEARNING-PATH.en.md)) that walks
+  you through every Test Studio feature, lesson by lesson, using exactly these
+  two files. New to the Studio? Start there.
+- **exercises/** — ready-to-run practice artifacts for the learning path:
+  per-event-type payload sets and a runnable exercise suite with the lesson
+  solutions. See [`exercises/README.md`](exercises/README.md).
 
-New here? Follow the **[learning path](LEARNING-PATH.md)** — it takes you from a
-single payload check all the way to pushing against an instance and the
-Soll/Ist Gegenprobe, step by step.
+New here? Follow the learning path ([German](LEARNING-PATH.md) ·
+[English](LEARNING-PATH.en.md)) — it takes you from a single payload check all
+the way to pushing against an instance and the Soll/Ist Gegenprobe, step by
+step.
 
 Importing
 ---------

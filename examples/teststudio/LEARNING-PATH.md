@@ -1,6 +1,8 @@
 Lernpfad — Test Studio
 ======================
 
+> 🌐 **Sprache:** Deutsch · [English](LEARNING-PATH.en.md)
+
 Ein geführter, praktischer Einstieg ins **Test Studio** der Clio Workbench.
 Du arbeitest dich vom einfachsten Baustein (eine Payload prüfen) bis zum vollen
 Kreislauf (gegen eine Instanz pushen und das Soll mit dem Ist vergleichen) vor.
@@ -14,6 +16,11 @@ auf der vorigen auf und folgt den vier Prüfarten und Stufen aus
 > **Konzeptueller Hintergrund:** Das *Warum* hinter jeder Lektion steht im
 > Ideenpapier [`TESTSTUDIO.md`](../../docs/TESTSTUDIO.md). Dieser Pfad ist das
 > *Wie* — die Tastatur dazu. Jede Lektion verweist auf den passenden Abschnitt.
+
+> **Übungsmaterial zum Mitmachen:** Im Ordner [`exercises/`](exercises/) liegen
+> fertige, importierbare Start-Artefakte zu den einzelnen Lektionen — Payload-
+> Sätze für die Schema-Tests und eine lauffähige Übungs-Suite mit den Lösungen
+> der Lektions-Aufgaben. Details in [`exercises/README.md`](exercises/README.md).
 
 Überblick
 ---------
