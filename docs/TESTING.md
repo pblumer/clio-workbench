@@ -20,6 +20,7 @@ go tool cover -html=cover.out                  # zeilengenau im Browser
 | `internal/bpmngen` | 100,0 % |
 | `internal/validate` | 100,0 % |
 | `internal/process` | 99,6 % |
+| `internal/simulator` | 98,9 % |
 | `internal/clio` | 98,5 % |
 | `internal/schemagen` | 98,5 % |
 | `internal/server` | 97,7 % |
@@ -99,6 +100,11 @@ Zwei wiederkehrende Gründe für „echte" Unerreichbarkeit:
 - `write` — `os.CreateTemp`/`tmp.Write`/`tmp.Close`/`os.Rename`-I/O-Fehler
   (root-uid, s. o.). Der `json.MarshalIndent`-Fehler **ist** gedeckt: eine
   `Step.Data` mit ungültigem Roh-JSON lässt ihn fehlschlagen.
+
+### `internal/simulator/simulator.go`
+- `pickEdge` — der abschließende `return edges[len(edges)-1]`: `weightOf` ist
+  stets ≥ 1, also `total ≥ 1`, und die gewichtete Schleife trifft immer vorher
+  zu. Defensiver, toter Rückgabewert (vom Compiler verlangt).
 
 ### `internal/schemagen/schemagen.go`
 - `SchemaCollection` — `json.MarshalIndent`-Fehler; marshalt `json.RawMessage`

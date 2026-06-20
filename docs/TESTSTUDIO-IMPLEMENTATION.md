@@ -123,6 +123,11 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
   `enum`, `format` plausibel).
 - **Abnahme:** gleicher Seed ⇒ identischer Strom; jeder erzeugte Strom besteht
   WP-1; Kanten-Überdeckungs-Modus.
+- **Status:** ✅ fertig. `internal/simulator` mit `Generate`/`GenerateN`
+  (Seed-deterministischer, gewichteter Graph-Walk), Schema-Faker für alle
+  Feldtypen (uuid/email/date-time inkl.) und `EdgeCoverage`. Property-Test:
+  50 erzeugte Ströme bestehen alle `validate.CheckSequence`/`CheckPayload`.
+  98,9 % Coverage (einzige Lücke: ein dokumentierter defensiver Rückgabewert).
 
 ### WP-6 · Mutation + Stichproben + Report · **M**
 
@@ -194,7 +199,7 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
 | WP-2 Studio-Shell + Schema-Test | T0 | S–M | ✅ fertig |
 | WP-3 `internal/scenario` | T1 | M | ✅ fertig |
 | WP-4 Szenario-Editor + Pfad | T1 | M–L | ✅ fertig |
-| WP-5 `internal/simulator` | T2 | M–L | ⬜ |
+| WP-5 `internal/simulator` | T2 | M–L | ✅ fertig |
 | WP-6 Mutation + Report | T2 | M | ⬜ |
 | WP-7 `internal/producergen` | T3 | L | ⬜ |
 | WP-8 Push / Round-Trip + Scope | T4 | M–L | ⬜ |
