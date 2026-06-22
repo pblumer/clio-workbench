@@ -28,16 +28,18 @@ import (
 // Canvas geometry (BPMN-ish proportions, space-look spacing). Kept in one place
 // so the Go layout and the SVG template agree.
 const (
-	mdlPadX    = 56.0  // pool inner padding, left/right of the chain
-	mdlLaneHdr = 28.0  // width of the vertical lane header band
-	mdlLaneH   = 168.0 // pool/lane height
-	mdlGap     = 56.0  // horizontal gap between shapes
-	mdlEventR  = 19.0  // event circle radius
-	mdlEndR    = 21.0  // end event circle radius (drawn bolder)
-	mdlMarkerR = 16.0  // start/end pseudo marker radius
-	mdlTaskW   = 116.0 // send-task width
-	mdlTaskH   = 76.0  // send-task height
-	mdlPadY    = 28.0  // pool padding above/below the lane
+	mdlPadX     = 56.0  // pool inner padding, left/right of the chain
+	mdlLaneHdr  = 28.0  // width of the vertical lane header band
+	mdlLaneH    = 168.0 // pool/lane height
+	mdlGap      = 56.0  // horizontal gap between shapes
+	mdlEventR   = 19.0  // event circle radius
+	mdlEndR     = 21.0  // end event circle radius (drawn bolder)
+	mdlMarkerR  = 16.0  // start/end pseudo marker radius
+	mdlTaskW    = 116.0 // send-task width
+	mdlTaskH    = 76.0  // send-task height
+	mdlPadY     = 28.0  // pool padding above/below the lane
+	mdlCharW    = 6.8   // ~glyph advance of the 11px monospace event label
+	mdlLabelGap = 16.0  // minimum horizontal gap between two event labels
 )
 
 // mdlShape is one laid-out BPMN element on the canvas. Derived coordinates are
@@ -174,14 +176,27 @@ func buildModeler(d *model.Draft, sel string) modelerData {
 	x := mdlPadX + mdlLaneHdr
 	midY := mdlPadY + mdlLaneH/2
 
+	var shapes []mdlShape
+	// place centres a shape at the running x, advancing past it by the fixed
+	// body gap. Event labels are centred under the orb (mdl-event-label) and are
+	// often far wider than the orb, so the previous and current label can collide
+	// even when the bodies don't. When that happens we push the shape further
+	// right so the centred labels keep a clear gap — every label stays readable
+	// however long the event names are (the pool/flows derive from CX, so they
+	// follow along).
 	place := func(sh mdlShape, halfW float64) mdlShape {
 		sh.CX = x + halfW
+		if len(shapes) > 0 {
+			prev := shapes[len(shapes)-1]
+			byLabel := prev.CX + labelHalf(prev) + mdlLabelGap + labelHalf(sh)
+			if byLabel > sh.CX {
+				sh.CX = byLabel
+			}
+		}
 		sh.CY = midY
 		x = sh.CX + halfW + mdlGap
 		return sh
 	}
-
-	var shapes []mdlShape
 	// Leading start marker (the "trigger" before the first real event).
 	shapes = append(shapes, place(mdlShape{Kind: "marker-start", R: mdlMarkerR}, mdlMarkerR))
 
@@ -230,6 +245,18 @@ func buildModeler(d *model.Draft, sel string) modelerData {
 	md.HalfH = md.H / 2
 	md.Empty = len(d.Steps) == 0
 	return md
+}
+
+// labelHalf is the horizontal half-width the shape's caption occupies on the
+// canvas baseline. Only events carry a label *under* the orb (centred on CX);
+// tasks keep their caption inside the box and markers have none, so neither
+// widens the layout.
+func labelHalf(sh mdlShape) float64 {
+	switch sh.Kind {
+	case "start", "catch", "end":
+		return float64(len([]rune(sh.Label))) * mdlCharW / 2
+	}
+	return 0
 }
 
 // shapeHalf is the horizontal half-extent of a shape (radius or half-width).

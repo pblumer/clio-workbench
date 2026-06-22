@@ -272,3 +272,53 @@ func TestShapeHalf(t *testing.T) {
 		t.Errorf("event half = %v, want 19", got)
 	}
 }
+
+func TestLabelHalf(t *testing.T) {
+	tests := []struct {
+		name string
+		sh   mdlShape
+		want float64
+	}{
+		{"event scales with name length", mdlShape{Kind: "catch", Label: "abcde"}, 5 * mdlCharW / 2},
+		{"start event counts too", mdlShape{Kind: "start", Label: "ab"}, 2 * mdlCharW / 2},
+		{"end event counts too", mdlShape{Kind: "end", Label: "abc"}, 3 * mdlCharW / 2},
+		{"task label stays inside its box", mdlShape{Kind: "task", Label: "order-shipped"}, 0},
+		{"markers have no label", mdlShape{Kind: "marker-start"}, 0},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := labelHalf(tc.sh); got != tc.want {
+				t.Errorf("labelHalf(%+v) = %v, want %v", tc.sh, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestBuildModelerLabelsNeverOverlap pins the bug from the screenshot: long
+// adjacent event names ("order-delivered" next to "order-cancelled") must be
+// spaced so their centred labels keep a clear gap, not collide.
+func TestBuildModelerLabelsNeverOverlap(t *testing.T) {
+	names := []string{"order-placed", "order-paid", "order-shipped", "order-delivered", "order-cancelled"}
+	steps := make([]model.Step, len(names))
+	for i, n := range names {
+		steps[i] = model.Step{ID: n, Kind: model.StepEvent, Name: n}
+	}
+	md := buildModeler(&model.Draft{Name: "Orders", Steps: steps}, "")
+
+	prev := mdlShape{}
+	have := false
+	for _, sh := range md.Shapes {
+		if labelHalf(sh) == 0 {
+			continue // markers carry no below-label
+		}
+		if have {
+			// The two label half-widths plus the minimum gap must fit between
+			// the centres — otherwise the captions would touch or overlap.
+			gap := sh.CX - prev.CX - labelHalf(prev) - labelHalf(sh)
+			if gap < mdlLabelGap-0.01 { // -ε: pushed pairs land exactly on the gap
+				t.Errorf("labels %q→%q overlap: gap %.1f < %.1f", prev.Label, sh.Label, gap, mdlLabelGap)
+			}
+		}
+		prev, have = sh, true
+	}
+}
