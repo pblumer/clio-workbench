@@ -308,7 +308,7 @@ func TestReadSinceSkipsFiltered(t *testing.T) {
 
 	// A stage that only keeps /orders → the /users event is filtered out.
 	s.pipeline = []queryStage{{Subject: "/orders"}}
-	dots, max := s.readSince(context.Background(), "000")
+	dots, max := s.readSince(context.Background(), "000", spaceFilter{})
 	if len(dots) != 0 {
 		t.Errorf("expected filtered (0 dots), got %d", len(dots))
 	}
@@ -331,7 +331,7 @@ func TestCurrentMaxIDAndReadSince(t *testing.T) {
 	}
 
 	// readSince after "010" → only the 020 event survives.
-	dots, max := s.readSince(context.Background(), "010")
+	dots, max := s.readSince(context.Background(), "010", spaceFilter{})
 	if max != "020" {
 		t.Errorf("readSince max = %q, want 020", max)
 	}
@@ -341,7 +341,7 @@ func TestCurrentMaxIDAndReadSince(t *testing.T) {
 
 	// Offline readSince → nil, empty.
 	s.clio.SetTarget("", "")
-	if dots, max := s.readSince(context.Background(), ""); dots != nil || max != "" {
+	if dots, max := s.readSince(context.Background(), "", spaceFilter{}); dots != nil || max != "" {
 		t.Errorf("offline readSince = %+v %q", dots, max)
 	}
 	if max := s.currentMaxID(context.Background()); max != "" {

@@ -33,6 +33,11 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
 - A **live connection status** in the header that reports whether Clio is
   actually reachable and the token accepted — not merely whether `CLIO_URL` is
   configured (see below).
+- **A layered scope concept** (`docs/SCOPE.md`): every analysis panel reads
+  events through three composed layers — a global, persistent **Environment**
+  (server + base scope + read limit), the shared session **Queries** pipeline,
+  and a per-panel **discipline lens**. Global to define, local to shape; each
+  layer only narrows, and only the Environment reaches Clio and sets the limit.
 - **Environments**: saved, switchable working contexts — a server plus a data
   scope (subject prefix, event types, lower/upperBound, per-env event limit).
   The active scope applies to all analysis panels; the token is never stored.
@@ -48,7 +53,12 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
 - A **dynamic Event Space**: a *frame* keeps the last N events, dots are
   coloured by **event type** (with a type legend), a **live** toggle streams new
   events in over SSE (the Workbench tails Clio server-side), and hovering a dot
-  opens a card with the event's metadata and pretty-printed payload.
+  opens a card with the event's metadata and pretty-printed payload. An in-panel
+  **filter** — the Event Space's *discipline lens* (`docs/SCOPE.md`) — narrows
+  *which* events are charted: click a type in the legend to toggle it, or type
+  the same filter directly (`type:… subject:… from:… to:… source:…`, plus free
+  text matched against type/subject). It is view-only and transient: the
+  environment and the query pipeline stay untouched.
 
 Still ahead per the roadmap (`docs/WORKBENCH.md` §8): the drawing canvas and
 state-machine view (Stufe 1), event-type schema editor and export (Stufe 2),
@@ -172,4 +182,5 @@ web/                  embedded templates, CSS, htmx
 docs/WORKBENCH.md     architecture & idea paper
 docs/TESTSTUDIO.md    the Test Studio: architecture & idea paper (testing models)
 docs/FRAMEWORK.md     the UI framework (shell regions + how to add a view)
+docs/SCOPE.md         the scope concept (environment · queries · discipline lens)
 ```

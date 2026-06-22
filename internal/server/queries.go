@@ -10,15 +10,27 @@ import (
 	"github.com/pblumer/clio-workbench/internal/clio"
 )
 
-// queryStage is one refinement step in the exploration pipeline. It carries the
-// same narrowing dimensions as the environment/query form (subject prefix,
-// event types, id bounds). Each stage further decimates the survivors of the
-// stage before it — an AND across all stages.
+// queryStage is the single refinement primitive shared by all three scope
+// layers (docs/SCOPE.md §4): the global Queries pipeline and every discipline
+// lens are lists of these. It carries the narrowing dimensions of the
+// environment/query form (subject prefix, event types, id bounds) plus a source
+// substring. Each stage further decimates the survivors of the stage before it
+// — an AND across all stages.
 type queryStage struct {
 	Subject    string
 	Types      []string
 	LowerBound string
 	UpperBound string
+	Source     string
+}
+
+// eventKey is the minimal event projection a queryStage matches against. It
+// lets the same matcher serve both the minimal and the payload-carrying read.
+type eventKey struct {
+	Subject string
+	Type    string
+	ID      string
+	Source  string
 }
 
 // label renders a stage as a compact human-readable filter expression.
@@ -36,6 +48,9 @@ func (q queryStage) label() string {
 	if q.UpperBound != "" {
 		parts = append(parts, "to "+q.UpperBound)
 	}
+	if q.Source != "" {
+		parts = append(parts, "source "+q.Source)
+	}
 	if len(parts) == 0 {
 		return "any"
 	}
@@ -44,7 +59,8 @@ func (q queryStage) label() string {
 
 // empty reports whether a stage carries no filter at all (would be a no-op).
 func (q queryStage) empty() bool {
-	return q.Subject == "" && len(q.Types) == 0 && q.LowerBound == "" && q.UpperBound == ""
+	return q.Subject == "" && len(q.Types) == 0 && q.LowerBound == "" &&
+		q.UpperBound == "" && q.Source == ""
 }
 
 // stages returns a copy of the current pipeline (safe for concurrent reads).
@@ -56,18 +72,20 @@ func (s *Server) stages() []queryStage {
 	return out
 }
 
-// matchStage reports whether an event (by its subject/type/id) survives a stage.
-func matchStage(subject, typ, id string, st queryStage) bool {
+// matchStage reports whether an event survives a stage. Subject is a
+// segment-aware prefix, Types an exact set, the bounds an id range, and Source a
+// substring.
+func matchStage(k eventKey, st queryStage) bool {
 	if st.Subject != "" {
 		want := "/" + strings.Trim(st.Subject, "/")
-		if subject != want && !strings.HasPrefix(subject, want+"/") {
+		if k.Subject != want && !strings.HasPrefix(k.Subject, want+"/") {
 			return false
 		}
 	}
 	if len(st.Types) > 0 {
 		hit := false
 		for _, t := range st.Types {
-			if t == typ {
+			if t == k.Type {
 				hit = true
 				break
 			}
@@ -76,34 +94,51 @@ func matchStage(subject, typ, id string, st queryStage) bool {
 			return false
 		}
 	}
-	if st.LowerBound != "" && id < st.LowerBound {
+	if st.LowerBound != "" && k.ID < st.LowerBound {
 		return false
 	}
-	if st.UpperBound != "" && id > st.UpperBound {
+	if st.UpperBound != "" && k.ID > st.UpperBound {
+		return false
+	}
+	if st.Source != "" && !strings.Contains(k.Source, st.Source) {
 		return false
 	}
 	return true
 }
 
 // survives reports whether an event passes every stage of the pipeline.
-func survives(subject, typ, id string, stages []queryStage) bool {
+func survives(k eventKey, stages []queryStage) bool {
 	for _, st := range stages {
-		if !matchStage(subject, typ, id, st) {
+		if !matchStage(k, st) {
 			return false
 		}
 	}
 	return true
 }
 
-// applyPipeline filters the minimal-event stream through every active stage.
-func (s *Server) applyPipeline(events []clio.Event) []clio.Event {
+// refinement composes the two in-process scope layers (docs/SCOPE.md §1): the
+// global Queries pipeline followed by an optional discipline lens, in that
+// order. Empty lens stages are dropped so a no-op lens stays free.
+func (s *Server) refinement(lens ...queryStage) []queryStage {
 	stages := s.stages()
+	for _, st := range lens {
+		if !st.empty() {
+			stages = append(stages, st)
+		}
+	}
+	return stages
+}
+
+// applyPipeline filters the minimal-event stream through every refinement stage
+// (global Queries plus the given discipline lens).
+func (s *Server) applyPipeline(events []clio.Event, lens ...queryStage) []clio.Event {
+	stages := s.refinement(lens...)
 	if len(stages) == 0 {
 		return events
 	}
 	out := events[:0:0]
 	for _, e := range events {
-		if survives(e.Subject, e.Type, e.ID, stages) {
+		if survives(eventKey{e.Subject, e.Type, e.ID, e.Source}, stages) {
 			out = append(out, e)
 		}
 	}
@@ -111,38 +146,40 @@ func (s *Server) applyPipeline(events []clio.Event) []clio.Event {
 }
 
 // applyPipelineFull filters the full-event stream (with payloads) the same way.
-func (s *Server) applyPipelineFull(events []clio.FullEvent) []clio.FullEvent {
-	stages := s.stages()
+func (s *Server) applyPipelineFull(events []clio.FullEvent, lens ...queryStage) []clio.FullEvent {
+	stages := s.refinement(lens...)
 	if len(stages) == 0 {
 		return events
 	}
 	out := events[:0:0]
 	for _, e := range events {
-		if survives(e.Subject, e.Type, e.ID, stages) {
+		if survives(eventKey{e.Subject, e.Type, e.ID, e.Source}, stages) {
 			out = append(out, e)
 		}
 	}
 	return out
 }
 
-// scopedEvents reads the active environment's scope from Clio and runs it
-// through the query pipeline — the single chokepoint every analysis panel uses
-// so the environment and the refinement chain apply uniformly.
-func (s *Server) scopedEvents(ctx context.Context) ([]clio.Event, error) {
+// scopedEvents reads the active environment's universe from Clio and lays the
+// refinement (global Queries plus the optional discipline lens) over it — the
+// single chokepoint every analysis panel uses so the three scope layers
+// (docs/SCOPE.md) compose uniformly. A view with no lens of its own calls this
+// without arguments and inherits exactly environment + queries.
+func (s *Server) scopedEvents(ctx context.Context, lens ...queryStage) ([]clio.Event, error) {
 	events, err := s.clio.ReadScoped(ctx, s.activeScope())
 	if err != nil {
 		return nil, err
 	}
-	return s.applyPipeline(events), nil
+	return s.applyPipeline(events, lens...), nil
 }
 
 // scopedFullEvents is scopedEvents for the payload-carrying read.
-func (s *Server) scopedFullEvents(ctx context.Context) ([]clio.FullEvent, error) {
+func (s *Server) scopedFullEvents(ctx context.Context, lens ...queryStage) ([]clio.FullEvent, error) {
 	events, err := s.clio.ReadFullScoped(ctx, s.activeScope())
 	if err != nil {
 		return nil, err
 	}
-	return s.applyPipelineFull(events), nil
+	return s.applyPipelineFull(events, lens...), nil
 }
 
 // ---- view & handlers ----
@@ -181,7 +218,7 @@ func (s *Server) handleQueries(w http.ResponseWriter, r *http.Request) {
 		for i, st := range stages {
 			next := cur[:0:0]
 			for _, e := range cur {
-				if matchStage(e.Subject, e.Type, e.ID, st) {
+				if matchStage(eventKey{e.Subject, e.Type, e.ID, e.Source}, st) {
 					next = append(next, e)
 				}
 			}
@@ -210,6 +247,7 @@ func (s *Server) handleAddQuery(w http.ResponseWriter, r *http.Request) {
 		Types:      splitTypes(r.FormValue("types")),
 		LowerBound: strings.TrimSpace(r.FormValue("lowerBound")),
 		UpperBound: strings.TrimSpace(r.FormValue("upperBound")),
+		Source:     strings.TrimSpace(r.FormValue("source")),
 	}
 	if !st.empty() {
 		s.pipelineMu.Lock()
