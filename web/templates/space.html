@@ -1,7 +1,7 @@
 {{define "space.html" -}}
 <div class="events-head">
   <h2 class="panel-title">Event space
-    {{- if eq .State "ok"}} <span class="proc-stat">{{.Shown}}{{if .Capped}}/{{.Total}}{{end}} subjects · {{.Events}} events{{if .Framed}} · last {{.Frame}}{{end}} · {{.Axis}}</span>{{end -}}
+    {{- if eq .State "ok"}} <span class="proc-stat">{{.Shown}}{{if .Capped}}/{{.Total}}{{end}} subjects · {{.Events}} events{{if .Framed}} · last {{.Frame}}{{end}}{{if .Filtered}} · filtered{{end}} · {{.Axis}}</span>{{end -}}
   </h2>
   <button class="reconnect" type="button"
           hx-get="/space" hx-include="#space-frame"
@@ -11,10 +11,10 @@
           aria-label="Refresh">⟳</button>
 </div>
 
-{{if eq .State "ok"}}
-  <form class="space-frame" id="space-frame">
+{{if or (eq .State "ok") (eq .State "filtered-empty")}}
+  <form class="space-frame" id="space-frame" onsubmit="return false">
     <label class="frame-pick">Frame
-      <select name="frame" hx-get="/space" hx-include="#space-frame"
+      <select name="frame" id="space-frame-size" hx-get="/space" hx-include="#space-frame"
               hx-target="#events-slot" hx-swap="innerHTML">
         <option value="all"{{if not .Frame}} selected{{end}}>all</option>
         <option value="200"{{if eq .Frame 200}} selected{{end}}>last 200</option>
@@ -22,6 +22,21 @@
         <option value="5000"{{if eq .Frame 5000}} selected{{end}}>last 5000</option>
       </select>
     </label>
+
+    <label class="space-filter" title="Refine which events are charted. Keys: subject: type: from: to: — anything else matches the type or subject. Or click a type below.">
+      <span class="space-filter-icon" aria-hidden="true">⌕</span>
+      <input type="search" name="q" value="{{.Query}}" autocomplete="off" spellcheck="false"
+             placeholder="filter… press ⏎ — e.g. type:order.created subject:/orders"
+             hx-get="/space" hx-include="#space-frame"
+             hx-target="#events-slot" hx-swap="innerHTML"
+             hx-trigger="search, change">
+    </label>
+    {{if .Filtered}}
+    <button type="button" class="filter-clear" title="Clear the filter"
+            hx-get="/space" hx-vals='{"q":""}' hx-include="#space-frame-size"
+            hx-target="#events-slot" hx-swap="innerHTML">× clear</button>
+    {{end}}
+
     <button type="button" class="live-toggle" data-after="{{.AfterID}}"
             aria-pressed="false" title="Stream new events live">● live</button>
     <span class="live-state" hidden></span>
@@ -29,6 +44,7 @@
 
   {{if .Truncated}}<p class="trunc-note">⚠ read the first {{.Cap}} events (oldest first) — newer events may be missing. Raise the environment limit or <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
 
+  {{if eq .State "ok"}}
   <div class="dotted-graph" data-after="{{.AfterID}}">
     <svg viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Dotted chart of events per subject over time">
       <g class="dotted-viewport">
@@ -51,12 +67,26 @@
     <button type="button" class="proc-reset" title="Reset view">⤢</button>
     <div class="dot-card" hidden></div>
   </div>
+  {{else}}
+  <p class="panel-hint dot-nomatch">No events match this filter. Toggle a type back on or <button type="button" class="linklike"
+        hx-get="/space" hx-vals='{"q":""}' hx-include="#space-frame-size"
+        hx-target="#events-slot" hx-swap="innerHTML">clear the filter</button>.</p>
+  {{end}}
 
   <div class="proc-legend dot-legend">
     {{range .Legend}}
+    {{if .Chip}}
+    <button type="button" class="lg lg-toggle{{if .Active}} on{{else if $.TypeFilterOn}} off{{end}}"
+            title="Toggle this type in the filter"
+            hx-get="/space" hx-vals='{"q":"{{.Toggled}}"}' hx-include="#space-frame-size"
+            hx-target="#events-slot" hx-swap="innerHTML">
+      <span class="lg-swatch" style="background:{{.Color}}"></span>{{.Type}}{{if .Count}} <small>{{.Count}}</small>{{end}}
+    </button>
+    {{else}}
     <span class="lg"><span class="lg-swatch" style="background:{{if .Color}}{{.Color}}{{else}}transparent{{end}}"></span>{{.Type}}{{if .Count}} <small>{{.Count}}</small>{{end}}</span>
     {{end}}
-    <span class="lg lg-hint">✋ drag · scroll to zoom · hover a dot</span>
+    {{end}}
+    <span class="lg lg-hint">✋ drag · scroll to zoom · hover a dot · click a type to filter</span>
   </div>
 {{else if eq .State "empty"}}
   <p class="panel-hint">{{.Message}}</p>

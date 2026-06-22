@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"sort"
 	"strconv"
+	"strings"
 
+	"github.com/pblumer/clio-workbench/internal/clio"
 	"github.com/pblumer/clio-workbench/internal/process"
 )
 
@@ -53,11 +55,17 @@ type dotPoint struct {
 	Time    string
 }
 
-// typeLegendItem is one entry of the by-type colour legend.
+// typeLegendItem is one entry of the by-type colour legend. In the Event Space
+// the entries double as filter chips: Active marks a type that is currently
+// pinned by the space filter, and Toggled is the filter expression you'd get by
+// clicking the chip (adding the type if absent, removing it if present).
 type typeLegendItem struct {
-	Type  string
-	Color string
-	Count int
+	Type    string
+	Color   string
+	Count   int
+	Chip    bool // a clickable filter chip (false for the "+N more" summary)
+	Active  bool
+	Toggled string
 }
 
 type dotRow struct {
@@ -91,6 +99,9 @@ type dottedView struct {
 	Frame            int    // active window size (0 = all)
 	Framed           bool   // the read was clipped to the last Frame events
 	AfterID          string // newest id shown — the live stream resumes past it
+	Query            string // the raw space-filter expression (echoed into the input)
+	Filtered         bool   // a space filter is narrowing the charted events
+	TypeFilterOn     bool   // the filter pins one or more event types (chip selection)
 }
 
 // handleSpace renders the "event space" as a dotted chart: one row per subject,
@@ -111,15 +122,58 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 		s.render(w, "space.html", v)
 		return
 	}
+	truncated := len(events) >= sc.Limit
+
+	// Nothing in scope at all: a genuine empty state — there is nothing to
+	// filter, so skip the filter chrome entirely.
+	if len(events) == 0 {
+		s.render(w, "space.html", dottedView{
+			State:   "empty",
+			Message: "Clio is connected, but there are no events to chart yet.",
+		})
+		return
+	}
+
+	// The in-panel space filter narrows *which* of the scoped events get
+	// charted — a transient, view-only refinement that never touches the
+	// environment or the query pipeline. The colour legend doubles as a set of
+	// clickable type chips, so the chips are built over the *unfiltered* scope:
+	// every type stays togglable even after the filter hides its dots.
+	filter := parseSpaceFilter(r.URL.Query().Get("q"))
+	chips := buildTypeChips(events, filter)
+	if !filter.empty() {
+		kept := events[:0:0]
+		for _, e := range events {
+			if filter.match(e.Subject, e.Type, e.ID) {
+				kept = append(kept, e)
+			}
+		}
+		events = kept
+	}
 
 	// The "frame" keeps only the last N events (the newest tail of the scope),
 	// the window the user pans across while live events stream in.
 	frame := frameSize(r.URL.Query().Get("frame"))
-	truncated := len(events) >= sc.Limit
 	framed := false
 	if frame > 0 && len(events) > frame {
 		events = events[len(events)-frame:]
 		framed = true
+	}
+
+	// The filter matched nothing: keep the filter chrome on screen (so the user
+	// can adjust it) but show a note in place of the chart.
+	if len(events) == 0 {
+		s.render(w, "space.html", dottedView{
+			State:        "filtered-empty",
+			Cap:          sc.Limit,
+			Truncated:    truncated,
+			Frame:        frame,
+			Legend:       chips,
+			Query:        filter.String(),
+			Filtered:     true,
+			TypeFilterOn: len(filter.stage.Types) > 0,
+		})
+		return
 	}
 
 	in := make([]process.TimedEvent, len(events))
@@ -134,7 +188,166 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	if n := len(events); n > 0 {
 		v.AfterID = events[n-1].ID
 	}
+	// Replace the dot-derived legend with the full-scope type chips so every
+	// type can be toggled, and echo the active filter back to the UI.
+	v.Legend = chips
+	v.Query = filter.String()
+	v.Filtered = !filter.empty()
+	v.TypeFilterOn = len(filter.stage.Types) > 0
 	s.render(w, "space.html", v)
+}
+
+// spaceFilter is the Event Space's in-panel refinement: a view-only narrowing
+// of the charted events. It reuses the pipeline's queryStage for the structured
+// dimensions (subject prefix, exact types, id bounds) and adds free-text
+// needles that match an event's type or subject by case-insensitive substring,
+// so the same filter can be clicked together from the type chips or typed by
+// hand (e.g. `type:order.created subject:/orders orders`).
+type spaceFilter struct {
+	stage   queryStage
+	needles []string // lower-cased substrings; an event must contain them all
+}
+
+// parseSpaceFilter reads a space-separated filter expression. Recognised keys
+// are subject/type(s)/from/to (with a few aliases); every other token is a
+// free-text needle.
+func parseSpaceFilter(raw string) spaceFilter {
+	var f spaceFilter
+	for _, tok := range strings.Fields(raw) {
+		key, val, ok := strings.Cut(tok, ":")
+		if !ok {
+			f.needles = append(f.needles, strings.ToLower(tok))
+			continue
+		}
+		val = strings.TrimSpace(val)
+		if val == "" {
+			continue
+		}
+		switch strings.ToLower(key) {
+		case "subject", "subj", "s":
+			f.stage.Subject = val
+		case "type", "types", "t":
+			f.stage.Types = append(f.stage.Types, splitTypes(val)...)
+		case "from", "after", "lower", "min":
+			f.stage.LowerBound = val
+		case "to", "before", "upper", "max":
+			f.stage.UpperBound = val
+		default:
+			f.needles = append(f.needles, strings.ToLower(tok))
+		}
+	}
+	return f
+}
+
+// empty reports whether the filter carries no constraint (a no-op).
+func (f spaceFilter) empty() bool {
+	return f.stage.empty() && len(f.needles) == 0
+}
+
+// hasType reports whether t is currently pinned by the filter.
+func (f spaceFilter) hasType(t string) bool {
+	for _, x := range f.stage.Types {
+		if x == t {
+			return true
+		}
+	}
+	return false
+}
+
+// match reports whether an event survives the filter.
+func (f spaceFilter) match(subject, typ, id string) bool {
+	if !matchStage(subject, typ, id, f.stage) {
+		return false
+	}
+	if len(f.needles) > 0 {
+		ls, lt := strings.ToLower(subject), strings.ToLower(typ)
+		for _, n := range f.needles {
+			if !strings.Contains(lt, n) && !strings.Contains(ls, n) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// withTypeToggled returns a copy of the filter with type t flipped in or out of
+// the pinned-type set — the effect of clicking a type chip.
+func (f spaceFilter) withTypeToggled(t string) spaceFilter {
+	nf := f
+	types := make([]string, 0, len(f.stage.Types)+1)
+	found := false
+	for _, x := range f.stage.Types {
+		if x == t {
+			found = true
+			continue
+		}
+		types = append(types, x)
+	}
+	if !found {
+		types = append(types, t)
+	}
+	nf.stage.Types = types
+	return nf
+}
+
+// String renders the filter back to its canonical expression, so a parsed
+// filter round-trips and the input always shows a normalised form.
+func (f spaceFilter) String() string {
+	var parts []string
+	if f.stage.Subject != "" {
+		parts = append(parts, "subject:"+f.stage.Subject)
+	}
+	for _, t := range f.stage.Types {
+		parts = append(parts, "type:"+t)
+	}
+	if f.stage.LowerBound != "" {
+		parts = append(parts, "from:"+f.stage.LowerBound)
+	}
+	if f.stage.UpperBound != "" {
+		parts = append(parts, "to:"+f.stage.UpperBound)
+	}
+	parts = append(parts, f.needles...)
+	return strings.Join(parts, " ")
+}
+
+// buildTypeChips lists the distinct event types of the (unfiltered) scope as
+// filter chips: colour + count, busiest first, each marked Active when pinned
+// and carrying the filter expression a click would produce. Beyond legendCap
+// types it collapses the tail into a non-clickable "+N more" summary.
+func buildTypeChips(events []clio.Event, f spaceFilter) []typeLegendItem {
+	counts := make(map[string]int, 16)
+	for _, e := range events {
+		counts[e.Type]++
+	}
+	items := make([]typeLegendItem, 0, len(counts))
+	for t, c := range counts {
+		items = append(items, typeLegendItem{Type: t, Color: typeColor(t), Count: c})
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Count != items[j].Count {
+			return items[i].Count > items[j].Count
+		}
+		return items[i].Type < items[j].Type
+	})
+	if len(items) > legendCap {
+		rest := 0
+		for _, it := range items[legendCap:] {
+			rest += it.Count
+		}
+		extra := len(counts) - legendCap
+		items = items[:legendCap]
+		items = append(items, typeLegendItem{Type: fmt.Sprintf("+%d more types", extra), Count: rest})
+	}
+	for i := range items {
+		it := &items[i]
+		if it.Color == "" { // the "+N more" summary is not a togglable chip
+			continue
+		}
+		it.Chip = true
+		it.Active = f.hasType(it.Type)
+		it.Toggled = f.withTypeToggled(it.Type).String()
+	}
+	return items
 }
 
 // frameSize parses the frame query param. "all"/"0"/"" means no window; a bare

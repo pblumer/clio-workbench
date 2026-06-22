@@ -696,6 +696,40 @@ html, body {
 @keyframes live-blink { 50% { opacity: 0.6; } }
 .live-state { font: 11px/1 ui-monospace, monospace; color: var(--neon); letter-spacing: 0.5px; }
 
+/* in-panel space filter: type it directly (the "coding" way) */
+.space-filter { display: inline-flex; align-items: center; gap: 6px; flex: 1 1 260px; min-width: 200px; }
+.space-filter-icon { color: var(--neon-dim); font-size: 13px; }
+.space-filter input {
+  flex: 1; min-width: 0;
+  background: rgba(8, 14, 28, 0.7);
+  color: var(--text);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font: 11px/1.4 ui-monospace, monospace;
+  letter-spacing: 0.3px;
+}
+.space-filter input:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
+.space-filter input::placeholder { color: var(--text-dim); opacity: 0.7; }
+.filter-clear {
+  background: rgba(8, 14, 28, 0.7);
+  color: var(--text-dim);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: 4px 9px;
+  font: 600 11px/1 ui-monospace, monospace;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.filter-clear:hover { color: #ff5a6e; border-color: #ff5a6e; }
+
+.dot-nomatch { margin: 18px 2px; color: var(--text-dim); }
+.linklike {
+  background: none; border: none; padding: 0; font: inherit;
+  color: var(--neon); cursor: pointer; text-decoration: underline;
+}
+.linklike:hover { color: var(--text); }
+
 /* by-type colour legend swatch */
 .lg-swatch {
   display: inline-block;
@@ -704,6 +738,24 @@ html, body {
   margin-right: 5px;
   vertical-align: baseline;
 }
+
+/* legend entries double as clickable filter chips (the "playful" way) */
+.lg-toggle {
+  display: inline-flex; align-items: center;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  margin: -3px 0; padding: 3px 9px;
+  font: inherit; font-size: 11px; letter-spacing: 1px;
+  color: inherit; cursor: pointer;
+  transition: border-color 0.15s ease, opacity 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+.lg-toggle small { color: var(--text-dim); margin-left: 4px; }
+.lg-toggle:hover { border-color: var(--neon-dim); background: rgba(56, 225, 255, 0.06); }
+.lg-toggle.on { border-color: var(--neon); color: var(--text); box-shadow: 0 0 9px -2px var(--neon); }
+.lg-toggle.on small { color: var(--neon); }
+.lg-toggle.off { opacity: 0.38; }
+.lg-toggle.off:hover { opacity: 0.85; }
 
 /* rich hover card — event metadata + payload */
 .dot-card {

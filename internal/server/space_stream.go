@@ -53,6 +53,9 @@ func (s *Server) handleSpaceStream(w http.ResponseWriter, r *http.Request) {
 		// whole history into the live feed.
 		after = s.currentMaxID(ctx)
 	}
+	// The same in-panel space filter applies to the live feed, so streamed dots
+	// match the charted ones.
+	filter := parseSpaceFilter(r.URL.Query().Get("q"))
 
 	flusher.Flush()
 	ticker := time.NewTicker(streamPoll)
@@ -63,7 +66,7 @@ func (s *Server) handleSpaceStream(w http.ResponseWriter, r *http.Request) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			newer, max := s.readSince(ctx, after)
+			newer, max := s.readSince(ctx, after, filter)
 			if max != "" {
 				after = max
 			}
@@ -101,10 +104,10 @@ func (s *Server) currentMaxID(ctx context.Context) string {
 }
 
 // readSince tails the active scope for events with an id strictly greater than
-// after, applies the query pipeline, and returns them as stream dots plus the
-// new high-water id. It scopes the Clio read with lowerBound = after so only
-// fresh events come back.
-func (s *Server) readSince(ctx context.Context, after string) ([]streamDot, string) {
+// after, applies the query pipeline and the in-panel space filter, and returns
+// them as stream dots plus the new high-water id. It scopes the Clio read with
+// lowerBound = after so only fresh events come back.
+func (s *Server) readSince(ctx context.Context, after string, filter spaceFilter) ([]streamDot, string) {
 	rctx, cancel := context.WithTimeout(ctx, connectionTimeout)
 	defer cancel()
 
@@ -127,6 +130,9 @@ func (s *Server) readSince(ctx context.Context, after string) ([]streamDot, stri
 			max = e.ID
 		}
 		if !survives(e.Subject, e.Type, e.ID, stages) {
+			continue
+		}
+		if !filter.match(e.Subject, e.Type, e.ID) {
 			continue
 		}
 		_, phase := process.Classify(e.Type)
