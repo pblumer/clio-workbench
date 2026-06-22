@@ -1123,43 +1123,127 @@ html, body {
 .insp-error { color: #ff7a8a; }
 
 /* Outline process editor */
-.step-add { display: flex; gap: 14px; }
-.step-list { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.step-item { display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 8px 10px; border: 1px solid var(--edge); border-radius: 9px; background: rgba(8, 14, 28, 0.6); }
-.step-kind { flex: none; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--edge); }
+.step-add { display: flex; gap: 8px; }
+
+/* Small pill button used to add steps/fields — reads as an action, not a link. */
+.btn-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(56, 225, 255, 0.08); border: 1px solid rgba(56, 225, 255, 0.35);
+  color: var(--neon); border-radius: 999px; padding: 5px 12px;
+  font: inherit; font-size: 12px; letter-spacing: 0.5px; cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.btn-chip:hover { background: rgba(56, 225, 255, 0.16); border-color: var(--neon); box-shadow: var(--glow); }
+.btn-chip-ghost { background: none; border-style: dashed; border-color: var(--edge); color: var(--text-dim); margin-top: 4px; }
+.btn-chip-ghost:hover { color: var(--neon); border-color: var(--neon-dim); box-shadow: none; background: rgba(56, 225, 255, 0.06); }
+
+/* Compact square icon button for row operations (move/delete). */
+.btn-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 7px;
+  background: rgba(5, 10, 20, 0.6); border: 1px solid var(--edge);
+  color: var(--text-dim); font: inherit; font-size: 13px; line-height: 1; cursor: pointer;
+  transition: color .15s ease, border-color .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.btn-icon:hover:not(:disabled) { color: var(--neon); border-color: var(--neon-dim); box-shadow: var(--glow); }
+.btn-icon:disabled { opacity: 0.3; cursor: default; }
+.btn-icon.btn-danger { color: #ff7a8a; }
+.btn-icon.btn-danger:hover { color: #ff4d63; border-color: rgba(255, 90, 110, 0.55); box-shadow: 0 0 10px rgba(255, 77, 99, 0.35); }
+
+.step-list { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.step-item {
+  display: flex; flex-direction: column; align-items: stretch; gap: 10px;
+  padding: 12px 12px 12px 14px; border: 1px solid var(--edge); border-radius: 10px;
+  background: rgba(8, 14, 28, 0.6); position: relative; overflow: hidden;
+}
+/* A coloured rail on the left signals the step kind at a glance. */
+.step-item::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--edge); }
+.step-item.step-event::before { background: linear-gradient(var(--neon), var(--neon-dim)); }
+.step-item.step-task::before  { background: linear-gradient(var(--accent), #4a36a8); }
+
+.step-no { flex: none; font-size: 11px; color: var(--text-dim); min-width: 1.4em; text-align: right; font-variant-numeric: tabular-nums; }
+.step-kind { flex: none; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--edge); }
 .step-kind-event { color: var(--neon); border-color: rgba(56, 225, 255, 0.4); }
 .step-kind-task { color: var(--accent); border-color: rgba(124, 92, 255, 0.4); }
-.step-form { flex: 1; display: flex; gap: 8px; }
-.step-form input { flex: 1; background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px; padding: 7px 10px; color: var(--text); font: inherit; font-size: 12px; }
+.step-form { flex: 1; display: flex; gap: 8px; min-width: 0; }
+.step-form input { flex: 1; min-width: 0; background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px; padding: 8px 11px; color: var(--text); font: inherit; font-size: 13px; }
 .step-form input:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
-.step-form select { background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px; padding: 7px 8px; color: var(--text); font: inherit; font-size: 12px; }
+.step-form select { flex: none; background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 7px; padding: 7px 8px; color: var(--text); font: inherit; font-size: 12px; }
+/* The phase select carries the phase colour so its state is readable at rest. */
+.phase-select.phase-active   { color: var(--neon); border-color: rgba(56, 225, 255, 0.45); }
+.phase-select.phase-complete { color: var(--good); border-color: rgba(70, 240, 160, 0.45); }
+.phase-select.phase-error    { color: #ff7a8a; border-color: rgba(255, 90, 110, 0.45); }
+.phase-select.phase-info     { color: #9fb0c4; }
 .export-row { display: flex; align-items: center; gap: 14px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--edge); }
 .export-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); }
 
 .step-row { display: flex; align-items: center; gap: 10px; }
-.step-ops { display: flex; gap: 8px; flex: none; }
+.step-ops { display: flex; gap: 6px; flex: none; }
 
 /* field builder */
-.step-fields { margin-top: 10px; padding-left: 4px; border-left: 1px solid var(--edge); }
-.step-fields summary { cursor: pointer; color: var(--neon-dim); font-size: 11px; letter-spacing: 1px; }
-.step-fields summary:hover { color: var(--neon); }
-.field-list { list-style: none; margin: 10px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.field-row { display: flex; align-items: center; gap: 6px; }
-.field-form { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.field-form input[type=text], .field-form select {
-  background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 6px;
-  padding: 5px 8px; color: var(--text); font: inherit; font-size: 11px;
+.step-fields { margin-top: 2px; padding-left: 12px; border-left: 1px solid var(--edge); }
+.step-fields summary {
+  cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  color: var(--neon-dim); font-size: 11px; letter-spacing: 1px; text-transform: uppercase;
+  list-style: none;
 }
-.field-form input[name=name] { flex: 1; min-width: 110px; }
-.field-form input[name=format], .field-form input[name=ref], .field-form input[name=enum] { width: 130px; }
+.step-fields summary::-webkit-details-marker { display: none; }
+.step-fields summary::before { content: "▸"; font-size: 10px; transition: transform .15s ease; color: var(--text-dim); }
+.step-fields[open] summary::before { transform: rotate(90deg); }
+.step-fields summary:hover { color: var(--neon); }
+.fields-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: rgba(56, 225, 255, 0.1); border: 1px solid rgba(56, 225, 255, 0.3);
+  color: var(--neon); font-size: 11px; letter-spacing: 0;
+}
+
+.field-list { list-style: none; margin: 12px 0 10px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+/* Column header so each field row reads like a table, not a wall of inputs. */
+.field-head {
+  display: grid; grid-template-columns: minmax(0, 1.5fr) 7.5em minmax(0, 1.5fr) auto 26px;
+  gap: 8px; padding: 0 2px;
+  font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim);
+}
+.field-head span:nth-child(4) { text-align: center; }
+.field-row { display: flex; align-items: center; gap: 8px; }
+.field-form {
+  flex: 1; min-width: 0; display: grid; align-items: center; gap: 8px;
+  grid-template-columns: minmax(0, 1.5fr) 7.5em minmax(0, 1.5fr) auto;
+}
+.field-form input[type=text], .field-form select {
+  min-width: 0; background: rgba(5, 10, 20, 0.8); border: 1px solid var(--edge); border-radius: 6px;
+  padding: 6px 9px; color: var(--text); font: inherit; font-size: 12px;
+}
 .field-form input:focus, .field-form select:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
-.field-req { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-dim); }
+/* The constraint column shows only the input the chosen type actually needs. */
+.f-qual { display: flex; gap: 6px; min-width: 0; align-items: center; }
+.f-qual input { flex: 1; min-width: 0; }
+.f-hint { color: var(--text-dim); font-size: 11px; font-style: italic; opacity: 0.8; }
+.field-req {
+  display: inline-flex; align-items: center; gap: 5px; justify-content: center;
+  font-size: 11px; letter-spacing: 0.5px; color: var(--text-dim); cursor: pointer; user-select: none;
+}
+.field-req input { accent-color: var(--neon); cursor: pointer; }
+.field-empty { margin: 12px 0 10px; color: var(--text-dim); font-size: 12px; font-style: italic; }
+
+/* Generated schema — clearly framed as the derived artefact, not an input. */
+.schema-block { margin-top: 12px; }
+.schema-label { display: block; margin-bottom: 5px; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); }
 .field-schema {
-  margin: 8px 0 0; max-height: 240px; overflow: auto; white-space: pre;
+  margin: 0; max-height: 240px; overflow: auto; white-space: pre;
   font-size: 11px; color: var(--text); background: rgba(5, 10, 20, 0.7);
-  border: 1px solid var(--edge); border-radius: 7px; padding: 8px 10px;
+  border: 1px solid var(--edge); border-radius: 7px; padding: 10px 12px;
 }
 .step-empty { color: var(--text-dim); font-style: italic; }
+
+/* Stack the field row on narrow viewports so nothing is crushed. */
+@media (max-width: 600px) {
+  .field-head { display: none; }
+  .field-form { grid-template-columns: 1fr 1fr; }
+  .field-form .f-name { grid-column: 1 / -1; }
+  .field-form .f-qual { grid-column: 1 / -1; }
+}
 .step-preview { border-top: 1px solid var(--edge); padding-top: 12px; }
 .step-seq { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .prev-ev { padding: 2px 8px; border-radius: 999px; border: 1px solid var(--edge); color: var(--text); font-size: 12px; }
