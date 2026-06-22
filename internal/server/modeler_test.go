@@ -79,6 +79,42 @@ func TestHandleModelerSelection(t *testing.T) {
 	}
 }
 
+// TestModelerFocusIDs guards the focus-preservation contract: every edit on the
+// canvas re-renders the whole #modeler-slot via hx-trigger="change", so htmx can
+// only restore the caret if each control carries a stable id (it re-finds the
+// focused element by getElementById after the swap). Without these ids, typing in
+// the properties panel loses focus on every blur.
+func TestModelerFocusIDs(t *testing.T) {
+	s := newTestServer(t, defaultCfg())
+	id := seedDraft(t, s, "Focus")
+	sid := addStep(t, s, id, "event")
+
+	// Add a data field so the field row renders too.
+	if rec := s.do(http.MethodPost, "/drafts/"+id+"/steps/"+sid+"/fields", form(map[string]string{"view": "modeler", "sel": sid})); rec.Code != http.StatusOK {
+		t.Fatalf("add field status = %d", rec.Code)
+	}
+	d, _ := s.store.Get(id)
+	fid := d.Steps[0].Fields[0].ID
+
+	body := s.do(http.MethodGet, "/modeler?draft="+id+"&sel="+sid, nil).Body.String()
+	for _, want := range []string{
+		`id="mdl-meta-name"`,
+		`id="mdl-step-name-` + sid + `"`,
+		`id="mdl-step-phase-` + sid + `"`,
+		`id="mdl-step-desc-` + sid + `"`,
+		`id="mdl-fld-name-` + fid + `"`,
+		`id="mdl-fld-type-` + fid + `"`,
+		`id="mdl-fld-req-` + fid + `"`,
+		`id="mdl-fld-format-` + fid + `"`,
+		`id="mdl-fld-ref-` + fid + `"`,
+		`id="mdl-fld-enum-` + fid + `"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("modeler panel missing stable focus id %q", want)
+		}
+	}
+}
+
 func TestBuildModeler(t *testing.T) {
 	tests := []struct {
 		name      string

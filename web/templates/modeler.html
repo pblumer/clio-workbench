@@ -19,12 +19,12 @@
     <form class="mdl-meta"
           hx-post="/drafts/{{.Draft.ID}}/meta?view=modeler&sel={{.Sel}}"
           hx-trigger="change">
-      <input type="text" name="name" value="{{.Draft.Name}}" required
+      <input id="mdl-meta-name" type="text" name="name" value="{{.Draft.Name}}" required
              autocomplete="off" title="Process name" aria-label="Process name">
-      <input type="text" name="namespace" value="{{.Draft.Namespace}}"
+      <input id="mdl-meta-namespace" type="text" name="namespace" value="{{.Draft.Namespace}}"
              placeholder="namespace" autocomplete="off"
              title="Event-type prefix" aria-label="Namespace">
-      <input type="text" name="subject" value="{{.Draft.SubjectStyle}}"
+      <input id="mdl-meta-subject" type="text" name="subject" value="{{.Draft.SubjectStyle}}"
              placeholder="/orders/{id}" autocomplete="off"
              title="Subject template — also the pool lane" aria-label="Subject template">
     </form>
@@ -125,13 +125,13 @@
       hx-trigger="change">
   <label class="mdl-field">
     <span>Name</span>
-    <input type="text" name="name" value="{{$s.Name}}" autocomplete="off"
+    <input id="mdl-step-name-{{$s.ID}}" type="text" name="name" value="{{$s.Name}}" autocomplete="off"
            placeholder="{{if eq $s.Kind "event"}}identity.employee.created{{else}}attachMailbox{{end}}">
   </label>
   {{- if eq $s.Kind "event"}}
   <label class="mdl-field">
     <span>Phase</span>
-    <select name="phase" title="lifecycle phase">
+    <select id="mdl-step-phase-{{$s.ID}}" name="phase" title="lifecycle phase">
       <option value="active" {{if eq $s.Phase "active"}}selected{{end}}>active</option>
       <option value="complete" {{if eq $s.Phase "complete"}}selected{{end}}>complete</option>
       <option value="error" {{if eq $s.Phase "error"}}selected{{end}}>error</option>
@@ -141,7 +141,7 @@
   {{- end}}
   <label class="mdl-field">
     <span>Description</span>
-    <input type="text" name="description" value="{{$s.Description}}" autocomplete="off" placeholder="optional note">
+    <input id="mdl-step-desc-{{$s.ID}}" type="text" name="description" value="{{$s.Description}}" autocomplete="off" placeholder="optional note">
   </label>
 </form>
 
@@ -168,8 +168,8 @@
       <form class="field-form"
             hx-post="/drafts/{{$.Draft.ID}}/steps/{{$s.ID}}/fields/{{.ID}}?view=modeler&sel={{$s.ID}}"
             hx-trigger="change">
-        <input type="text" name="name" value="{{.Name}}" placeholder="field name" autocomplete="off">
-        <select name="type">
+        <input id="mdl-fld-name-{{.ID}}" type="text" name="name" value="{{.Name}}" placeholder="field name" autocomplete="off">
+        <select id="mdl-fld-type-{{.ID}}" name="type">
           {{- $t := .Type}}
           <option value="string" {{if eq $t "string"}}selected{{end}}>text</option>
           <option value="integer" {{if eq $t "integer"}}selected{{end}}>integer</option>
@@ -179,10 +179,10 @@
           <option value="enum" {{if eq $t "enum"}}selected{{end}}>enum</option>
           <option value="reference" {{if eq $t "reference"}}selected{{end}}>reference</option>
         </select>
-        <label class="field-req"><input type="checkbox" name="required" value="1" {{if .Required}}checked{{end}}> req</label>
-        <input type="text" name="format" value="{{.Format}}" placeholder="format (uuid…)" autocomplete="off">
-        <input type="text" name="ref" value="{{.Ref}}" placeholder="ref → collection" autocomplete="off">
-        <input type="text" name="enum" value="{{range $i,$v := .Enum}}{{if $i}},{{end}}{{$v}}{{end}}" placeholder="enum a,b,c" autocomplete="off">
+        <label class="field-req"><input id="mdl-fld-req-{{.ID}}" type="checkbox" name="required" value="1" {{if .Required}}checked{{end}}> req</label>
+        <input id="mdl-fld-format-{{.ID}}" type="text" name="format" value="{{.Format}}" placeholder="format (uuid…)" autocomplete="off">
+        <input id="mdl-fld-ref-{{.ID}}" type="text" name="ref" value="{{.Ref}}" placeholder="ref → collection" autocomplete="off">
+        <input id="mdl-fld-enum-{{.ID}}" type="text" name="enum" value="{{range $i,$v := .Enum}}{{if $i}},{{end}}{{$v}}{{end}}" placeholder="enum a,b,c" autocomplete="off">
       </form>
       <button type="button" class="btn-link btn-danger" title="delete field"
               hx-delete="/drafts/{{$.Draft.ID}}/steps/{{$s.ID}}/fields/{{.ID}}?view=modeler&sel={{$s.ID}}">✕</button>
