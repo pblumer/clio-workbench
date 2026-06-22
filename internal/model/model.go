@@ -91,7 +91,10 @@ type Field struct {
 }
 
 // Environment is a saved, switchable working context: a server plus a data
-// scope (which subjects, types and id-range to look at). The token is never
+// scope (which subjects, types and id-range to look at). It is the global base
+// layer of the scope concept (docs/SCOPE.md §3.1) — the only layer that is
+// persisted, reaches Clio and sets the read limit; the shared Queries pipeline
+// and per-discipline lenses narrow further on top of it. The token is never
 // stored — it stays in the connect flow.
 type Environment struct {
 	ID         string   `json:"id"`

@@ -135,35 +135,69 @@ func TestQueryStageLabelAndEmpty(t *testing.T) {
 func TestMatchStageAndSurvives(t *testing.T) {
 	st := queryStage{Subject: "orders", Types: []string{"created"}, LowerBound: "001", UpperBound: "010"}
 	// Matches.
-	if !matchStage("/orders/1", "created", "005", st) {
+	if !matchStage(eventKey{Subject: "/orders/1", Type: "created", ID: "005"}, st) {
 		t.Errorf("expected match")
 	}
 	// Wrong subject.
-	if matchStage("/users/1", "created", "005", st) {
+	if matchStage(eventKey{Subject: "/users/1", Type: "created", ID: "005"}, st) {
 		t.Errorf("subject should not match")
 	}
 	// Exact-subject match (no trailing slash path).
-	if !matchStage("/orders", "created", "005", st) {
+	if !matchStage(eventKey{Subject: "/orders", Type: "created", ID: "005"}, st) {
 		t.Errorf("exact subject should match")
 	}
 	// Wrong type.
-	if matchStage("/orders/1", "shipped", "005", st) {
+	if matchStage(eventKey{Subject: "/orders/1", Type: "shipped", ID: "005"}, st) {
 		t.Errorf("type should not match")
 	}
 	// Below lower bound.
-	if matchStage("/orders/1", "created", "000", st) {
+	if matchStage(eventKey{Subject: "/orders/1", Type: "created", ID: "000"}, st) {
 		t.Errorf("below lower bound should fail")
 	}
 	// Above upper bound.
-	if matchStage("/orders/1", "created", "020", st) {
+	if matchStage(eventKey{Subject: "/orders/1", Type: "created", ID: "020"}, st) {
 		t.Errorf("above upper bound should fail")
 	}
+	// Source substring narrows too.
+	src := queryStage{Source: "svc-orders"}
+	if !matchStage(eventKey{Subject: "/orders/1", Source: "svc-orders-1"}, src) {
+		t.Errorf("source substring should match")
+	}
+	if matchStage(eventKey{Subject: "/orders/1", Source: "svc-users"}, src) {
+		t.Errorf("source substring should not match")
+	}
 	// survives across multiple stages.
-	if !survives("/orders/1", "created", "005", []queryStage{st}) {
+	if !survives(eventKey{Subject: "/orders/1", Type: "created", ID: "005"}, []queryStage{st}) {
 		t.Errorf("expected survives")
 	}
-	if survives("/orders/1", "shipped", "005", []queryStage{st}) {
+	if survives(eventKey{Subject: "/orders/1", Type: "shipped", ID: "005"}, []queryStage{st}) {
 		t.Errorf("expected not to survive")
+	}
+}
+
+// TestDisciplineLens covers the third scope layer (docs/SCOPE.md §3.3): a lens
+// passed to applyPipeline narrows on top of the global Queries pipeline.
+func TestDisciplineLens(t *testing.T) {
+	s := newTestServer(t, defaultCfg())
+	events := []clio.Event{
+		{ID: "1", Subject: "/orders/1", Type: "created", Source: "svc-a"},
+		{ID: "2", Subject: "/orders/2", Type: "created", Source: "svc-b"},
+		{ID: "3", Subject: "/users/1", Type: "login", Source: "svc-a"},
+	}
+	// No global pipeline, lens keeps only /orders with source svc-a.
+	got := s.applyPipeline(events, queryStage{Subject: "/orders", Source: "svc-a"})
+	if len(got) != 1 || got[0].ID != "1" {
+		t.Fatalf("lens applyPipeline = %+v", got)
+	}
+	// An empty lens is a no-op.
+	if got := s.applyPipeline(events, queryStage{}); len(got) != 3 {
+		t.Fatalf("empty lens should not filter, got %d", len(got))
+	}
+	// The lens composes with the global pipeline (AND).
+	s.pipeline = []queryStage{{Source: "svc-a"}}
+	got = s.applyPipeline(events, queryStage{Subject: "/users"})
+	if len(got) != 1 || got[0].ID != "3" {
+		t.Fatalf("pipeline+lens applyPipeline = %+v", got)
 	}
 }
 

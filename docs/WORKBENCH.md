@@ -140,6 +140,15 @@ dem die Forschung einen konkreten Entwurf als Messlatte hat.
 *Ohne `CLIO_URL`/Token arbeitet die Workbench rein offline am Entwurf; nur Push
 und Gegenprobe brauchen eine Instanz.
 
+### 3.4 Scope — welche Events betrachtet werden
+
+Jede Analyse-Ansicht liest Events; *welche*, regelt ein geschichtetes
+Scope-Konzept: ein global definiertes **Environment** (Server + Basis-Scope +
+Limit), eine geteilte **Query-Pipeline** und — pro Disziplin — eine lokale
+**Linse**. Global definierbar, lokal gestaltbar, mit einem klaren
+Auflösungsvertrag (nur verengen, nie erweitern; nur das Environment erreicht
+Clio und setzt das Limit). Das eigene Papier dazu ist [`SCOPE.md`](SCOPE.md).
+
 ---
 
 ## 4. Der Entwurfsfluss

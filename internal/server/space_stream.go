@@ -126,7 +126,7 @@ func (s *Server) readSince(ctx context.Context, after string) ([]streamDot, stri
 		if e.ID > max {
 			max = e.ID
 		}
-		if !survives(e.Subject, e.Type, e.ID, stages) {
+		if !survives(eventKey{e.Subject, e.Type, e.ID, e.Source}, stages) {
 			continue
 		}
 		_, phase := process.Classify(e.Type)
