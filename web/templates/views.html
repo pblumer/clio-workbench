@@ -46,17 +46,42 @@
   <button type="submit" class="btn-primary">Create draft</button>
 </form>
 
-<form class="new-form import-form"
-      hx-post="/drafts/import"
-      hx-target="#drafts"
-      hx-swap="outerHTML"
-      hx-on::after-request="if(event.detail.successful) this.reset()">
-  <label>
-    <span>Import URL <small>(z.B. GitHub raw)</small></span>
-    <input type="url" name="url" placeholder="https://raw.githubusercontent.com/…/draft.json" required autocomplete="off">
-  </label>
-  <button type="submit" class="btn-primary">Import draft</button>
-</form>
+<details class="wb-import">
+  <summary class="wb-import-summary">↧ Modell importieren</summary>
+  <div class="wb-import-body">
+    <p class="wb-hint">Kein Dateizugriff nötig — ideal für eine gehostete
+      Workbench: lade die Demo per Klick, aus einer URL, oder füge Modell-JSON
+      direkt ein.</p>
+
+    <button type="button" class="btn-demo"
+            hx-post="/drafts/import"
+            hx-vals='{"url":"https://raw.githubusercontent.com/pblumer/clio-workbench/main/examples/teststudio/draft-order-lifecycle.json"}'
+            hx-target="#drafts" hx-swap="outerHTML">
+      ✦ Demo „Order Lifecycle" laden
+    </button>
+
+    <form class="new-form import-form"
+          hx-post="/drafts/import" hx-target="#drafts" hx-swap="outerHTML"
+          hx-on::after-request="if(event.detail.successful) this.reset()">
+      <label>
+        <span>Aus URL <small>(z.B. GitHub raw)</small></span>
+        <input type="url" name="url" placeholder="https://…/draft.json" autocomplete="off">
+      </label>
+      <button type="submit" class="btn-primary">Aus URL importieren</button>
+    </form>
+
+    <form class="new-form import-form"
+          hx-post="/drafts/import" hx-target="#drafts" hx-swap="outerHTML"
+          hx-on::after-request="if(event.detail.successful) this.reset()">
+      <label>
+        <span>JSON einfügen</span>
+        <textarea name="json" rows="6" class="st-data" spellcheck="false"
+                  placeholder='{ "id": "order", "name": "Order", … }'></textarea>
+      </label>
+      <button type="submit" class="btn-primary">JSON importieren</button>
+    </form>
+  </div>
+</details>
 
 <div class="wb-subhead">Drafts</div>
 {{template "drafts.html" .Drafts}}

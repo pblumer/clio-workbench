@@ -194,6 +194,28 @@ html, body {
 .btn-danger { color: #ff7a8a; }
 .btn-danger:hover { color: #ff4d63; text-shadow: 0 0 10px rgba(255, 77, 99, 0.4); }
 
+/* Import wizard (drafts + scenario suites): one-click demo · URL · paste */
+.wb-import { margin: 14px 0; border: 1px solid var(--edge); border-radius: 9px; background: rgba(8, 14, 28, 0.5); }
+.wb-import[open] { border-color: var(--neon-dim); }
+.wb-import-summary {
+  cursor: pointer; list-style: none; padding: 10px 13px;
+  color: var(--neon-dim); font-size: 12px; letter-spacing: 1px;
+}
+.wb-import-summary::-webkit-details-marker { display: none; }
+.wb-import-summary:hover { color: var(--neon); }
+.wb-import-body { display: flex; flex-direction: column; gap: 14px; padding: 4px 13px 14px; }
+.wb-import-body .new-form, .wb-import-body .sc-import, .wb-import-body .sc-import-paste {
+  display: flex; flex-direction: column; gap: 8px; margin: 0;
+}
+.wb-import-body textarea.st-data { width: 100%; }
+.btn-demo {
+  padding: 10px 14px; border: 1px solid var(--accent); border-radius: 7px;
+  background: linear-gradient(180deg, rgba(124, 92, 255, 0.18), rgba(124, 92, 255, 0.05));
+  color: #c7b9ff; font: inherit; letter-spacing: 1px; cursor: pointer;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.btn-demo:hover { border-color: var(--accent); box-shadow: 0 0 14px rgba(124, 92, 255, 0.25); }
+
 .draft-empty { color: var(--text-dim); font-style: italic; list-style: none; }
 
 /* Clio server connect menu (header dropdown, top right) */

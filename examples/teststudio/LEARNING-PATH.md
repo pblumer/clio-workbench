@@ -43,8 +43,12 @@ nötig. Erst 6 und 7 brauchen einen Server, und zwar bewusst nur eine
 Voraussetzungen
 ---------------
 
-- Go installiert (für `go run ./cmd/clio-workbench`), oder ein gebautes Binary.
-- Dieses Repository ausgecheckt.
+- Eine **laufende Workbench**. Zwei Varianten, der Pfad funktioniert mit beiden:
+  - **Gehostet (SaaS):** Du brauchst nur einen Browser und die URL deiner
+    Workbench. Kein Dateizugriff, keine Kommandozeile — alle Schritte hier laufen
+    über die Web-GUI bzw. über Einfügen von JSON.
+  - **Lokal:** Go installiert (für `go run ./cmd/clio-workbench`) oder ein
+    gebautes Binary, und dieses Repository ausgecheckt.
 - Für Lektion 6/7 zusätzlich eine **Wegwerf-Clio** (eigener Container, eigene
   Datenablage) — *niemals* eine produktive Instanz, siehe Lektion 6.
 
@@ -53,34 +57,42 @@ Voraussetzungen
 Lektion 0 — Aufsetzen & importieren
 -----------------------------------
 
-**Ziel:** Workbench starten und das Demo-Modell samt Suite ins Studio bekommen.
+**Ziel:** Workbench öffnen und das Demo-Modell samt Suite ins Studio bekommen —
+ganz ohne Dateizugriff oder Kommandozeile.
 
-1. Wähle ein Datenverzeichnis und kopiere die Artefakte hinein. Der Draft kommt
-   in das Datenverzeichnis selbst, die Suite in das `scenarios/`-Unterverzeichnis
-   (damit sie nicht für einen Draft gehalten wird):
+1. Öffne deine Workbench im Browser (gehostet: die URL deiner Instanz; lokal:
+   `go run ./cmd/clio-workbench`, dann <http://localhost:8080>).
 
-   ```sh
-   export WORKBENCH_DATA=./workbench-data
-   mkdir -p "$WORKBENCH_DATA/scenarios"
-   cp examples/teststudio/draft-order-lifecycle.json        "$WORKBENCH_DATA/"
-   cp examples/teststudio/suite-order-lifecycle-tests.json  "$WORKBENCH_DATA/scenarios/order-lifecycle-tests.json"
-   ```
+2. **Demo-Modell importieren.** Klappe links unter **Modelle** den Punkt
+   **„↧ Modell importieren"** auf. Du hast drei Wege — keiner braucht das
+   Dateisystem des Servers:
 
-2. Starte die Workbench (offline genügt für die ersten Lektionen):
+   - **Demo per Klick:** **„✦ Demo „Order Lifecycle" laden"** holt den Entwurf
+     direkt aus dem Repo (setzt voraus, dass die Workbench ins Internet darf).
+   - **Aus URL:** füge die Roh-URL ein und klicke **Aus URL importieren**:
 
-   ```sh
-   go run ./cmd/clio-workbench
-   # öffne http://localhost:8080
-   ```
+     ```
+     https://raw.githubusercontent.com/pblumer/clio-workbench/main/examples/teststudio/draft-order-lifecycle.json
+     ```
 
-3. Öffne in der **Activity-Bar** links die Activity **„Teststudio"**.
+   - **JSON einfügen:** öffne [`draft-order-lifecycle.json`](draft-order-lifecycle.json)
+     (im Repo bzw. auf GitHub), kopiere den ganzen Inhalt, füge ihn ins Feld
+     **JSON einfügen** ein und klicke **JSON importieren**. Dieser Weg geht
+     *immer* — auch wenn die Workbench keinen Internetzugang hat.
 
-**Erwartetes Ergebnis:** Das Studio öffnet sich, und in der Modell-Auswahl
-erscheint **Order Lifecycle**. In der Szenarien-Sidebar erscheint die Suite
-**„Order Lifecycle – Demo-Testsuite"**.
+3. **Demo-Suite importieren.** Öffne in der **Activity-Bar** links die Activity
+   **„Teststudio"**, dann den Editor-Tab **Szenarien** und wähle als Modell
+   **Order Lifecycle**. Klappe **„↧ Suite importieren"** auf — wieder per Klick,
+   per URL (`…/suite-order-lifecycle-tests.json`) oder per **JSON einfügen** aus
+   [`suite-order-lifecycle-tests.json`](suite-order-lifecycle-tests.json).
 
-> **Tipp:** Du kannst Draft und Suite auch über *Import von URL* laden, falls
-> deine Workbench das anbietet — das Ergebnis ist dasselbe.
+**Erwartetes Ergebnis:** In der Modell-Auswahl erscheint **Order Lifecycle**, und
+im Tab Szenarien die Suite **„Order Lifecycle – Demo-Testsuite"**.
+
+> **Lokale Alternative:** Betreibst du die Workbench selbst, kannst du die Dateien
+> auch direkt in die Datenablage legen — der Draft nach `$WORKBENCH_DATA/`, die
+> Suite nach `$WORKBENCH_DATA/scenarios/` — und neu laden. Das Ergebnis ist
+> dasselbe; nötig ist es nicht.
 
 **Vertiefung:** Das Modell selbst (Knoten, Kanten, Event-Typ-Felder) ist im
 [`README.md`](README.md) dieses Verzeichnisses kompakt beschrieben. Wirf einen
@@ -359,14 +371,19 @@ ist).
 
 **Schritte:**
 
-1. Starte die Workbench gegen deine Wegwerf-Instanz:
+1. Verbinde die Workbench mit deiner Wegwerf-Instanz **über die GUI**: klicke
+   unten in der Statusleiste auf **⚙ Server**, trage die URL deiner Wegwerf-Clio
+   und (falls nötig) den Token ein und klicke **Connect**. Der Token bleibt
+   serverseitig. Das Verbindungs-Pill sollte **UPLINK** (grün) zeigen.
 
-   ```sh
-   CLIO_URL=http://localhost:3000 CLIO_API_TOKEN=<token> \
-     WORKBENCH_DATA=./workbench-data go run ./cmd/clio-workbench
-   ```
-
-   Das Verbindungs-Pill im Header sollte **UPLINK** (grün) zeigen.
+   > Betreibst du die Workbench lokal, kannst du die Instanz stattdessen beim
+   > Start setzen — der GUI-Weg funktioniert aber genauso in der gehosteten
+   > Workbench:
+   >
+   > ```sh
+   > CLIO_URL=http://localhost:3000 CLIO_API_TOKEN=<token> \
+   >   WORKBENCH_DATA=./workbench-data go run ./cmd/clio-workbench
+   > ```
 
 2. Öffne den Tab **Push**. Beachte das **Gate**: Push ist gesperrt, bis du die
    aktive Instanz **explizit als Wegwerf bestätigst**. Ein Serverwechsel

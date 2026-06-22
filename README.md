@@ -77,6 +77,21 @@ To enable push and the (later) conformance check against a running Clio:
 CLIO_URL=http://localhost:3000 CLIO_API_TOKEN=… go run ./cmd/clio-workbench
 ```
 
+### Hosted / SaaS usage
+
+The Workbench is designed to run **headless behind a URL** as well — users reach
+it with nothing but a browser, no shell or filesystem access. Everything the
+local flow does on disk or the command line has a GUI equivalent:
+
+- **Drafts & suites** are imported through the GUI — one-click demo, an import
+  URL, or by **pasting JSON** (sidebar → *Modell importieren*; Test Studio →
+  *Suite importieren*). No `cp` into `WORKBENCH_DATA` required.
+- **The Clio server** is picked at runtime in the status bar (*⚙ Server*), with
+  the token kept server-side. No `CLIO_URL`/`CLIO_API_TOKEN` env needed.
+
+The [Test Studio learning path](examples/teststudio/LEARNING-PATH.md) is written
+to work either way.
+
 ## Connection status
 
 The header pill shows the **real** state of the link to Clio, not just whether
