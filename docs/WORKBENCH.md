@@ -260,7 +260,9 @@ Aufbau wie ein BPMN-Werkzeug:
   phasenfarbige Kreise, Tasks als Send-Task-Rechtecke, dazwischen
   Sequence-Flows. `modeler.js` ergänzt nur die Gesten: Pan, Zoom, Auswahl per
   Klick und Drag-to-Reorder. Persistiert wird ausschließlich über HTMX auf den
-  geteilten Step-Endpunkten.
+  geteilten Step-Endpunkten. Der Shape-Abstand skaliert mit der Labelbreite
+  (geschätzt serverseitig), damit lange Event-Namen unter den Kreisen nicht
+  überlappen — bei kurzen Namen bleibt es beim engen geometrischen Abstand.
 - **Properties-Panel** (rechts): Eigenschaften des gewählten Shapes (Name, Phase,
   Beschreibung, Datenfelder) — ersetzt die Inline-Formulare der Outline.
 
