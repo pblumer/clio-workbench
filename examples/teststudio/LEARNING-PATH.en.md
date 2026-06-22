@@ -29,6 +29,7 @@ Overview
 | # | Lesson | Kind of check / stage | Instance needed? | Time |
 |---|--------|-----------------------|------------------|------|
 | 0 | Set up & import                  | —                       | no            | 5 min |
+| M | See the model in the Modeler     | Modeler (WB §5.5)       | no            | 10 min |
 | 1 | Schema test: does the payload fit?| Schema (§3.1, T0)      | no            | 10 min |
 | 2 | Sequence test: is the path valid?| Transition (§3.2, T0/T1)| no            | 15 min |
 | 3 | Scenarios & suites               | Scenario (§3.3, T1)     | no            | 15 min |
@@ -37,9 +38,9 @@ Overview
 | 6 | Push & round-trip                | Instance (§7, T4)       | **yes** (throwaway)| 20 min |
 | 7 | Counter-check: design vs. reality| Consolidation (T5)      | **yes** (throwaway)| 15 min |
 
-Lessons 0–5 run **fully offline** on the draft — no Clio instance required. Only
-6 and 7 need a server, and deliberately only a **throwaway instance** (see
-Lesson 6).
+Lessons 0–5 and the **Modeler interlude (M)** run **fully offline** on the
+draft — no Clio instance required. Only 6 and 7 need a server, and deliberately
+only a **throwaway instance** (see Lesson 6).
 
 Prerequisites
 -------------
@@ -97,8 +98,56 @@ Scenarios tab shows the suite **"Order Lifecycle – Demo-Testsuite"**.
 > it is not required.
 
 **Go deeper:** The model itself (nodes, edges, event-type fields) is described
-compactly in this directory's [`README.md`](README.md). Take a look before
-moving on — it is the yardstick for everything that follows.
+compactly in this directory's [`README.md`](README.md). The quickest way to grasp
+it, though, is *visually* — in the Modeler interlude that follows.
+
+---
+
+Interlude M — See and edit the model in the Modeler
+---------------------------------------------------
+
+**Reference:** [`WORKBENCH.md`](../../docs/WORKBENCH.md) §5.5 (BPMN Modeler) · **no instance needed**
+
+Before you *check* the model, *look* at it. The **Modeler** is the Workbench's
+BPMN-style canvas editor in the space look — the same visual language as
+bpmn.io / Camunda Modeler, but right in the browser with no build step.
+
+**Steps:**
+
+1. Open the model: in the sidebar under **Modelle (Models)**, click **edit** on
+   the **Order Lifecycle** entry. The **Modeler** editor tab (⬡) opens.
+
+2. **Read the canvas.** The step chain runs left-to-right in a pool/lane
+   (`orders`, derived from the subject `/orders/{id}`): `order-placed` (start
+   event) → `order-paid` → `order-shipped` → `order-delivered` →
+   `order-cancelled` (end event). Events are phase-coloured circles; a task would
+   be a rectangle. Pan by dragging, zoom with the wheel or the toolbar buttons
+   (`−` `⤢` `+`).
+
+3. **Inspect properties.** Click `order-placed`. The **properties panel** on the
+   right shows the name, phase and **data fields** (`customerEmail`,
+   `itemsCount`) — exactly the fields Lesson 1 is about to check. The Modeler is
+   the *visual flip side* of the schema tests.
+
+4. **A small edit (optional).** Use the **palette** on the left to add a new
+   event, name it in the panel — then delete it again (`✕ delete`). Drag a shape
+   to reorder it along the chain.
+
+5. **Export.** From the toolbar, download **↓ BPMN** (`process.bpmn`, opens in
+   bpmn.io / Camunda Modeler) and **↓ schemas**. The canvas shows **exactly** what
+   the BPMN export produces — both share one source.
+
+> **Linear, by design (Stage 1):** The Modeler draws the ordered step outline as
+> *one* chain. The model's **branch** (cancelling already from `cart`/`placed`)
+> lives in the graph (`nodes`/`edges`) and only becomes visible with the gateways
+> of later stages (`WORKBENCH.md` §5.5). It does not matter for checking in the
+> Studio — there the graph counts, not the canvas drawing.
+
+> **Low-code alternative:** Prefer typing to dragging? The toolbar's **outline**
+> link opens the list-based step view — same data, different tool.
+
+**Self-check:** You can find each event's data fields in the Modeler and you know
+that the canvas and the BPMN export share one source (the draft's steps).
 
 ---
 
@@ -250,8 +299,9 @@ detection** via `draftRev`.
    *which state* the suite was written against. The suite does **not copy** the
    model — it references it (leading principle §5).
 
-3. **Experience drift (optional):** Change something test-relevant in the model
-   (e.g. rename the event type `order-paid`) and save. The Studio shows a **drift
+3. **Experience drift (optional):** Change something test-relevant in the model —
+   in the **Modeler** (Interlude M), click the `order-paid` event and rename it in
+   the properties panel (or via the *outline* link). The Studio shows a **drift
    warning**: the suite was written against a different state and should be
    re-checked. Undo the change afterwards.
 
@@ -450,6 +500,9 @@ the reliability of both.
 Done — what you can do now
 --------------------------
 
+- Read and edit the model visually in the **Modeler** — events/tasks as BPMN
+  shapes, their fields in the properties panel, export to BPMN
+  (`WORKBENCH.md` §5.5).
 - Check a **payload** against a schema field by field (§3.1).
 - Hold a **sequence** against the lifecycle graph and locate deviations (§3.2).
 - Write **scenarios** and **suites** as versionable artifacts and detect drift
@@ -472,4 +525,6 @@ Further reading
 - [`README.md`](README.md) — compact description of the demo model and the suite.
 - [`FRAMEWORK.md`](../../docs/FRAMEWORK.md) — how the Studio fits into the
   VS-Code shell.
+- [`WORKBENCH.md`](../../docs/WORKBENCH.md) §5.5 — the **BPMN Modeler** (the
+  editor from Interlude M).
 </content>
