@@ -144,7 +144,14 @@ und ein BPMN-Parallel-Gateway sind die nächsten Schritte.)
   setzen, benennen, verbinden. Siehe Abschnitt 5.
 - **HTMX** für die umgebende Werkbank: Eigenschafts-Panels, Schema-Editor pro
   Event-Typ, Modell-Liste, Export-Dialoge. Das Backend rendert Fragmente.
-- **SSE** nur für die optionale Gegenprobe (Live-Vergleich Soll/Ist).
+- **SSE** für Live-Ströme: der optionale Soll/Ist-Vergleich der Gegenprobe und
+  der Live-Tail des Event Space, der neu eintreffende Events als „ploppende"
+  Punkte (Radar-Ping, Zeilen-Blitz, optionaler synthetischer Ton) in ihre
+  Subject-Zeile streamt.
+- **Replay** im Event Space: die bereits geladenen Punkte spielen sich
+  clientseitig ältest-zuerst entlang ihrer Zeitachse ein — derselbe Plop wie live,
+  mit Play/Pause, Tempo und Scrubber. Rein im Browser, also auch offline nutzbar
+  (das genannte „Timeline-Replay" aus §2 als erstes Laborgerät).
 
 ### 3.3 Konfiguration (Clio-Stil)
 

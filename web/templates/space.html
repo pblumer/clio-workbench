@@ -40,6 +40,14 @@
     <button type="button" class="live-toggle" data-after="{{.AfterID}}"
             aria-pressed="false" title="Stream new events live">● live</button>
     <span class="live-state" hidden></span>
+
+    <button type="button" class="replay-toggle" aria-pressed="false"
+            title="Replay how the dots arrived, oldest first">▶ replay</button>
+    <button type="button" class="replay-speed" hidden title="Replay speed">1×</button>
+    <div class="replay-track" hidden role="slider" aria-label="Replay position" tabindex="-1"><div class="replay-fill"></div></div>
+    <button type="button" class="replay-stop" hidden title="Exit replay">⏹</button>
+    <button type="button" class="sound-toggle" aria-pressed="false"
+            title="Blip on each new event (live &amp; replay)">♪ off</button>
   </form>
 
   {{if .Truncated}}<p class="trunc-note">⚠ read the first {{.Cap}} events (oldest first) — newer events may be missing. Raise the environment limit or <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
@@ -61,6 +69,7 @@
                 data-id="{{.ID}}" data-subject="{{.Subject}}" data-type="{{.Type}}"
                 data-time="{{.Time}}" data-phase="{{.Phase}}"/>
         {{end}}
+        <g class="dot-fx-layer"></g>
         <g class="dot-live-layer"></g>
       </g>
     </svg>
