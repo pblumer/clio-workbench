@@ -63,6 +63,20 @@ den Graphen verfolgen, Streams solo abspielen, Pfade vergleichen) zahlen auf
 genau dieses Ziel ein. Die Gegenprobe aus Abschnitt 7 ist der Spezialfall, bei
 dem die Forschung einen konkreten Entwurf als Messlatte hat.
 
+**Nebenläufigkeit statt Spaghetti.** Ein reiner Directly-Follows-Graph kann
+*Parallelität* nicht ausdrücken: Laufen Aktivitäten nebenläufig, ist ihre
+Reihenfolge zufällig, und jede beobachtete Verschachtelung wird zu einer eigenen
+dünnen Kante und jede Umordnung zu einer eigenen „Variante" — ein dichtes Netz,
+das mehr Varianten vortäuscht, als real existieren. Die Discovery erkennt solche
+Paare über das Heuristics-Miner-Abhängigkeitsmaß (`internal/process`,
+`detectConcurrency`: in **beiden** Richtungen gesehen, mit ausgewogener
+Häufigkeit) und fasst sie zu **Nebenläufigkeits-Blöcken** zusammen. Der Effekt:
+die Verschachtelungen eines Blocks fallen zu **einer** Variante zusammen, die
+Block-internen Kanten weichen einem `∥`-Rahmen, und die parallelen Aktivitäten
+teilen sich eine Spalte. (Erste Stufe: maximale Gruppen als
+Zusammenhangskomponenten der `∥`-Relation; eine Verschärfung zu echten Cliquen
+und ein BPMN-Parallel-Gateway sind die nächsten Schritte.)
+
 ---
 
 ## 2. Leitprinzipien

@@ -452,6 +452,7 @@ html, body {
 .proc-viewport.graph-dim .proc-node,
 .proc-viewport.graph-dim .proc-edge,
 .proc-viewport.graph-dim .proc-edge-label,
+.proc-viewport.graph-dim .proc-parallel,
 .proc-viewport.graph-dim .proc-group { opacity: 0.12; transition: opacity .15s ease; }
 .proc-viewport.graph-dim .proc-node.hot { opacity: 1; }
 .proc-viewport.graph-dim .proc-edge.hot { opacity: 0.85; }
@@ -877,6 +878,11 @@ html, body {
 .proc-group rect { fill: rgba(56, 225, 255, 0.04); stroke: rgba(56, 225, 255, 0.22); stroke-width: 1; stroke-dasharray: 5 4; }
 .proc-group-label { fill: var(--text-dim); font: 11px/1 ui-monospace, monospace; letter-spacing: 1px; }
 
+/* concurrent block: a solid, accented backdrop standing in for the interleaved
+   thin edges its members would otherwise draw between each other */
+.proc-parallel rect { fill: rgba(140, 120, 255, 0.07); stroke: rgba(150, 130, 255, 0.5); stroke-width: 1.4; }
+.proc-parallel-label { fill: #b6a8ff; font: 600 11px/1 ui-monospace, monospace; letter-spacing: 1px; }
+
 /* nodes coloured by lifecycle phase */
 .proc-orb { fill: rgba(8, 14, 28, 0.92); stroke: var(--neon-dim); stroke-width: 1.8; }
 .phase-active   .proc-orb { stroke: var(--neon);  fill: rgba(56, 225, 255, 0.16); }
@@ -901,6 +907,7 @@ html, body {
 .proc-legend .phase-info { color: #9fb0c4; }
 .lg-start { color: var(--good); }
 .lg-end { color: var(--accent); }
+.lg-parallel { color: #b6a8ff; }
 
 /* subjects legend — colour-coded, clickable streams (rendered by subjects.js) */
 .proc-subjects { margin: 12px 2px 0; }

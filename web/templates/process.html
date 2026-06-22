@@ -47,6 +47,12 @@
         </marker>
       </defs>
       <g class="proc-viewport">
+      {{range .Parallels}}
+      <g class="proc-parallel" data-members="{{.Members}}">
+        <rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="18"/>
+        <text class="proc-parallel-label" x="{{.X}}" y="{{.Y}}" dx="12" dy="14">{{.Label}}</text>
+      </g>
+      {{end}}
       {{range .Groups}}
       <g class="proc-group" data-task="{{.Label}}">
         <rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="14"/>
@@ -96,6 +102,7 @@
     <span class="lg lg-start">▸ start</span>
     <span class="lg lg-end">◉ end</span>
     <span class="lg lg-flow">→ directly-follows (count)</span>
+    <span class="lg lg-parallel">∥ parallel (concurrent block)</span>
     <span class="lg lg-hint">✋ drag · click a node → its events &amp; data · ⌨ in Solo: space ⏯ · j/k subject · p pin</span>
   </div>
 

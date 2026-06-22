@@ -150,12 +150,23 @@
       try { replay = JSON.parse(replayScript.textContent || "[]"); } catch (e) { replay = []; }
     }
 
+    // Backdrops that re-fit themselves to their floating members each frame:
+    // task groups (lifecycle siblings, matched by data-task) and concurrent
+    // blocks (matched by an explicit data-members list).
     var groups = [];
     viewport.querySelectorAll(".proc-group").forEach(function (gp) {
       var task = gp.getAttribute("data-task");
       groups.push({
         rect: gp.querySelector("rect"), label: gp.querySelector("text"),
         members: nodes.filter(function (n) { return n.task === task; }),
+      });
+    });
+    viewport.querySelectorAll(".proc-parallel").forEach(function (gp) {
+      var want = {};
+      (gp.getAttribute("data-members") || "").split(",").forEach(function (t) { if (t) want[t] = true; });
+      groups.push({
+        rect: gp.querySelector("rect"), label: gp.querySelector("text"),
+        members: nodes.filter(function (n) { return want[n.type]; }),
       });
     });
 

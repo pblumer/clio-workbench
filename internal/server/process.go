@@ -50,6 +50,15 @@ type procGroup struct {
 	Label      string
 }
 
+// procParallel is a backdrop around the nodes of one concurrent block. Members
+// carries the comma-separated event types so the live force layout (process.js)
+// can re-fit the box as those nodes float.
+type procParallel struct {
+	X, Y, W, H float64
+	Label      string
+	Members    string
+}
+
 type procEdge struct {
 	From, To       string
 	D              string
@@ -67,13 +76,14 @@ type procVariant struct {
 type processView struct {
 	State    string // ok, empty, offline, unauthorized, error
 	Message  string
-	W, H     float64
-	Groups   []procGroup
-	Nodes    []procNode
-	Edges    []procEdge
-	Variants []procVariant
-	Subjects int
-	Events   int
+	W, H      float64
+	Groups    []procGroup
+	Parallels []procParallel
+	Nodes     []procNode
+	Edges     []procEdge
+	Variants  []procVariant
+	Subjects  int
+	Events    int
 	// Truncated reports the read hit the event cap (Cap), so older events only.
 	Truncated bool
 	Cap       int
@@ -203,16 +213,26 @@ func buildProcessView(g process.Graph) processView {
 	}
 
 	v.Groups = taskGroups(v.Nodes)
+	v.Parallels = parallelGroups(pos, g.Concurrent)
 
+	// Within-block (parallel) edges are an interleaving artefact: the block
+	// backdrop stands in for them, so they are neither drawn nor counted toward
+	// the edge-width scale.
 	maxEdge := 1
 	hasEdge := map[string]bool{}
 	for _, e := range g.Edges {
+		if e.Parallel {
+			continue
+		}
 		if e.Count > maxEdge {
 			maxEdge = e.Count
 		}
 		hasEdge[e.From+" -> "+e.To] = true
 	}
 	for _, e := range g.Edges {
+		if e.Parallel {
+			continue
+		}
 		from, to := pos[e.From], pos[e.To]
 		if from == nil || to == nil {
 			continue
@@ -271,6 +291,42 @@ func taskGroups(nodes []procNode) []procGroup {
 		})
 	}
 	return groups
+}
+
+// parallelGroups computes a backdrop box around the nodes of each concurrent
+// block, labelled with the member count, so an interleaved set of activities
+// reads as one "∥ parallel" region instead of a thicket of thin edges.
+func parallelGroups(pos map[string]*procNode, groups [][]string) []procParallel {
+	const pad, labelGap = 22.0, 14.0
+	var out []procParallel
+	for _, members := range groups {
+		minX, minY := math.Inf(1), math.Inf(1)
+		maxX, maxY := math.Inf(-1), math.Inf(-1)
+		var present []string
+		for _, t := range members {
+			n := pos[t]
+			if n == nil {
+				continue
+			}
+			present = append(present, t)
+			minX = math.Min(minX, n.X-n.R)
+			minY = math.Min(minY, n.Y-n.R)
+			maxX = math.Max(maxX, n.X+n.R)
+			maxY = math.Max(maxY, n.Y+n.R)
+		}
+		if len(present) < 2 {
+			continue
+		}
+		out = append(out, procParallel{
+			X:       minX - pad,
+			Y:       minY - pad - labelGap,
+			W:       (maxX - minX) + 2*pad,
+			H:       (maxY - minY) + 2*pad + labelGap,
+			Label:   fmt.Sprintf("∥ %d parallel", len(present)),
+			Members: strings.Join(present, ","),
+		})
+	}
+	return out
 }
 
 // edgePath builds a path from one node to another and the position for its count
