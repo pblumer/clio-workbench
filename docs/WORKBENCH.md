@@ -244,6 +244,38 @@ Schon beim Entwerfen prüfbar, rein auf dem Graphen:
 - Vollständigkeit: Event-Typen ohne `data`-Schema markieren.
 - Namenskonflikte: doppelte Event-Typ-Namen im Namensraum.
 
+### 5.5 Der BPMN-Modeler (umgesetzt, Stufe 1 — hybrid)
+
+Die erste umgesetzte Gestaltungs-Sicht ist ein **BPMN-artiger Canvas-Editor** im
+Space-Look — visuell und in der Bedienung an bpmn.io / Camunda Modeler angelehnt,
+aber strikt nach den Leitprinzipien (ein Binary, kein Build-Step, schlankes
+Vanilla-JS). Er ist ein eigener Editor-Tab der Schale (**„Modeler"**, siehe
+[`FRAMEWORK.md`](FRAMEWORK.md)) und wird über *edit* in der Modell-Liste geöffnet.
+
+Aufbau wie ein BPMN-Werkzeug:
+
+- **Palette** (vertikale Leiste links): Event bzw. Task hinzufügen.
+- **Canvas** (SVG, serverseitig gerendert): eine Pool-/Lane-Spur mit der
+  Schritt-Kette von links nach rechts — Start-/Catch-/End-Events als
+  phasenfarbige Kreise, Tasks als Send-Task-Rechtecke, dazwischen
+  Sequence-Flows. `modeler.js` ergänzt nur die Gesten: Pan, Zoom, Auswahl per
+  Klick und Drag-to-Reorder. Persistiert wird ausschließlich über HTMX auf den
+  geteilten Step-Endpunkten.
+- **Properties-Panel** (rechts): Eigenschaften des gewählten Shapes (Name, Phase,
+  Beschreibung, Datenfelder) — ersetzt die Inline-Formulare der Outline.
+
+**Hybrid-Entscheidung (Stufe 1):** Der Modeler ist eine *abgeleitete* Sicht auf
+die geordnete `Steps`-Outline; die Shape-Abbildung (erstes Event → Start,
+letztes → End, mittlere → Catch, Task → Send-Task) ist **deckungsgleich mit
+`internal/bpmngen`**, sodass der Canvas exakt das zeigt, was der BPMN-Export
+erzeugt. Es wird nichts Neues persistiert — Schema-, BPMN-, Producer- und
+Teststudio-Generatoren bleiben unangetastet. Die Low-Code-Outline
+(`/editor/{id}`, `procsteps.html`) bleibt als alternative Autoren-Sicht erhalten
+(Link „outline" in der Modeler-Toolbar).
+
+Spätere Stufen (frei platzierbare Knoten, Gateways/Verzweigungen) wandern auf das
+schon vorhandene Graphmodell (`Nodes`/`Edges`) — siehe §5.1/§5.2.
+
 ---
 
 ## 6. Export — die Artefakte

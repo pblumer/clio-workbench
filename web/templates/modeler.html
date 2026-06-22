@@ -1,0 +1,212 @@
+{{/*
+  modeler.html — the BPMN-style canvas editor (the "Modeler" shell tab).
+
+  The body authors the same draft Steps as the outline editor, but draws them as
+  a left-to-right chain of BPMN shapes (start/catch/end events, send tasks) in a
+  pool/lane — the space-look counterpart of bpmn.io / Camunda Modeler. Structural
+  edits POST to the shared step CRUD endpoints with ?view=modeler, which re-render
+  this whole fragment into #modeler-slot. Selection is a server round-trip too
+  (?sel=<stepId>), so the highlighted shape and the properties panel stay in sync.
+  modeler.js adds pan / zoom / drag-to-reorder on top of the static SVG.
+*/}}
+{{define "modeler.html" -}}
+<div class="mdl-root" id="modeler-root"
+     data-draft="{{.Draft.ID}}" data-sel="{{.Sel}}"
+     hx-target="#modeler-slot" hx-swap="innerHTML">
+
+  {{/* ── Toolbar: process meta + canvas controls + export ── */}}
+  <div class="mdl-toolbar">
+    <form class="mdl-meta"
+          hx-post="/drafts/{{.Draft.ID}}/meta?view=modeler&sel={{.Sel}}"
+          hx-trigger="change">
+      <input type="text" name="name" value="{{.Draft.Name}}" required
+             autocomplete="off" title="Process name" aria-label="Process name">
+      <input type="text" name="namespace" value="{{.Draft.Namespace}}"
+             placeholder="namespace" autocomplete="off"
+             title="Event-type prefix" aria-label="Namespace">
+      <input type="text" name="subject" value="{{.Draft.SubjectStyle}}"
+             placeholder="/orders/{id}" autocomplete="off"
+             title="Subject template — also the pool lane" aria-label="Subject template">
+    </form>
+    <div class="mdl-tools">
+      <button type="button" class="mdl-tool mdl-zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+      <button type="button" class="mdl-tool mdl-zoom-fit" title="Fit to view" aria-label="Fit">⤢</button>
+      <button type="button" class="mdl-tool mdl-zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+      <span class="mdl-tool-sep" aria-hidden="true"></span>
+      <a class="mdl-tool" href="/editor/{{.Draft.ID}}" title="Open the low-code outline editor">≣ outline</a>
+      <a class="mdl-tool" href="/drafts/{{.Draft.ID}}/export/bpmn" download title="Download process.bpmn">↓ BPMN</a>
+      <a class="mdl-tool" href="/drafts/{{.Draft.ID}}/export/schemas" download title="Download schemas.json">↓ schemas</a>
+    </div>
+  </div>
+
+  <div class="mdl-stage">
+    {{/* ── Palette (vertical strip, bpmn.io-style) ── */}}
+    <div class="mdl-palette" aria-label="Palette">
+      <button type="button" class="mdl-pal mdl-pal-event"
+              hx-post="/drafts/{{.Draft.ID}}/steps?kind=event&view=modeler"
+              title="Add a domain event (a fact)">
+        <span class="mdl-pal-glyph">◯</span><span class="mdl-pal-cap">Event</span>
+      </button>
+      <button type="button" class="mdl-pal mdl-pal-task"
+              hx-post="/drafts/{{.Draft.ID}}/steps?kind=task&view=modeler"
+              title="Add a task / command (an action)">
+        <span class="mdl-pal-glyph">▭</span><span class="mdl-pal-cap">Task</span>
+      </button>
+    </div>
+
+    {{/* ── Canvas ── */}}
+    <div class="mdl-canvas" id="modeler-canvas">
+      <svg class="mdl-svg" viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="xMidYMid meet"
+           role="img" aria-label="BPMN process model">
+        <defs>
+          <marker id="mdl-arrow" viewBox="0 0 10 10" refX="9" refY="5"
+                  markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="mdl-arrowhead"/>
+          </marker>
+        </defs>
+        <g class="mdl-viewport">
+          {{/* pool + lane header */}}
+          <rect class="mdl-pool" x="0" y="0" width="{{.W}}" height="{{.H}}" rx="6"/>
+          <rect class="mdl-lanehdr" x="0" y="0" width="28" height="{{.H}}"/>
+          <text class="mdl-lanelabel" x="14" y="{{.HalfH}}"
+                transform="rotate(-90 14 {{.HalfH}})" text-anchor="middle">{{.LaneLabel}}</text>
+
+          {{range .Flows}}<path class="mdl-flow" d="{{.D}}" fill="none" marker-end="url(#mdl-arrow)"/>{{end}}
+
+          {{range .Shapes}}
+          {{- if eq .Kind "task"}}
+          <g class="mdl-shape mdl-task{{if .Selected}} is-selected{{end}}" data-step="{{.StepID}}" data-kind="task">
+            <rect class="mdl-sel-halo" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="12"/>
+            <rect class="mdl-task-box" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="9"/>
+            <text class="mdl-task-icon" x="{{.IconX}}" y="{{.IconY}}">▤</text>
+            <text class="mdl-task-label" x="{{.CX}}" y="{{.CY}}" text-anchor="middle" dominant-baseline="central">{{if .Label}}{{.Label}}{{else}}task{{end}}</text>
+          </g>
+          {{- else if or (eq .Kind "marker-start") (eq .Kind "marker-end")}}
+          <g class="mdl-shape mdl-marker mdl-{{.Kind}}" data-kind="{{.Kind}}">
+            <circle cx="{{.CX}}" cy="{{.CY}}" r="{{.R}}"/>
+          </g>
+          {{- else}}
+          <g class="mdl-shape mdl-event mdl-{{.Kind}} phase-{{.Phase}}{{if .Selected}} is-selected{{end}}" data-step="{{.StepID}}" data-kind="{{.Kind}}">
+            <circle class="mdl-sel-halo" cx="{{.CX}}" cy="{{.CY}}" r="{{.HaloR}}"/>
+            <circle class="mdl-orb" cx="{{.CX}}" cy="{{.CY}}" r="{{.R}}"/>
+            {{if eq .Kind "catch"}}<circle class="mdl-orb-inner" cx="{{.CX}}" cy="{{.CY}}" r="{{.InnerR}}"/>{{end}}
+            <text class="mdl-event-label" x="{{.CX}}" y="{{.LabelY}}" text-anchor="middle">{{if .Label}}{{.Label}}{{else}}event{{end}}</text>
+          </g>
+          {{- end}}
+          {{end}}
+        </g>
+      </svg>
+      {{if .Empty}}
+      <div class="mdl-emptyhint">
+        <p>Noch kein Schritt. Zieh ein <strong>Event</strong> oder einen <strong>Task</strong>
+           aus der Palette links auf den Canvas.</p>
+      </div>
+      {{end}}
+    </div>
+
+    {{/* ── Properties panel ── */}}
+    <aside class="mdl-props" aria-label="Properties">
+      {{template "mdlprops" .}}
+    </aside>
+  </div>
+</div>
+{{- end}}
+
+
+{{/* ── Properties panel for the selected element ── */}}
+{{define "mdlprops" -}}
+{{if .Selected}}{{$s := .Selected}}
+<div class="mdl-props-head">
+  <span class="mdl-props-kind step-kind-{{$s.Kind}}">{{$s.Kind}}</span>
+  <span class="mdl-props-title">Properties</span>
+</div>
+<form class="mdl-props-form"
+      hx-post="/drafts/{{.Draft.ID}}/steps/{{$s.ID}}?view=modeler&sel={{$s.ID}}"
+      hx-trigger="change">
+  <label class="mdl-field">
+    <span>Name</span>
+    <input type="text" name="name" value="{{$s.Name}}" autocomplete="off"
+           placeholder="{{if eq $s.Kind "event"}}identity.employee.created{{else}}attachMailbox{{end}}">
+  </label>
+  {{- if eq $s.Kind "event"}}
+  <label class="mdl-field">
+    <span>Phase</span>
+    <select name="phase" title="lifecycle phase">
+      <option value="active" {{if eq $s.Phase "active"}}selected{{end}}>active</option>
+      <option value="complete" {{if eq $s.Phase "complete"}}selected{{end}}>complete</option>
+      <option value="error" {{if eq $s.Phase "error"}}selected{{end}}>error</option>
+      <option value="info" {{if eq $s.Phase "info"}}selected{{end}}>info</option>
+    </select>
+  </label>
+  {{- end}}
+  <label class="mdl-field">
+    <span>Description</span>
+    <input type="text" name="description" value="{{$s.Description}}" autocomplete="off" placeholder="optional note">
+  </label>
+</form>
+
+<div class="mdl-props-ops">
+  <button type="button" class="btn-link" title="move earlier"
+          hx-post="/drafts/{{.Draft.ID}}/steps/{{$s.ID}}/move?dir=up&view=modeler&sel={{$s.ID}}">◄ earlier</button>
+  <button type="button" class="btn-link" title="move later"
+          hx-post="/drafts/{{.Draft.ID}}/steps/{{$s.ID}}/move?dir=down&view=modeler&sel={{$s.ID}}">later ►</button>
+  <button type="button" class="btn-link btn-danger" title="delete element"
+          hx-delete="/drafts/{{.Draft.ID}}/steps/{{$s.ID}}?view=modeler"
+          hx-confirm="Delete this element?">✕ delete</button>
+</div>
+
+{{- if eq $s.Kind "event"}}
+<div class="mdl-props-fields">
+  <div class="mdl-props-subhead">
+    <span>Data fields</span>
+    <button type="button" class="btn-link"
+            hx-post="/drafts/{{.Draft.ID}}/steps/{{$s.ID}}/fields?view=modeler&sel={{$s.ID}}">+ field</button>
+  </div>
+  <ul class="field-list">
+    {{- range $s.Fields}}
+    <li class="field-row">
+      <form class="field-form"
+            hx-post="/drafts/{{$.Draft.ID}}/steps/{{$s.ID}}/fields/{{.ID}}?view=modeler&sel={{$s.ID}}"
+            hx-trigger="change">
+        <input type="text" name="name" value="{{.Name}}" placeholder="field name" autocomplete="off">
+        <select name="type">
+          {{- $t := .Type}}
+          <option value="string" {{if eq $t "string"}}selected{{end}}>text</option>
+          <option value="integer" {{if eq $t "integer"}}selected{{end}}>integer</option>
+          <option value="number" {{if eq $t "number"}}selected{{end}}>number</option>
+          <option value="boolean" {{if eq $t "boolean"}}selected{{end}}>boolean</option>
+          <option value="datetime" {{if eq $t "datetime"}}selected{{end}}>date-time</option>
+          <option value="enum" {{if eq $t "enum"}}selected{{end}}>enum</option>
+          <option value="reference" {{if eq $t "reference"}}selected{{end}}>reference</option>
+        </select>
+        <label class="field-req"><input type="checkbox" name="required" value="1" {{if .Required}}checked{{end}}> req</label>
+        <input type="text" name="format" value="{{.Format}}" placeholder="format (uuid…)" autocomplete="off">
+        <input type="text" name="ref" value="{{.Ref}}" placeholder="ref → collection" autocomplete="off">
+        <input type="text" name="enum" value="{{range $i,$v := .Enum}}{{if $i}},{{end}}{{$v}}{{end}}" placeholder="enum a,b,c" autocomplete="off">
+      </form>
+      <button type="button" class="btn-link btn-danger" title="delete field"
+              hx-delete="/drafts/{{$.Draft.ID}}/steps/{{$s.ID}}/fields/{{.ID}}?view=modeler&sel={{$s.ID}}">✕</button>
+    </li>
+    {{- end}}
+  </ul>
+  <pre class="field-schema">{{eventSchema $s.Fields}}</pre>
+</div>
+{{- end}}
+
+{{else}}
+<div class="mdl-props-empty">
+  <p class="panel-hint">Nichts ausgewählt.</p>
+  <p class="panel-hint">Klick ein Shape auf dem Canvas, um seine Eigenschaften
+     zu bearbeiten — oder füge mit der Palette ein neues hinzu.</p>
+</div>
+{{end}}
+{{- end}}
+
+
+{{/* ── Empty entry state: no draft chosen yet (rendered into #modeler-slot) ── */}}
+{{define "modeler-empty" -}}
+<div class="mdl-pick">
+  <p class="wb-hint">Wähle links unter <strong>Modelle</strong> einen Entwurf und
+     klick <em>edit</em>, um ihn hier im BPMN-Canvas zu modellieren.</p>
+</div>
+{{- end}}
