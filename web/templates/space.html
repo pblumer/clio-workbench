@@ -43,8 +43,9 @@
 
     <button type="button" class="replay-toggle" aria-pressed="false"
             title="Replay how the dots arrived, oldest first">▶ replay</button>
-    <button type="button" class="replay-speed" hidden title="Replay speed">1×</button>
-    <div class="replay-track" hidden role="slider" aria-label="Replay position" tabindex="-1"><div class="replay-fill"></div></div>
+    <input type="range" class="replay-range" min="0" max="0" value="0" step="1" hidden
+           aria-label="Replay position">
+    <span class="replay-label" hidden></span>
     <button type="button" class="replay-stop" hidden title="Exit replay">⏹</button>
     <button type="button" class="sound-toggle" aria-pressed="false"
             title="Blip on each new event (live &amp; replay) — click to cycle the volume">♪ off</button>
