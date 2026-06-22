@@ -104,6 +104,11 @@
       {{end}}
     </div>
 
+    {{/* ── Resize gutter: drag to widen the properties panel ── */}}
+    <div class="mdl-props-resize" role="separator" aria-orientation="vertical"
+         aria-label="Resize properties panel" tabindex="0"
+         title="Drag to resize · ←/→ to nudge"></div>
+
     {{/* ── Properties panel ── */}}
     <aside class="mdl-props" aria-label="Properties">
       {{template "mdlprops" .}}

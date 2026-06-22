@@ -12,6 +12,15 @@
   var DRAG_THRESHOLD = 4; // px of movement before a press becomes a drag
   var ZOOM_MIN = 0.4, ZOOM_MAX = 3.0;
 
+  // Properties-panel width: remembered globally (like the shell's layout), with
+  // a floor and a ceiling that keeps the canvas usable. The Modeler fragment is
+  // re-rendered whole on every htmx swap, so the stored width is re-applied on
+  // each boot.
+  var PROPS_MIN = 240, PROPS_MAX = 900, PROPS_KEY = "wb.mdl.props";
+
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* ignore */ } }
+
   // Per-draft viewport state, so a re-render (htmx swap) keeps the user's pan/zoom.
   var views = {};
 
@@ -148,6 +157,66 @@
     ajax("POST", "/drafts/" + draftId + "/steps/" + stepId + "/reorder?to=" + to + "&view=modeler&sel=" + stepId);
   }
 
+  // ── Properties panel: drag the gutter (or focus it + ←/→) to resize ───────
+  function clampPropsWidth(root, w) {
+    var stage = root.querySelector(".mdl-stage");
+    var max = PROPS_MAX;
+    if (stage) max = Math.min(PROPS_MAX, stage.clientWidth - 260); // leave room for the canvas
+    if (max < PROPS_MIN) max = PROPS_MIN;
+    return Math.max(PROPS_MIN, Math.min(max, w));
+  }
+
+  function setPropsWidth(root, props, w) {
+    w = Math.round(clampPropsWidth(root, w));
+    props.style.flexBasis = w + "px";
+    props.style.width = w + "px";
+    return w;
+  }
+
+  function initPropsResize(root) {
+    var props = root.querySelector(".mdl-props");
+    var handle = root.querySelector(".mdl-props-resize");
+    if (!props || !handle || handle._mdlReady) return;
+    handle._mdlReady = true;
+
+    var stored = parseInt(lsGet(PROPS_KEY), 10);
+    if (stored > 0) setPropsWidth(root, props, stored);
+
+    var dragging = false, startX = 0, startW = 0;
+
+    handle.addEventListener("pointerdown", function (e) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      dragging = true;
+      startX = e.clientX;
+      startW = props.getBoundingClientRect().width;
+      handle.classList.add("is-dragging");
+      try { handle.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    });
+    handle.addEventListener("pointermove", function (e) {
+      if (!dragging) return;
+      // The gutter sits on the panel's left edge: dragging left widens it.
+      setPropsWidth(root, props, startW - (e.clientX - startX));
+    });
+    function end(e) {
+      if (!dragging) return;
+      dragging = false;
+      handle.classList.remove("is-dragging");
+      try { handle.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      lsSet(PROPS_KEY, String(Math.round(props.getBoundingClientRect().width)));
+    }
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+
+    handle.addEventListener("keydown", function (e) {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      e.preventDefault();
+      var step = (e.shiftKey ? 48 : 16) * (e.key === "ArrowLeft" ? 1 : -1);
+      var w = setPropsWidth(root, props, props.getBoundingClientRect().width + step);
+      lsSet(PROPS_KEY, String(w));
+    });
+  }
+
   function select(root, draftId, stepId) {
     ajax("GET", "/modeler?draft=" + encodeURIComponent(draftId) + "&sel=" + encodeURIComponent(stepId));
   }
@@ -169,7 +238,7 @@
   // ── Bootstrapping: init now and after every htmx swap of the slot ─────────
   function boot() {
     var root = document.getElementById("modeler-root");
-    if (root) init(root);
+    if (root) { init(root); initPropsResize(root); }
   }
 
   if (document.readyState !== "loading") boot();
