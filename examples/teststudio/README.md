@@ -24,16 +24,25 @@ step.
 Importing
 ---------
 
-Copy the draft into your Workbench `DataDir`:
+No filesystem access needed — this works against a hosted (SaaS) Workbench too.
 
-  cp draft-order-lifecycle.json  <DataDir>/
+**Model.** In the sidebar under **Modelle (Models)**, expand
+**↧ Modell importieren (Import model)** and pick one:
 
-Copy the suite into the scenario store (a subdirectory so it is not mistaken
-for a draft):
+- **✦ Demo „Order Lifecycle" laden** — one click (needs internet access).
+- **Aus URL importieren (Import from URL)** — paste the raw URL of
+  `draft-order-lifecycle.json`.
+- **JSON einfügen (Paste JSON)** — paste the file contents. Always works.
 
+**Suite.** In the **Teststudio** activity, **Szenarien (Scenarios)** tab, pick
+model **Order Lifecycle**, then expand **↧ Suite importieren (Import suite)** and
+load `suite-order-lifecycle-tests.json` the same three ways.
+
+Local alternative (self-hosted only): drop the files straight into the data
+store and reload —
+
+  cp draft-order-lifecycle.json        <DataDir>/
   cp suite-order-lifecycle-tests.json  <DataDir>/scenarios/order-lifecycle-tests.json
-
-Restart or refresh the Workbench to see them in the Studio.
 
 Draft overview
 --------------
@@ -103,16 +112,24 @@ Schritt.
 Importieren
 -----------
 
-Kopiere den Draft in dein Workbench-`DataDir`:
+Kein Dateizugriff nötig — funktioniert auch gegen eine gehostete (SaaS-)Workbench.
 
-  cp draft-order-lifecycle.json  <DataDir>/
+**Modell.** Klappe links unter **Modelle** den Punkt **↧ Modell importieren** auf
+und wähle einen Weg:
 
-Kopiere die Suite in den Szenario-Store (ein Unterverzeichnis, damit sie nicht
-für einen Draft gehalten wird):
+- **✦ Demo „Order Lifecycle" laden** — ein Klick (braucht Internetzugang).
+- **Aus URL importieren** — füge die Roh-URL von `draft-order-lifecycle.json` ein.
+- **JSON einfügen** — füge den Dateiinhalt ein. Geht immer.
 
+**Suite.** In der Activity **Teststudio**, Tab **Szenarien**, Modell
+**Order Lifecycle** wählen, dann **↧ Suite importieren** aufklappen und
+`suite-order-lifecycle-tests.json` auf denselben drei Wegen laden.
+
+Lokale Alternative (nur selbst gehostet): die Dateien direkt in die Datenablage
+legen und neu laden —
+
+  cp draft-order-lifecycle.json        <DataDir>/
   cp suite-order-lifecycle-tests.json  <DataDir>/scenarios/order-lifecycle-tests.json
-
-Starte die Workbench neu oder lade sie neu, um beide im Studio zu sehen.
 
 Draft im Überblick
 ------------------

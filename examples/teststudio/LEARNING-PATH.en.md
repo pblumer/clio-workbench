@@ -44,8 +44,12 @@ Lesson 6).
 Prerequisites
 -------------
 
-- Go installed (for `go run ./cmd/clio-workbench`), or a built binary.
-- This repository checked out.
+- A **running Workbench**. Two flavours — the path works with either:
+  - **Hosted (SaaS):** all you need is a browser and your Workbench URL. No
+    filesystem, no command line — every step here goes through the web GUI or by
+    pasting JSON.
+  - **Local:** Go installed (for `go run ./cmd/clio-workbench`) or a built
+    binary, and this repository checked out.
 - For Lessons 6/7, additionally a **throwaway Clio** (its own container, its own
   data store) — *never* a production instance, see Lesson 6.
 
@@ -54,34 +58,43 @@ Prerequisites
 Lesson 0 — Set up & import
 --------------------------
 
-**Goal:** Start the Workbench and get the demo model plus suite into the Studio.
+**Goal:** Open the Workbench and get the demo model plus suite into the Studio —
+with no filesystem access and no command line.
 
-1. Pick a data directory and copy the artifacts into it. The draft goes into the
-   data directory itself, the suite into the `scenarios/` subdirectory (so it
-   isn't mistaken for a draft):
+1. Open your Workbench in the browser (hosted: your instance's URL; local:
+   `go run ./cmd/clio-workbench`, then <http://localhost:8080>).
 
-   ```sh
-   export WORKBENCH_DATA=./workbench-data
-   mkdir -p "$WORKBENCH_DATA/scenarios"
-   cp examples/teststudio/draft-order-lifecycle.json        "$WORKBENCH_DATA/"
-   cp examples/teststudio/suite-order-lifecycle-tests.json  "$WORKBENCH_DATA/scenarios/order-lifecycle-tests.json"
-   ```
+2. **Import the demo model.** On the left under **Modelle (Models)**, expand
+   **"↧ Modell importieren (Import model)"**. You have three ways — none touches
+   the server's filesystem:
 
-2. Start the Workbench (offline is enough for the first lessons):
+   - **One-click demo:** **"✦ Demo „Order Lifecycle" laden"** pulls the draft
+     straight from the repo (requires the Workbench to have internet access).
+   - **From URL:** paste the raw URL and click **Aus URL importieren (Import from
+     URL)**:
 
-   ```sh
-   go run ./cmd/clio-workbench
-   # open http://localhost:8080
-   ```
+     ```
+     https://raw.githubusercontent.com/pblumer/clio-workbench/main/examples/teststudio/draft-order-lifecycle.json
+     ```
 
-3. In the **activity bar** on the left, open the **"Teststudio"** activity.
+   - **Paste JSON:** open [`draft-order-lifecycle.json`](draft-order-lifecycle.json)
+     (in the repo or on GitHub), copy the whole content, paste it into the
+     **JSON einfügen (Paste JSON)** field and click **JSON importieren**. This
+     path *always* works — even if the Workbench has no internet access.
 
-**Expected result:** The Studio opens and **Order Lifecycle** appears in the
-model picker. The scenario sidebar shows the suite **"Order Lifecycle –
-Demo-Testsuite"**.
+3. **Import the demo suite.** In the **activity bar** on the left open the
+   **"Teststudio"** activity, then the **Szenarien (Scenarios)** editor tab and
+   pick model **Order Lifecycle**. Expand **"↧ Suite importieren (Import
+   suite)"** — again one-click, by URL (`…/suite-order-lifecycle-tests.json`) or
+   by pasting JSON from [`suite-order-lifecycle-tests.json`](suite-order-lifecycle-tests.json).
 
-> **Tip:** You can also load the draft and suite via *import from URL* if your
-> Workbench offers it — the result is the same.
+**Expected result:** **Order Lifecycle** appears in the model picker, and the
+Scenarios tab shows the suite **"Order Lifecycle – Demo-Testsuite"**.
+
+> **Local alternative:** If you run the Workbench yourself, you can instead drop
+> the files into the data store directly — the draft into `$WORKBENCH_DATA/`, the
+> suite into `$WORKBENCH_DATA/scenarios/` — and reload. The result is the same;
+> it is not required.
 
 **Go deeper:** The model itself (nodes, edges, event-type fields) is described
 compactly in this directory's [`README.md`](README.md). Take a look before
@@ -365,14 +378,18 @@ that fundamentally cannot be reproduced locally).
 
 **Steps:**
 
-1. Start the Workbench against your throwaway instance:
+1. Connect the Workbench to your throwaway instance **via the GUI**: click
+   **⚙ Server** in the status bar at the bottom, enter your throwaway Clio's URL
+   and (if needed) the token, and click **Connect**. The token stays server-side.
+   The connection pill should show **UPLINK** (green).
 
-   ```sh
-   CLIO_URL=http://localhost:3000 CLIO_API_TOKEN=<token> \
-     WORKBENCH_DATA=./workbench-data go run ./cmd/clio-workbench
-   ```
-
-   The connection pill in the header should show **UPLINK** (green).
+   > If you run the Workbench locally you can set the instance at startup instead
+   > — but the GUI path works just as well in a hosted Workbench:
+   >
+   > ```sh
+   > CLIO_URL=http://localhost:3000 CLIO_API_TOKEN=<token> \
+   >   WORKBENCH_DATA=./workbench-data go run ./cmd/clio-workbench
+   > ```
 
 2. Open the **Push** tab. Note the **gate**: pushing is locked until you
    **explicitly confirm the active instance as throwaway**. Switching servers
