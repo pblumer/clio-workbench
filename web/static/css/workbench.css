@@ -1651,7 +1651,17 @@ body { height: 100vh; overflow: hidden; }
 }
 .mdl-emptyhint p { max-width: 320px; }
 
-/* Properties panel */
+/* Resize gutter — drag (or focus + ←/→) to widen the properties panel.
+   A thin transparent grab strip; modeler.js owns the width + localStorage. */
+.mdl-props-resize {
+  flex: 0 0 6px; align-self: stretch; cursor: col-resize;
+  background: transparent; touch-action: none; z-index: 2;
+}
+.mdl-props-resize:hover,
+.mdl-props-resize:focus-visible,
+.mdl-props-resize.is-dragging { background: var(--neon-dim); outline: none; }
+
+/* Properties panel (width is the CSS default; modeler.js overrides it inline). */
 .mdl-props {
   width: 300px; flex: 0 0 300px; overflow-y: auto;
   border-left: 1px solid var(--edge); background: rgba(8, 14, 28, 0.55);
