@@ -271,6 +271,32 @@ func TestHandleFields(t *testing.T) {
 	}
 }
 
+// TestEditorFocusIDs mirrors TestModelerFocusIDs for the outline editor: the
+// step/field forms re-render the whole #proc-steps fragment on every change, so
+// htmx needs a stable id on each control to restore the caret after the swap.
+func TestEditorFocusIDs(t *testing.T) {
+	s := newTestServer(t, defaultCfg())
+	id := seedDraft(t, s, "EditFocus")
+	sid := addStep(t, s, id, "event")
+	s.do(http.MethodPost, "/drafts/"+id+"/steps/"+sid+"/fields", nil)
+	d, _ := s.store.Get(id)
+	fid := d.Steps[0].Fields[0].ID // default type "string" → the format qualifier renders
+
+	body := s.do(http.MethodGet, "/editor/"+id, nil).Body.String()
+	for _, want := range []string{
+		`id="ed-step-name-` + sid + `"`,
+		`id="ed-step-phase-` + sid + `"`,
+		`id="ed-fld-name-` + fid + `"`,
+		`id="ed-fld-type-` + fid + `"`,
+		`id="ed-fld-req-` + fid + `"`,
+		`id="ed-fld-format-` + fid + `"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("editor missing stable focus id %q", want)
+		}
+	}
+}
+
 func TestStepByIDAndIDGenerators(t *testing.T) {
 	d := &model.Draft{Steps: []model.Step{{ID: "a"}, {ID: "b"}}}
 	if stepByID(d, "b") == nil {

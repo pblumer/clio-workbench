@@ -14,10 +14,10 @@
       <span class="step-no">{{inc $idx}}</span>
       <span class="step-kind step-kind-{{.Kind}}">{{.Kind}}</span>
       <form class="step-form" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-trigger="change">
-        <input type="text" name="name" value="{{.Name}}" autocomplete="off"
+        <input id="ed-step-name-{{.ID}}" type="text" name="name" value="{{.Name}}" autocomplete="off"
                placeholder="{{if eq .Kind "event"}}event type, e.g. identity.employee.created{{else}}command, e.g. attachMailbox{{end}}">
         {{- if eq .Kind "event"}}
-        <select name="phase" class="phase-select phase-{{.Phase}}" title="lifecycle phase">
+        <select id="ed-step-phase-{{.ID}}" name="phase" class="phase-select phase-{{.Phase}}" title="lifecycle phase">
           <option value="active" {{if eq .Phase "active"}}selected{{end}}>active</option>
           <option value="complete" {{if eq .Phase "complete"}}selected{{end}}>complete</option>
           <option value="error" {{if eq .Phase "error"}}selected{{end}}>error</option>
@@ -47,8 +47,8 @@
         {{- range .Fields}}{{$t := .Type}}
         <li class="field-row">
           <form class="field-form" hx-post="/drafts/{{$.ID}}/steps/{{$step.ID}}/fields/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-trigger="change">
-            <input class="f-name" type="text" name="name" value="{{.Name}}" placeholder="field name" autocomplete="off">
-            <select class="f-type" name="type" title="data type">
+            <input id="ed-fld-name-{{.ID}}" class="f-name" type="text" name="name" value="{{.Name}}" placeholder="field name" autocomplete="off">
+            <select id="ed-fld-type-{{.ID}}" class="f-type" name="type" title="data type">
               <option value="string" {{if eq $t "string"}}selected{{end}}>text</option>
               <option value="integer" {{if eq $t "integer"}}selected{{end}}>integer</option>
               <option value="number" {{if eq $t "number"}}selected{{end}}>number</option>
@@ -59,12 +59,12 @@
             </select>
             <span class="f-qual">
               {{- if eq $t "string"}}
-              <input type="text" name="format" value="{{.Format}}" placeholder="format — uuid, email…" autocomplete="off">
+              <input id="ed-fld-format-{{.ID}}" type="text" name="format" value="{{.Format}}" placeholder="format — uuid, email…" autocomplete="off">
               {{- else if eq $t "reference"}}
-              <input type="text" name="ref" value="{{.Ref}}" placeholder="→ collection" autocomplete="off">
-              <input type="text" name="format" value="{{.Format}}" placeholder="id format" autocomplete="off">
+              <input id="ed-fld-ref-{{.ID}}" type="text" name="ref" value="{{.Ref}}" placeholder="→ collection" autocomplete="off">
+              <input id="ed-fld-format-{{.ID}}" type="text" name="format" value="{{.Format}}" placeholder="id format" autocomplete="off">
               {{- else if eq $t "enum"}}
-              <input type="text" name="enum" value="{{range $i,$v := .Enum}}{{if $i}}, {{end}}{{$v}}{{end}}" placeholder="values — a, b, c" autocomplete="off">
+              <input id="ed-fld-enum-{{.ID}}" type="text" name="enum" value="{{range $i,$v := .Enum}}{{if $i}}, {{end}}{{$v}}{{end}}" placeholder="values — a, b, c" autocomplete="off">
               {{- else if eq $t "datetime"}}
               <span class="f-hint">ISO-8601 timestamp</span>
               {{- else if eq $t "boolean"}}
@@ -73,7 +73,7 @@
               <span class="f-hint">numeric value</span>
               {{- end}}
             </span>
-            <label class="field-req" title="required field"><input type="checkbox" name="required" value="1" {{if .Required}}checked{{end}}><span>req</span></label>
+            <label class="field-req" title="required field"><input id="ed-fld-req-{{.ID}}" type="checkbox" name="required" value="1" {{if .Required}}checked{{end}}><span>req</span></label>
           </form>
           <button type="button" class="btn-icon btn-danger" title="delete field"
                   hx-delete="/drafts/{{$.ID}}/steps/{{$step.ID}}/fields/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML">✕</button>
