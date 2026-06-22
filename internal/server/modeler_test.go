@@ -97,6 +97,9 @@ func TestModelerFocusIDs(t *testing.T) {
 	fid := d.Steps[0].Fields[0].ID
 
 	body := s.do(http.MethodGet, "/modeler?draft="+id+"&sel="+sid, nil).Body.String()
+	// A new field defaults to type "string", so its constraint column shows the
+	// format input. The other type-specific inputs (ref, enum) are only rendered
+	// when their type is selected — see the per-type cases below.
 	for _, want := range []string{
 		`id="mdl-meta-name"`,
 		`id="mdl-step-name-` + sid + `"`,
@@ -106,11 +109,27 @@ func TestModelerFocusIDs(t *testing.T) {
 		`id="mdl-fld-type-` + fid + `"`,
 		`id="mdl-fld-req-` + fid + `"`,
 		`id="mdl-fld-format-` + fid + `"`,
-		`id="mdl-fld-ref-` + fid + `"`,
-		`id="mdl-fld-enum-` + fid + `"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("modeler panel missing stable focus id %q", want)
+		}
+	}
+
+	// The constraint input depends on the chosen type, but whichever one renders
+	// must still carry its stable id so htmx can restore the caret after the swap.
+	for _, tc := range []struct {
+		fieldType string
+		wantID    string
+	}{
+		{"reference", `id="mdl-fld-ref-` + fid + `"`},
+		{"enum", `id="mdl-fld-enum-` + fid + `"`},
+	} {
+		if rec := s.do(http.MethodPost, "/drafts/"+id+"/steps/"+sid+"/fields/"+fid, form(map[string]string{"type": tc.fieldType, "view": "modeler", "sel": sid})); rec.Code != http.StatusOK {
+			t.Fatalf("set field type %q status = %d", tc.fieldType, rec.Code)
+		}
+		body := s.do(http.MethodGet, "/modeler?draft="+id+"&sel="+sid, nil).Body.String()
+		if !strings.Contains(body, tc.wantID) {
+			t.Errorf("type %q: modeler panel missing stable focus id %q", tc.fieldType, tc.wantID)
 		}
 	}
 }

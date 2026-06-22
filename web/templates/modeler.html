@@ -162,15 +162,18 @@
     <button type="button" class="btn-link"
             hx-post="/drafts/{{.Draft.ID}}/steps/{{$s.ID}}/fields?view=modeler&sel={{$s.ID}}">+ field</button>
   </div>
+  {{- if $s.Fields}}
   <ul class="field-list">
-    {{- range $s.Fields}}
+    <li class="field-head" aria-hidden="true">
+      <span>field</span><span>type</span><span>constraint</span><span>req</span><span></span>
+    </li>
+    {{- range $s.Fields}}{{$t := .Type}}
     <li class="field-row">
       <form class="field-form"
             hx-post="/drafts/{{$.Draft.ID}}/steps/{{$s.ID}}/fields/{{.ID}}?view=modeler&sel={{$s.ID}}"
             hx-trigger="change">
-        <input id="mdl-fld-name-{{.ID}}" type="text" name="name" value="{{.Name}}" placeholder="field name" autocomplete="off">
-        <select id="mdl-fld-type-{{.ID}}" name="type">
-          {{- $t := .Type}}
+        <input id="mdl-fld-name-{{.ID}}" class="f-name" type="text" name="name" value="{{.Name}}" placeholder="field name" autocomplete="off">
+        <select id="mdl-fld-type-{{.ID}}" class="f-type" name="type" title="data type">
           <option value="string" {{if eq $t "string"}}selected{{end}}>text</option>
           <option value="integer" {{if eq $t "integer"}}selected{{end}}>integer</option>
           <option value="number" {{if eq $t "number"}}selected{{end}}>number</option>
@@ -179,16 +182,32 @@
           <option value="enum" {{if eq $t "enum"}}selected{{end}}>enum</option>
           <option value="reference" {{if eq $t "reference"}}selected{{end}}>reference</option>
         </select>
-        <label class="field-req"><input id="mdl-fld-req-{{.ID}}" type="checkbox" name="required" value="1" {{if .Required}}checked{{end}}> req</label>
-        <input id="mdl-fld-format-{{.ID}}" type="text" name="format" value="{{.Format}}" placeholder="format (uuid…)" autocomplete="off">
-        <input id="mdl-fld-ref-{{.ID}}" type="text" name="ref" value="{{.Ref}}" placeholder="ref → collection" autocomplete="off">
-        <input id="mdl-fld-enum-{{.ID}}" type="text" name="enum" value="{{range $i,$v := .Enum}}{{if $i}},{{end}}{{$v}}{{end}}" placeholder="enum a,b,c" autocomplete="off">
+        <span class="f-qual">
+          {{- if eq $t "string"}}
+          <input id="mdl-fld-format-{{.ID}}" type="text" name="format" value="{{.Format}}" placeholder="format — uuid, email…" autocomplete="off">
+          {{- else if eq $t "reference"}}
+          <input id="mdl-fld-ref-{{.ID}}" type="text" name="ref" value="{{.Ref}}" placeholder="→ collection" autocomplete="off">
+          <input id="mdl-fld-format-{{.ID}}" type="text" name="format" value="{{.Format}}" placeholder="id format" autocomplete="off">
+          {{- else if eq $t "enum"}}
+          <input id="mdl-fld-enum-{{.ID}}" type="text" name="enum" value="{{range $i,$v := .Enum}}{{if $i}}, {{end}}{{$v}}{{end}}" placeholder="values — a, b, c" autocomplete="off">
+          {{- else if eq $t "datetime"}}
+          <span class="f-hint">ISO-8601 timestamp</span>
+          {{- else if eq $t "boolean"}}
+          <span class="f-hint">true / false</span>
+          {{- else}}
+          <span class="f-hint">numeric value</span>
+          {{- end}}
+        </span>
+        <label class="field-req" title="required field"><input id="mdl-fld-req-{{.ID}}" type="checkbox" name="required" value="1" {{if .Required}}checked{{end}}><span>req</span></label>
       </form>
       <button type="button" class="btn-link btn-danger" title="delete field"
               hx-delete="/drafts/{{$.Draft.ID}}/steps/{{$s.ID}}/fields/{{.ID}}?view=modeler&sel={{$s.ID}}">✕</button>
     </li>
     {{- end}}
   </ul>
+  {{- else}}
+  <p class="field-empty">Noch keine Datenfelder — Events ohne Payload sind auch gültig.</p>
+  {{- end}}
   <pre class="field-schema">{{eventSchema $s.Fields}}</pre>
 </div>
 {{- end}}
