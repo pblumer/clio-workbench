@@ -68,12 +68,23 @@ func serverList(s string) []string {
 	})
 	out := make([]string, 0, len(fields))
 	for _, f := range fields {
-		out = append(out, strings.TrimRight(f, "/"))
+		out = append(out, normalizeBaseURL(f))
 	}
 	if len(out) == 0 {
 		return defaultServers
 	}
 	return out
+}
+
+// normalizeBaseURL trimmt Slashes und entfernt ein redundantes "/api/v1"-Suffix
+// aus einer Preset-URL. Der clio.Client hängt "/api/v1/..." selbst an; eine
+// durchgeschleuste API-URL würde den Pfad sonst verdoppeln (→ 404/UNREACHABLE).
+// Die Logik spiegelt clio.normalizeBaseURL — hier lokal gehalten, um einen
+// Import-Zyklus zwischen config und clio zu vermeiden.
+func normalizeBaseURL(raw string) string {
+	u := strings.TrimRight(strings.TrimSpace(raw), "/")
+	u = strings.TrimSuffix(u, "/api/v1")
+	return strings.TrimRight(u, "/")
 }
 
 // ProxyEnabled reports whether an upstream Clio is configured, which is the

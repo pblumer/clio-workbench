@@ -264,3 +264,37 @@ func TestNewTrimsTrailingSlash(t *testing.T) {
 		t.Fatalf("baseURL = %q, want trailing slash trimmed", c.baseURL)
 	}
 }
+
+// TestNormalizeBaseURL belegt, dass eine durchgeschleuste API-URL self-healing
+// auf den reinen Host normalisiert wird — sonst verdoppelt der Client den Pfad
+// zu "…/api/v1/api/v1/…" (404 → UNREACHABLE, siehe normalizeBaseURL).
+func TestNormalizeBaseURL(t *testing.T) {
+	const want = "https://clio.blumer.cloud"
+	tests := []struct {
+		name string
+		in   string
+	}{
+		{"redundant api/v1 suffix", "https://clio.blumer.cloud/api/v1"},
+		{"api/v1 with trailing slash", "https://clio.blumer.cloud/api/v1/"},
+		{"api/v1 padded with whitespace", "  https://clio.blumer.cloud/api/v1  "},
+		{"plain host with trailing slash", "https://clio.blumer.cloud/"},
+		{"plain host", "https://clio.blumer.cloud"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Direkt über den Helper …
+			if got := normalizeBaseURL(tt.in); got != want {
+				t.Errorf("normalizeBaseURL(%q) = %q, want %q", tt.in, got, want)
+			}
+			// … und über die öffentlichen Einstiegspunkte New/SetTarget.
+			if got := New(tt.in, "tok").BaseURL(); got != want {
+				t.Errorf("New(%q).BaseURL() = %q, want %q", tt.in, got, want)
+			}
+			c := New("", "")
+			c.SetTarget(tt.in, "tok")
+			if got := c.BaseURL(); got != want {
+				t.Errorf("SetTarget(%q): BaseURL() = %q, want %q", tt.in, got, want)
+			}
+		})
+	}
+}

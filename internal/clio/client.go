@@ -103,11 +103,22 @@ func WithTimeout(d time.Duration) Option {
 	}
 }
 
+// normalizeBaseURL trimmt Whitespace/Slashes und entfernt ein redundantes
+// "/api/v1"-Suffix, da der Client "/api/v1/..." selbst anhängt. So heilt sich
+// die Basis-URL selbst, wenn jemand die volle API-URL einträgt (z. B. aus
+// CLIO_URL="…/api/v1") — sonst verdoppelt sich der Pfad zu "…/api/v1/api/v1/…"
+// und Clio antwortet mit 404 (sichtbar als UNREACHABLE).
+func normalizeBaseURL(raw string) string {
+	u := strings.TrimRight(strings.TrimSpace(raw), "/")
+	u = strings.TrimSuffix(u, "/api/v1")
+	return strings.TrimRight(u, "/")
+}
+
 // New builds a Client for the given Clio base URL and bearer token. An empty
 // baseURL yields a client that always reports StatusOffline.
 func New(baseURL, token string, opts ...Option) *Client {
 	c := &Client{
-		baseURL: strings.TrimRight(baseURL, "/"),
+		baseURL: normalizeBaseURL(baseURL),
 		token:   token,
 		httpc:   &http.Client{Timeout: defaultTimeout},
 	}
@@ -122,7 +133,7 @@ func New(baseURL, token string, opts ...Option) *Client {
 func (c *Client) SetTarget(baseURL, token string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	c.baseURL = normalizeBaseURL(baseURL)
 	c.token = token
 }
 

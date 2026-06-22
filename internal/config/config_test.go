@@ -104,6 +104,8 @@ func TestServerList(t *testing.T) {
 		{"newline separated", "a\nb", []string{"a", "b"}},
 		{"tab and carriage return", "a\tb\rc", []string{"a", "b", "c"}},
 		{"mixed with trailing slashes", "https://a/ , https://b/", []string{"https://a", "https://b"}},
+		{"redundant api/v1 suffix stripped", "https://clio.blumer.cloud/api/v1", []string{"https://clio.blumer.cloud"}},
+		{"api/v1 suffix with trailing slash", "https://clio.blumer.cloud/api/v1/", []string{"https://clio.blumer.cloud"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -111,6 +113,25 @@ func TestServerList(t *testing.T) {
 				t.Errorf("serverList(%q) = %v, want %v", tt.in, got, tt.want)
 			}
 		})
+	}
+}
+
+// TestNormalizeBaseURL belegt, dass Presets keine volle API-URL durchschleusen:
+// ein redundantes "/api/v1"-Suffix wird entfernt, weil der clio.Client den
+// Pfad selbst anhängt (sonst Pfad-Verdopplung → 404 → UNREACHABLE).
+func TestNormalizeBaseURL(t *testing.T) {
+	const want = "https://clio.blumer.cloud"
+	tests := []string{
+		"https://clio.blumer.cloud/api/v1",
+		"https://clio.blumer.cloud/api/v1/",
+		"  https://clio.blumer.cloud/api/v1  ",
+		"https://clio.blumer.cloud/",
+		"https://clio.blumer.cloud",
+	}
+	for _, in := range tests {
+		if got := normalizeBaseURL(in); got != want {
+			t.Errorf("normalizeBaseURL(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 
