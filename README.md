@@ -33,6 +33,11 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
 - A **live connection status** in the header that reports whether Clio is
   actually reachable and the token accepted — not merely whether `CLIO_URL` is
   configured (see below).
+- **A layered scope concept** (`docs/SCOPE.md`): every analysis panel reads
+  events through three composed layers — a global, persistent **Environment**
+  (server + base scope + read limit), the shared session **Queries** pipeline,
+  and a per-panel **discipline lens**. Global to define, local to shape; each
+  layer only narrows, and only the Environment reaches Clio and sets the limit.
 - **Environments**: saved, switchable working contexts — a server plus a data
   scope (subject prefix, event types, lower/upperBound, per-env event limit).
   The active scope applies to all analysis panels; the token is never stored.
@@ -161,4 +166,5 @@ web/                  embedded templates, CSS, htmx
 docs/WORKBENCH.md     architecture & idea paper
 docs/TESTSTUDIO.md    the Test Studio: architecture & idea paper (testing models)
 docs/FRAMEWORK.md     the UI framework (shell regions + how to add a view)
+docs/SCOPE.md         the scope concept (environment · queries · discipline lens)
 ```

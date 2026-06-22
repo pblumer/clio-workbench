@@ -95,8 +95,10 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 	subject := strings.TrimSpace(r.URL.Query().Get("subject"))
 	source := strings.TrimSpace(r.URL.Query().Get("source"))
 
+	// The subject/source filters are this discipline's own lens (docs/SCOPE.md
+	// §3.3): they narrow only the Process view, on top of the shared scope.
 	sc := s.activeScope()
-	events, err := s.scopedEvents(ctx)
+	events, err := s.scopedEvents(ctx, queryStage{Subject: subject, Source: source})
 	truncated := err == nil && len(events) >= sc.Limit
 	if err != nil {
 		v := processView{Subject: subject, Source: source}
@@ -111,21 +113,6 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 		}
 		s.render(w, "process.html", v)
 		return
-	}
-
-	// Optional filters: subject is a path prefix, source a substring match.
-	if subject != "" || source != "" {
-		f := make([]clio.Event, 0, len(events))
-		for _, e := range events {
-			if subject != "" && !strings.HasPrefix(e.Subject, subject) {
-				continue
-			}
-			if source != "" && !strings.Contains(e.Source, source) {
-				continue
-			}
-			f = append(f, e)
-		}
-		events = f
 	}
 
 	in := make([]process.Event, len(events))

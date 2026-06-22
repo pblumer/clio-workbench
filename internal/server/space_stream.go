@@ -129,7 +129,7 @@ func (s *Server) readSince(ctx context.Context, after string, filter spaceFilter
 		if e.ID > max {
 			max = e.ID
 		}
-		if !survives(e.Subject, e.Type, e.ID, stages) {
+		if !survives(eventKey{e.Subject, e.Type, e.ID, e.Source}, stages) {
 			continue
 		}
 		if !filter.match(e.Subject, e.Type, e.ID) {
