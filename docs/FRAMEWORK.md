@@ -82,6 +82,17 @@ type View     struct { ID, Title, Icon, Body string; Default bool }
 Fertig — die Schale erzeugt Tab und Pane automatisch, und der Eintrag taucht in
 der Sidebar „Forschung" als öffnender Link auf.
 
+## Welche Daten eine Ansicht sieht
+
+Die Schale bestimmt, *wo* eine Ansicht lebt; **welche Events** sie liest, regelt
+das geschichtete **Scope-Konzept** ([`SCOPE.md`](SCOPE.md)): ein globales
+**Environment** (Server + Basis-Scope + Limit), die geteilte **Query-Pipeline**
+und — pro Ansicht — eine optionale **Disziplin-Linse**. Eine neue Ansicht erbt
+Environment + Queries automatisch, indem sie `scopedEvents(ctx)` aufruft; will
+sie zusätzlich lokal verengen (wie Process mit Subject/Source oder der Event
+Space mit dem Frame), übergibt sie ihre Linse: `scopedEvents(ctx, lens)`. Details
+und der Auflösungsvertrag stehen in [`SCOPE.md`](SCOPE.md).
+
 ## Client-Seite
 
 [`web/static/js/shell.js`](../web/static/js/shell.js) schaltet nur Sichtbarkeit

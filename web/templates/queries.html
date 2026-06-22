@@ -11,7 +11,7 @@
 </div>
 
 {{if eq .State "ok"}}
-<p class="panel-hint">Chain queries to drill down — each stage further decimates the survivors of the one before it. The funnel feeds every panel below.</p>
+<p class="panel-hint">Chain queries to drill down — each stage further decimates the survivors of the one before it. These stages sit on top of the active environment and feed <em>every</em> panel below; a panel may still narrow its own view further with its local lens (e.g. Process by subject/source).</p>
 
 <ol class="q-funnel">
   <li class="q-step q-base">
@@ -35,6 +35,7 @@
       hx-on::after-request="if(event.detail.successful) this.reset()">
   <input name="subject" placeholder="subject prefix, e.g. /orders" autocomplete="off">
   <input name="types" placeholder="event types (comma-separated)" autocomplete="off">
+  <input name="source" placeholder="source contains…" autocomplete="off">
   <input name="lowerBound" placeholder="from id" autocomplete="off">
   <input name="upperBound" placeholder="to id" autocomplete="off">
   <button type="submit" class="btn-primary">Add stage</button>
