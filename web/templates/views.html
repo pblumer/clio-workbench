@@ -114,6 +114,13 @@
 </div>
 {{- end}}
 
+{{/* ── Editor: BPMN-style Modeler (the draft canvas editor) ── */}}
+{{define "view-modeler" -}}
+<div id="modeler-slot" class="wb-fill">
+  {{template "modeler-empty" .}}
+</div>
+{{- end}}
+
 {{/* ── Editor: Process viewer ── */}}
 {{define "view-process" -}}
 <div id="process-slot" class="wb-fill"

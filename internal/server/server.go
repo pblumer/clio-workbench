@@ -153,12 +153,16 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)
 	s.mux.HandleFunc("DELETE /drafts/{id}", s.handleDeleteDraft)
 
-	// Outline process editor.
+	// Process editor: the BPMN-style canvas (Modeler tab) and the outline.
+	// Both author the same draft Steps; the modeler is a derived canvas view
+	// (docs/FRAMEWORK.md, docs/WORKBENCH.md §5.1).
+	s.mux.HandleFunc("GET /modeler", s.handleModeler)
 	s.mux.HandleFunc("GET /editor/{id}", s.handleEditor)
 	s.mux.HandleFunc("POST /drafts/{id}/meta", s.handleSaveMeta)
 	s.mux.HandleFunc("POST /drafts/{id}/steps", s.handleAddStep)
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}", s.handleUpdateStep)
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/move", s.handleMoveStep)
+	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/reorder", s.handleReorderStep)
 	s.mux.HandleFunc("DELETE /drafts/{id}/steps/{stepId}", s.handleDeleteStep)
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/fields", s.handleAddField)
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/fields/{fieldId}", s.handleUpdateField)

@@ -28,6 +28,7 @@ auf der vorigen auf und folgt den vier Prüfarten und Stufen aus
 | # | Lektion | Prüfart / Stufe | Du brauchst eine Instanz? | Zeit |
 |---|---------|-----------------|---------------------------|------|
 | 0 | Aufsetzen & importieren        | —                     | nein            | 5 min |
+| M | Das Modell im Modeler ansehen  | Modeler (WB §5.5)     | nein            | 10 min |
 | 1 | Schema-Test: passt die Payload?| Schema (§3.1, T0)     | nein            | 10 min |
 | 2 | Sequenz-Test: stimmt der Pfad? | Übergang (§3.2, T0/T1)| nein            | 15 min |
 | 3 | Szenarien & Suites             | Szenario (§3.3, T1)   | nein            | 15 min |
@@ -36,9 +37,9 @@ auf der vorigen auf und folgt den vier Prüfarten und Stufen aus
 | 6 | Push & Round-Trip              | Instanz (§7, T4)      | **ja** (Wegwerf)| 20 min |
 | 7 | Gegenprobe: Soll vs. Ist       | Konsolidierung (T5)   | **ja** (Wegwerf)| 15 min |
 
-Die Lektionen 0–5 laufen **vollständig offline** am Entwurf — keine Clio-Instanz
-nötig. Erst 6 und 7 brauchen einen Server, und zwar bewusst nur eine
-**Wegwerf-Instanz** (siehe Lektion 6).
+Die Lektionen 0–5 und das **Modeler-Zwischenspiel (M)** laufen **vollständig
+offline** am Entwurf — keine Clio-Instanz nötig. Erst 6 und 7 brauchen einen
+Server, und zwar bewusst nur eine **Wegwerf-Instanz** (siehe Lektion 6).
 
 Voraussetzungen
 ---------------
@@ -95,8 +96,58 @@ im Tab Szenarien die Suite **„Order Lifecycle – Demo-Testsuite"**.
 > dasselbe; nötig ist es nicht.
 
 **Vertiefung:** Das Modell selbst (Knoten, Kanten, Event-Typ-Felder) ist im
-[`README.md`](README.md) dieses Verzeichnisses kompakt beschrieben. Wirf einen
-Blick darauf, bevor es weitergeht — es ist die Messlatte für alles Folgende.
+[`README.md`](README.md) dieses Verzeichnisses kompakt beschrieben. Am schnellsten
+begreifst du es aber *visuell* — im folgenden Zwischenspiel im **Modeler**.
+
+---
+
+Zwischenspiel M — Das Modell im Modeler ansehen & bearbeiten
+-----------------------------------------------------------
+
+**Bezug:** [`WORKBENCH.md`](../../docs/WORKBENCH.md) §5.5 (BPMN-Modeler) · **braucht keine Instanz**
+
+Bevor du das Modell *prüfst*, sieh es dir *an*. Der **Modeler** ist der
+BPMN-artige Canvas-Editor der Workbench im Space-Look — dieselbe visuelle Sprache
+wie bpmn.io / Camunda Modeler, aber direkt im Browser, ohne Build-Step.
+
+**Schritte:**
+
+1. Öffne das Modell: in der Sidebar unter **Modelle** beim Eintrag
+   **Order Lifecycle** auf **edit** klicken. Es öffnet sich der Editor-Tab
+   **Modeler** (⬡).
+
+2. **Den Canvas lesen.** Die Schritt-Kette läuft von links nach rechts in einer
+   Pool-/Lane-Spur (`orders`, abgeleitet aus dem Subject `/orders/{id}`):
+   `order-placed` (Start-Event) → `order-paid` → `order-shipped` →
+   `order-delivered` → `order-cancelled` (End-Event). Events sind phasenfarbige
+   Kreise; ein Task wäre ein Rechteck. Schieben (Pan) mit der Maus, zoomen per
+   Mausrad oder über die Toolbar-Knöpfe (`−` `⤢` `+`).
+
+3. **Eigenschaften ansehen.** Klick auf `order-placed`. Rechts im
+   **Properties-Panel** stehen Name, Phase und die **Datenfelder**
+   (`customerEmail`, `itemsCount`) — exakt die Felder, gegen die Lektion 1 gleich
+   prüft. Der Modeler ist also die *visuelle Kehrseite* der Schema-Tests.
+
+4. **Eine kleine Änderung (optional).** Füge über die **Palette** links ein neues
+   Event hinzu, benenne es im Panel — und lösch es danach wieder (`✕ delete`).
+   Per Drag sortierst du Shapes entlang der Kette um.
+
+5. **Export.** Über die Toolbar lädst du **↓ BPMN** (`process.bpmn`, öffnet in
+   bpmn.io / Camunda Modeler) und **↓ schemas** herunter. Der Canvas zeigt
+   **genau**, was der BPMN-Export erzeugt — beide teilen dieselbe Quelle.
+
+> **Linear, mit Absicht (Stufe 1):** Der Modeler zeigt die geordnete
+> Schritt-Outline als *eine* Kette. Die **Verzweigung** des Modells (Storno schon
+> aus `cart`/`placed`) lebt im Graphen (`nodes`/`edges`) und wird erst mit den
+> Gateways späterer Stufen sichtbar (`WORKBENCH.md` §5.5). Fürs Prüfen im Studio
+> ist das ohne Belang — dort zählt der Graph, nicht die Canvas-Darstellung.
+
+> **Low-Code-Alternative:** Wer lieber tippt als zieht, öffnet über den
+> Toolbar-Link **outline** die listenbasierte Schritt-Ansicht — dieselben Daten,
+> anderes Werkzeug.
+
+**Selbstcheck:** Du findest im Modeler zu jedem Event seine Datenfelder und weißt,
+dass Canvas und BPMN-Export dieselbe Quelle (die Steps des Entwurfs) teilen.
 
 ---
 
@@ -242,10 +293,11 @@ Unterschied der Erwartungen `accept` / `reject` / `endState`, und die
    hält fest, *gegen welchen Stand* die Suite geschrieben wurde. Die Suite
    **kopiert** das Modell nicht — sie verweist darauf (Leitprinzip §5).
 
-3. **Drift erleben (optional):** Ändere am Modell etwas Test-Relevantes (z.B.
-   benenne den Event-Typ `order-paid` um) und speichere. Das Studio zeigt eine
-   **Drift-Warnung**: Die Suite wurde gegen einen anderen Stand geschrieben und
-   sollte neu geprüft werden. Mach die Änderung danach rückgängig.
+3. **Drift erleben (optional):** Ändere am Modell etwas Test-Relevantes — im
+   **Modeler** (Zwischenspiel M) das Event `order-paid` anklicken und im
+   Properties-Panel umbenennen (oder über den *outline*-Link). Das Studio zeigt
+   eine **Drift-Warnung**: Die Suite wurde gegen einen anderen Stand geschrieben
+   und sollte neu geprüft werden. Mach die Änderung danach rückgängig.
 
 **Übung:** Füge der Suite einen eigenen Fall hinzu, der genau den verbotenen
 Storno-nach-Versand aus Lektion 2 als **reject** festschreibt:
@@ -444,6 +496,9 @@ Verlässlichkeit beider bedeutet.
 Geschafft — was du jetzt kannst
 -------------------------------
 
+- Das Modell im **Modeler** visuell lesen und bearbeiten — Events/Tasks als
+  BPMN-Shapes, ihre Felder im Properties-Panel, Export als BPMN
+  (`WORKBENCH.md` §5.5).
 - Eine **Payload** feldgenau gegen ein Schema prüfen (§3.1).
 - Eine **Sequenz** gegen den Lifecycle-Graphen halten und Abweichungen verorten
   (§3.2).
@@ -467,5 +522,7 @@ Weiterführend
 - [`README.md`](README.md) — kompakte Beschreibung des Demo-Modells und der Suite.
 - [`FRAMEWORK.md`](../../docs/FRAMEWORK.md) — wie das Studio sich in die
   VS-Code-Schale einfügt.
+- [`WORKBENCH.md`](../../docs/WORKBENCH.md) §5.5 — der **BPMN-Modeler** (der
+  Editor aus Zwischenspiel M).
 </content>
 </invoke>

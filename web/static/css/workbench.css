@@ -1543,3 +1543,139 @@ body { height: 100vh; overflow: hidden; }
   }
   .wb-sidebar { display: none; }
 }
+
+/* ── BPMN-style Modeler (the "Modeler" editor tab) ─────────────────────────
+   A bpmn.io / Camunda-flavoured canvas in the workbench space-look: a pool with
+   a lane, a vertical palette, a draggable SVG canvas and a properties panel.
+   The server renders the SVG; modeler.js adds pan/zoom/drag (see modeler.html). */
+.mdl-root { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+
+.mdl-toolbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 12px; border-bottom: 1px solid var(--edge);
+  background: rgba(8, 14, 28, 0.6);
+}
+.mdl-meta { display: flex; gap: 8px; flex: 1; min-width: 0; }
+.mdl-meta input {
+  background: rgba(5, 9, 20, 0.7); color: var(--text);
+  border: 1px solid var(--edge); border-radius: 6px;
+  padding: 5px 9px; font: inherit; font-size: 12px; min-width: 0;
+}
+.mdl-meta input:first-child { flex: 0 1 200px; }
+.mdl-meta input:nth-child(2) { flex: 0 1 150px; }
+.mdl-meta input:last-child { flex: 1 1 200px; }
+.mdl-meta input:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
+
+.mdl-tools { display: flex; align-items: center; gap: 6px; }
+.mdl-tool {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 28px; padding: 0 9px;
+  background: rgba(5, 9, 20, 0.7); color: var(--text-dim);
+  border: 1px solid var(--edge); border-radius: 6px;
+  font: inherit; font-size: 12px; cursor: pointer; text-decoration: none;
+}
+.mdl-tool:hover { color: var(--neon); border-color: var(--neon-dim); box-shadow: var(--glow); }
+.mdl-tool-sep { width: 1px; height: 18px; background: var(--edge); margin: 0 4px; }
+
+.mdl-stage { display: flex; flex: 1; min-height: 0; }
+
+/* Palette — a vertical icon strip on the canvas's left edge (bpmn.io). */
+.mdl-palette {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 10px 8px; border-right: 1px solid var(--edge);
+  background: rgba(8, 14, 28, 0.5);
+}
+.mdl-pal {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  width: 56px; padding: 8px 4px;
+  background: rgba(5, 9, 20, 0.6); color: var(--text-dim);
+  border: 1px solid var(--edge); border-radius: 8px;
+  font: inherit; font-size: 10px; cursor: pointer;
+}
+.mdl-pal:hover { color: var(--text); border-color: var(--neon-dim); box-shadow: var(--glow); }
+.mdl-pal-glyph { font-size: 18px; line-height: 1; }
+.mdl-pal-event:hover .mdl-pal-glyph { color: var(--neon); }
+.mdl-pal-task:hover .mdl-pal-glyph { color: var(--accent); }
+
+/* Canvas */
+.mdl-canvas { position: relative; flex: 1; min-width: 0; overflow: hidden; }
+.mdl-svg { width: 100%; height: 100%; display: block; touch-action: none; cursor: default; }
+.mdl-root.is-panning .mdl-svg { cursor: grabbing; }
+.mdl-viewport { transform-origin: 0 0; }
+
+.mdl-pool { fill: rgba(10, 18, 34, 0.35); stroke: var(--edge); stroke-width: 1.2; }
+.mdl-lanehdr { fill: rgba(56, 225, 255, 0.05); stroke: var(--edge); stroke-width: 1; }
+.mdl-lanelabel {
+  fill: var(--text-dim); font-size: 11px; letter-spacing: 2px;
+  text-transform: uppercase; font-family: inherit;
+}
+
+.mdl-flow { stroke: var(--neon-dim); stroke-width: 1.6; opacity: 0.7; }
+.mdl-arrowhead { fill: var(--neon-dim); }
+
+.mdl-shape { cursor: pointer; }
+.mdl-shape[data-step]:hover .mdl-orb,
+.mdl-shape[data-step]:hover .mdl-task-box { filter: drop-shadow(0 0 6px rgba(56, 225, 255, 0.5)); }
+.mdl-shape.is-dragging { opacity: 0.85; cursor: grabbing; }
+
+/* Event orbs — coloured by lifecycle phase (shared vocabulary with Process). */
+.mdl-orb { fill: rgba(13, 20, 38, 0.92); stroke: var(--neon-dim); stroke-width: 2; }
+.mdl-orb-inner { fill: none; stroke: var(--neon-dim); stroke-width: 1.2; }
+.mdl-end .mdl-orb { stroke-width: 3.4; }
+.mdl-event.phase-active   .mdl-orb { stroke: var(--neon);   fill: rgba(56, 225, 255, 0.14); }
+.mdl-event.phase-complete .mdl-orb { stroke: var(--good);   fill: rgba(70, 240, 160, 0.13); }
+.mdl-event.phase-error    .mdl-orb { stroke: #ff5a6e;       fill: rgba(255, 90, 110, 0.16); }
+.mdl-event.phase-info     .mdl-orb { stroke: #9fb0c4;       fill: rgba(159, 176, 196, 0.12); }
+.mdl-event.phase-active   .mdl-orb-inner { stroke: var(--neon); }
+.mdl-event.phase-complete .mdl-orb-inner { stroke: var(--good); }
+.mdl-event.phase-error    .mdl-orb-inner { stroke: #ff5a6e; }
+.mdl-event.phase-info     .mdl-orb-inner { stroke: #9fb0c4; }
+.mdl-event-label, .mdl-task-label { fill: var(--text); font-size: 11px; font-family: inherit; }
+.mdl-task-label { font-size: 11px; }
+.mdl-task-icon { fill: var(--accent); font-size: 13px; }
+
+/* Send tasks — rounded rectangles (purple accent, as in Process). */
+.mdl-task-box { fill: rgba(124, 92, 255, 0.08); stroke: var(--accent); stroke-width: 1.8; }
+
+/* Start/end markers — thin circles framing the chain. */
+.mdl-marker circle { fill: none; stroke: var(--text-dim); stroke-width: 1.8; }
+.mdl-marker-end circle { stroke-width: 3; }
+
+/* Selection halo */
+.mdl-sel-halo { fill: none; stroke: var(--neon); stroke-width: 1.6; stroke-dasharray: 4 3; opacity: 0; }
+.mdl-shape.is-selected .mdl-sel-halo { opacity: 0.9; }
+
+.mdl-emptyhint {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  pointer-events: none; padding: 24px; text-align: center; color: var(--text-dim);
+}
+.mdl-emptyhint p { max-width: 320px; }
+
+/* Properties panel */
+.mdl-props {
+  width: 300px; flex: 0 0 300px; overflow-y: auto;
+  border-left: 1px solid var(--edge); background: rgba(8, 14, 28, 0.55);
+  padding: 12px;
+}
+.mdl-props-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.mdl-props-kind {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+  padding: 2px 7px; border-radius: 4px; border: 1px solid var(--edge); color: var(--text-dim);
+}
+.mdl-props-kind.step-kind-event { color: var(--neon); border-color: var(--neon-dim); }
+.mdl-props-kind.step-kind-task  { color: var(--accent); border-color: rgba(124, 92, 255, 0.5); }
+.mdl-props-title { font-size: 12px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
+.mdl-props-form { display: flex; flex-direction: column; gap: 9px; }
+.mdl-field { display: flex; flex-direction: column; gap: 3px; }
+.mdl-field > span { font-size: 11px; color: var(--text-dim); }
+.mdl-field input, .mdl-field select {
+  background: rgba(5, 9, 20, 0.7); color: var(--text);
+  border: 1px solid var(--edge); border-radius: 6px; padding: 6px 9px; font: inherit; font-size: 12px;
+}
+.mdl-field input:focus, .mdl-field select:focus { outline: none; border-color: var(--neon-dim); box-shadow: var(--glow); }
+.mdl-props-ops { display: flex; gap: 10px; margin: 12px 0; flex-wrap: wrap; }
+.mdl-props-fields { border-top: 1px solid var(--edge); padding-top: 10px; }
+.mdl-props-subhead { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.mdl-props-empty { color: var(--text-dim); }
+.mdl-pick { padding: 24px; }
+

@@ -44,6 +44,10 @@ func (s *Server) handleSaveMeta(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
+	if r.FormValue("view") == "modeler" {
+		s.renderModeler(w, d, strings.TrimSpace(r.FormValue("sel")))
+		return
+	}
 	s.renderMeta(w, d)
 }
 
@@ -57,11 +61,13 @@ func (s *Server) handleAddStep(w http.ResponseWriter, r *http.Request) {
 	if kind != model.StepEvent && kind != model.StepTask {
 		kind = model.StepEvent
 	}
-	d.Steps = append(d.Steps, model.Step{ID: newStepID(), Kind: kind})
+	id := newStepID()
+	d.Steps = append(d.Steps, model.Step{ID: id, Kind: kind})
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	// On the canvas, surface the fresh shape as the selected element.
+	s.renderAfterEdit(w, r, d, id)
 }
 
 // handleUpdateStep edits a step's name/phase/description.
@@ -94,7 +100,7 @@ func (s *Server) handleUpdateStep(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }
 
 // handleMoveStep reorders a step up or down.
@@ -121,7 +127,7 @@ func (s *Server) handleMoveStep(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }
 
 // handleDeleteStep removes a step.
@@ -141,7 +147,7 @@ func (s *Server) handleDeleteStep(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }
 
 func (s *Server) loadDraft(w http.ResponseWriter, r *http.Request) (*model.Draft, bool) {
@@ -199,7 +205,7 @@ func (s *Server) handleAddField(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }
 
 // handleUpdateField edits a field's name/type/required/format/ref/enum.
@@ -231,7 +237,7 @@ func (s *Server) handleUpdateField(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }
 
 // handleDeleteField removes a field from an event step.
@@ -253,5 +259,5 @@ func (s *Server) handleDeleteField(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }

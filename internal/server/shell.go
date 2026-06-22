@@ -95,6 +95,7 @@ func contributions() ([]Activity, []View, []View) {
 	}
 
 	editor := []View{
+		{ID: "modeler", Title: "Modeler", Icon: "⬡", Body: "view-modeler"},
 		{ID: "space", Title: "Event Space", Icon: "✦", Body: "view-space", Default: true},
 		{ID: "process", Title: "Process", Icon: "❖", Body: "view-process"},
 		{ID: "relations", Title: "Relationships", Icon: "⇄", Body: "view-relations"},

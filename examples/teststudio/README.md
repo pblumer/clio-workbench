@@ -44,6 +44,17 @@ store and reload —
   cp draft-order-lifecycle.json        <DataDir>/
   cp suite-order-lifecycle-tests.json  <DataDir>/scenarios/order-lifecycle-tests.json
 
+View it in the Modeler
+----------------------
+
+Once imported, open the model visually: in the **Modelle (Models)** sidebar, click
+**edit** on **Order Lifecycle** to open the **Modeler** tab — a BPMN-style canvas
+(start/catch/end events, send tasks, a pool lane) in the space look, à la
+bpmn.io / Camunda Modeler. Click a shape to inspect its data fields in the
+properties panel, and export the model as `process.bpmn` or `schemas.json` from
+the toolbar. The learning path walks through this in
+[Interlude M](LEARNING-PATH.en.md).
+
 Draft overview
 --------------
 
@@ -130,6 +141,17 @@ legen und neu laden —
 
   cp draft-order-lifecycle.json        <DataDir>/
   cp suite-order-lifecycle-tests.json  <DataDir>/scenarios/order-lifecycle-tests.json
+
+Im Modeler ansehen
+------------------
+
+Nach dem Import das Modell visuell öffnen: in der Sidebar **Modelle** beim Eintrag
+**Order Lifecycle** auf **edit** klicken — es öffnet der **Modeler**-Tab, ein
+BPMN-artiger Canvas (Start-/Catch-/End-Events, Send-Tasks, Pool-Lane) im
+Space-Look, im Stil von bpmn.io / Camunda Modeler. Klick ein Shape, um seine
+Datenfelder im Properties-Panel zu sehen; über die Toolbar exportierst du
+`process.bpmn` bzw. `schemas.json`. Der Lernpfad behandelt das im
+[Zwischenspiel M](LEARNING-PATH.md).
 
 Draft im Überblick
 ------------------

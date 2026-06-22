@@ -26,6 +26,15 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
 - File-backed **draft store** (`WORKBENCH_DATA`): drafts are versionable JSON.
 - A **start page** in the Clio space-look (starfield + neon HUD) where you
   create and list drafts.
+- A **BPMN-style Modeler** (editor tab): the draft is drawn left-to-right as a
+  chain of BPMN shapes — start/catch/end message events and send tasks in a
+  pool/lane — in the space look, à la bpmn.io / Camunda Modeler but with no build
+  step. A vertical **palette** adds events/tasks, a **properties panel** edits the
+  selected element (name, phase, data fields), and the canvas supports pan, zoom
+  and drag-to-reorder. The shapes mirror the BPMN export one-to-one; edits persist
+  through the same step endpoints, so nothing new is stored. Opened via *edit* in
+  the model list; the low-code outline stays one click away. See
+  [`docs/WORKBENCH.md`](docs/WORKBENCH.md) §5.5.
 - `/api/*` **reverse proxy** to an upstream Clio with the bearer token injected
   **server-side** (never exposed to the browser) and `FlushInterval: -1` so
   NDJSON/SSE streams are not buffered. Disabled gracefully when no `CLIO_URL`
@@ -60,9 +69,12 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
   text matched against type/subject). It is view-only and transient: the
   environment and the query pipeline stay untouched.
 
-Still ahead per the roadmap (`docs/WORKBENCH.md` §8): the drawing canvas and
-state-machine view (Stufe 1), event-type schema editor and export (Stufe 2),
-BPMN view and schema push (Stufe 3), and the Soll/Ist Gegenprobe (Stufe 4).
+The BPMN Modeler is a first, hybrid take on the drawing canvas: it renders the
+ordered step outline, so it is a derived view rather than free-form graph editing
+yet. Still ahead per the roadmap (`docs/WORKBENCH.md` §8): free-form placement
+with gateways/branches and the state-machine view on the underlying graph model
+(the rest of Stufe 1), event-type schema editor and export (Stufe 2), schema push
+(Stufe 3), and the Soll/Ist Gegenprobe (Stufe 4).
 
 ## Quick start
 
