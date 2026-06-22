@@ -83,6 +83,11 @@ web/                  eingebettete Templates, CSS, htmx, Vanilla-JS
 - **Test Studio** ([`docs/TESTSTUDIO.md`](docs/TESTSTUDIO.md)) — prüft den Entwurf
   ausführend; teilt sich mit der Gegenprobe **eine** Validierungs-Engine
   (`internal/validate`). Soll und Ist laufen auf demselben Code.
+- **Themes** ([`docs/THEMES.md`](docs/THEMES.md)) — der Space-Look ist *ein*
+  wählbares Theme über einem portablen Token-Vertrag. Farbe lebt **nur** in
+  `web/static/css/themes.css` (Kanal-Tripel `--rgb-*` + semantische Tokens);
+  `workbench.css` setzt nie selbst eine Farbe. Neues Theme = ein
+  `[data-theme=…]`-Block + ein Eintrag in `themeOptions` (`internal/server/theme.go`).
 
 ## Arbeitsweise
 

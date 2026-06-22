@@ -12,6 +12,16 @@ import (
 	"github.com/pblumer/clio-workbench/internal/store"
 )
 
+// editorPage wraps a draft with the chrome the standalone editor page needs.
+// The embedded *model.Draft promotes every field, so the editor's body
+// templates keep receiving the draft via "." unchanged; only the page shell
+// reads .Theme / .Themes for the theme switch (docs/THEMES.md).
+type editorPage struct {
+	*model.Draft
+	Theme  string
+	Themes []themeOption
+}
+
 // handleEditor renders the full outline editor page for a draft.
 func (s *Server) handleEditor(w http.ResponseWriter, r *http.Request) {
 	d, err := s.store.Get(r.PathValue("id"))
@@ -23,7 +33,7 @@ func (s *Server) handleEditor(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, "get draft", err)
 		return
 	}
-	s.render(w, "editor.html", d)
+	s.render(w, "editor.html", editorPage{Draft: d, Theme: themeFromRequest(r), Themes: themeOptions})
 }
 
 // handleSaveMeta updates the process metadata (name, namespace, subject).

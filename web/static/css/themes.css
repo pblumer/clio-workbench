@@ -1,0 +1,273 @@
+/* ════════════════════════════════════════════════════════════════════════
+   Clio Theme-Vertrag — die portable Palette der Clio-Werkzeuge.
+   ════════════════════════════════════════════════════════════════════════
+
+   Dieses Stylesheet ist die *einzige* Stelle, an der Farben definiert werden.
+   workbench.css (und perspektivisch Clios /ui) konsumieren ausschließlich die
+   hier deklarierten Tokens über var(--…) und legen nie selbst eine Farbe fest.
+   Ein Theme zu wechseln heißt damit: nur diese Tokens neu belegen — kein
+   Markup, kein Build-Step, kein zweites Stylesheet (Prinzipien 1 & 2,
+   docs/WORKBENCH.md). Hintergrund & Anleitung: docs/THEMES.md.
+
+   ── Der Vertrag in zwei Lagen ──────────────────────────────────────────────
+   1) Kanal-Tripel  --rgb-NAME: "R G B"  (ohne Alpha!).
+      Sie sind die Basis jeder Farbe. Verbraucher mischen Transparenz selbst:
+          color: rgb(var(--rgb-primary) / 0.45);
+      So folgt *jede* Alpha-Variante automatisch dem Theme — ein Theme muss nur
+      ~20 Basistöne setzen, nicht hunderte Einzelwerte.
+   2) Semantische Tokens  --neon, --text, --danger, --glow, --backdrop …
+      Sie geben den Tripeln eine Rolle und bündeln Verläufe (Backdrop/Canvas).
+      Markup spricht möglichst diese an, nicht die rohen Tripel.
+
+   ── Ein Theme hinzufügen ───────────────────────────────────────────────────
+   Einen Block [data-theme="<name>"] anlegen, der die Tripel und die wenigen
+   semantischen Sonderfälle (Text, Edge, Glow, Backdrop) überschreibt. Den
+   Namen in der Theme-Auswahl registrieren (knownThemes, internal/server) — das
+   ist alles.
+
+   ── Portabilität nach pblumer/clio ─────────────────────────────────────────
+   Diese Datei ist bewusst frei von Workbench-Spezifika. Clios /ui kann denselben
+   Vertrag übernehmen: Datei einbetten, eigene Komponenten auf dieselben Token-
+   Namen mappen, fertig — gemeinsame Designsprache ohne Code-Kopplung (Prinzip 6).
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Nebula — der Space-Look (Default) ──────────────────────────────────────
+   Das ursprüngliche Sci-Fi/HUD-Register: Sternenfeld, Neon-Cyan, violetter
+   Glow. Bleibt unverändert die Voreinstellung; :root ohne data-theme zeigt es. */
+:root,
+[data-theme="nebula"] {
+  color-scheme: dark;
+
+  /* Schriftfamilie der Oberfläche. Code/Daten bleiben in workbench.css explizit
+     monospaced; nur die UI-Schrift ist hier themable (für z. B. Swiss-Sans).
+     Aurora & Carbon erben diesen Mono-Stack, sie überschreiben ihn nicht. */
+  --font-ui: "SF Mono", "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+
+  /* Basis-Tripel (R G B) */
+  --rgb-primary:     56 225 255;   /* Neon-Cyan — Leitfarbe, Highlights      */
+  --rgb-accent:     124  92 255;   /* Violett — Prozesse, Subjekte           */
+  --rgb-accent-2:   140 120 255;   /* helleres Violett — Parallel-Blöcke     */
+  --rgb-good:        70 240 160;   /* Grün — abgeschlossen/ok                 */
+  --rgb-warn:       255 207  92;   /* Bernstein — Warnung/Drift              */
+  --rgb-danger:     255  90 110;   /* Rot — Fehler/Reject                     */
+  --rgb-danger-soft:255 122 138;   /* weiches Rot — sekundäre Fehlerakzente   */
+  --rgb-info:       159 176 196;   /* Graublau — neutrale Info-Phase          */
+  --rgb-base:         5   7  15;   /* App-Hintergrund                         */
+  --rgb-deep:         3   6  14;   /* tiefste Einlassflächen / Canvas         */
+  --rgb-panel:       13  20  38;   /* Panels                                  */
+  --rgb-surface:      8  14  28;   /* Karten, Listen, Items                   */
+  --rgb-chrome:       7  11  22;   /* Schale: Activitybar, Tabs               */
+  --rgb-chrome-2:    11  18  34;   /* Schale: Titlebar-/Statusbar-Verlauf     */
+  --rgb-inset:        5  10  20;   /* Eingabefelder, eingelassene Flächen     */
+
+  /* Semantische Tokens */
+  --bg:           rgb(var(--rgb-base));
+  --bg-panel:     rgb(var(--rgb-panel) / 0.72);
+  --edge:         #173049;
+  --neon:         rgb(var(--rgb-primary));
+  --neon-dim:     #1c8fb0;
+  --accent:       rgb(var(--rgb-accent));
+  --accent-soft:  #cdbcff;         /* heller Violett-Text auf Akzentflächen   */
+  --accent-strong:#4a36a8;         /* dunkler Violett-Pol für Verläufe        */
+  --good:         rgb(var(--rgb-good));
+  --warn:         rgb(var(--rgb-warn));
+  --info:         rgb(var(--rgb-info));
+  --danger:       rgb(var(--rgb-danger));
+  --danger-soft:  #ff7a8a;
+  --danger-strong:#ff4d63;
+  --danger-deep:  #b3253a;         /* gefüllte Warn-Badges (heller Text)      */
+  --text:         #d7e6f2;
+  --text-dim:     #7f95ab;
+  --text-bright:  #fff;            /* Text auf gefüllten Bubbles/Orbs         */
+  --glow:         0 0 12px rgb(var(--rgb-primary) / 0.45);
+
+  /* Backdrops & Canvas (ganze Verläufe als Token) */
+  --backdrop-opacity: 0.9;
+  --backdrop:
+    radial-gradient(1px 1px at 20% 30%, #fff, transparent),
+    radial-gradient(1px 1px at 70% 60%, #cfe9ff, transparent),
+    radial-gradient(1.5px 1.5px at 40% 80%, #9fd8ff, transparent),
+    radial-gradient(1px 1px at 85% 25%, #fff, transparent),
+    radial-gradient(1px 1px at 55% 15%, #bcd, transparent),
+    radial-gradient(circle at 50% -20%, rgb(var(--rgb-accent) / 0.18), transparent 60%),
+    var(--bg);
+  --canvas-bg:
+    radial-gradient(circle at 50% 0%, rgb(var(--rgb-primary) / 0.06), transparent 60%),
+    rgb(var(--rgb-deep) / 0.5);
+  --orbit-bg:
+    radial-gradient(circle at 50% 50%, rgb(var(--rgb-primary) / 0.07), transparent 60%),
+    radial-gradient(1px 1px at 18% 24%, #fff, transparent),
+    radial-gradient(1px 1px at 76% 68%, #cfe9ff, transparent),
+    radial-gradient(1.4px 1.4px at 42% 82%, #9fd8ff, transparent),
+    radial-gradient(1px 1px at 88% 30%, #fff, transparent),
+    rgb(var(--rgb-deep) / 0.45);
+}
+
+/* ── Aurora — helles Theme ──────────────────────────────────────────────────
+   Für alle, denen der dunkle Space-Look nicht liegt: heller, kühler Grund,
+   gedämpfte Akzente, kein Sternenfeld, nur dezenter Glow. Flächen-Tripel
+   kippen ins Helle, Akzente werden dunkel genug für Kontrast auf Weiß. */
+[data-theme="aurora"] {
+  color-scheme: light;
+
+  --rgb-primary:     14 116 144;   /* tiefes Teal — lesbar auf Hell          */
+  --rgb-accent:     109  75 216;   /* kräftiges Violett                       */
+  --rgb-accent-2:   139  92 246;
+  --rgb-good:        21 138  92;
+  --rgb-warn:       166 116   0;
+  --rgb-danger:     214  58  74;
+  --rgb-danger-soft:224 106 120;
+  --rgb-info:        90 107 128;
+  --rgb-base:       233 238 245;   /* heller App-Grund                        */
+  --rgb-deep:       214 223 233;   /* helle Canvas-/Einlassflächen            */
+  --rgb-panel:      255 255 255;
+  --rgb-surface:    255 255 255;
+  --rgb-chrome:     236 240 246;
+  --rgb-chrome-2:   224 230 238;
+  --rgb-inset:      255 255 255;
+
+  --bg:           rgb(var(--rgb-base));
+  --bg-panel:     rgb(var(--rgb-panel) / 0.82);
+  --edge:         #c2cedd;
+  --neon:         rgb(var(--rgb-primary));
+  --neon-dim:     #2c7d97;
+  --accent:       rgb(var(--rgb-accent));
+  --accent-soft:  #5b3cc4;         /* lesbarer Violett-Text auf hellem Chip   */
+  --accent-strong:#3f2d8f;
+  --good:         rgb(var(--rgb-good));
+  --warn:         rgb(var(--rgb-warn));
+  --info:         rgb(var(--rgb-info));
+  --danger:       rgb(var(--rgb-danger));
+  --danger-soft:  #c0394a;
+  --danger-strong:#b3253a;
+  --danger-deep:  #9c1d30;
+  --text:         #1b2733;
+  --text-dim:     #566479;
+  --text-bright:  #fff;
+  --glow:         0 0 8px rgb(var(--rgb-primary) / 0.22);
+
+  --backdrop-opacity: 1;
+  --backdrop:
+    radial-gradient(circle at 50% -20%, rgb(var(--rgb-accent) / 0.10), transparent 55%),
+    radial-gradient(circle at 82% 8%, rgb(var(--rgb-primary) / 0.08), transparent 50%),
+    var(--bg);
+  --canvas-bg:
+    radial-gradient(circle at 50% 0%, rgb(var(--rgb-primary) / 0.07), transparent 60%),
+    rgb(var(--rgb-deep) / 0.6);
+  --orbit-bg:
+    radial-gradient(circle at 50% 50%, rgb(var(--rgb-primary) / 0.09), transparent 60%),
+    rgb(var(--rgb-deep) / 0.6);
+}
+
+/* ── Carbon — neutraler Dark-Mode ───────────────────────────────────────────
+   Dunkel, aber nüchtern: ruhiges Graphit ohne Neon und ohne Sternenfeld, Glow
+   ausgeschaltet. Sachlicher Dark-Mode für ablenkungsarmes Arbeiten. */
+[data-theme="carbon"] {
+  color-scheme: dark;
+
+  --rgb-primary:    111 143 166;   /* Stahlblau statt Neon                    */
+  --rgb-accent:     124 131 179;   /* gedämpftes Indigo                       */
+  --rgb-accent-2:   140 146 188;
+  --rgb-good:        91 191 138;
+  --rgb-warn:       217 178  92;
+  --rgb-danger:     224 106 120;
+  --rgb-danger-soft:232 138 150;
+  --rgb-info:       154 166 180;
+  --rgb-base:        18  20  24;
+  --rgb-deep:        12  13  16;
+  --rgb-panel:       26  29  34;
+  --rgb-surface:     30  34  40;
+  --rgb-chrome:      22  25  30;
+  --rgb-chrome-2:    28  31  37;
+  --rgb-inset:       16  18  22;
+
+  --bg:           rgb(var(--rgb-base));
+  --bg-panel:     rgb(var(--rgb-panel) / 0.82);
+  --edge:         #2c333d;
+  --neon:         rgb(var(--rgb-primary));
+  --neon-dim:     #5a7280;
+  --accent:       rgb(var(--rgb-accent));
+  --accent-soft:  #b9bedd;
+  --accent-strong:#4a4f7a;
+  --good:         rgb(var(--rgb-good));
+  --warn:         rgb(var(--rgb-warn));
+  --info:         rgb(var(--rgb-info));
+  --danger:       rgb(var(--rgb-danger));
+  --danger-soft:  #e88a96;
+  --danger-strong:#d44a5c;
+  --danger-deep:  #7a2230;
+  --text:         #d4dae2;
+  --text-dim:     #8a93a0;
+  --text-bright:  #fff;
+  --glow:         0 0 0 transparent;   /* neutral: kein Glow */
+
+  --backdrop-opacity: 1;
+  --backdrop:
+    radial-gradient(circle at 50% -10%, rgb(var(--rgb-surface) / 0.65), transparent 60%),
+    var(--bg);
+  --canvas-bg:
+    radial-gradient(circle at 50% 0%, rgb(var(--rgb-primary) / 0.05), transparent 60%),
+    rgb(var(--rgb-deep) / 0.5);
+  --orbit-bg:
+    radial-gradient(circle at 50% 50%, rgb(var(--rgb-primary) / 0.06), transparent 60%),
+    rgb(var(--rgb-deep) / 0.5);
+}
+
+/* ── Swiss — Mock des Bundes-Styleguide ─────────────────────────────────────
+   Hommage an den Styleguide der Schweizerischen Bundesverwaltung
+   (github.com/swiss/styleguide): weisser Grund, „Bundesrot", schwarze Schrift,
+   serifenlose Frutiger-/Arial-Anmutung, flach und kontraststark statt Glow.
+   Farben sind bewusst angenähert (kein offizielles Asset, keine Wappennutzung). */
+[data-theme="swiss"] {
+  color-scheme: light;
+
+  /* Frutiger ist proprietär — Web-Fallback auf Helvetica/Arial wie im Guide. */
+  --font-ui: "Frutiger Neue", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+  --rgb-primary:    220   0  24;   /* Bundesrot (#DC0018) — Leitfarbe         */
+  --rgb-accent:      12  99 166;   /* sachliches Blau für Prozesse/Subjekte   */
+  --rgb-accent-2:    40 120 184;
+  --rgb-good:         0 122  61;   /* Grün                                    */
+  --rgb-warn:       233 138   0;   /* Orange                                  */
+  --rgb-danger:     216   0  12;   /* Fehler-Rot (etwas dunkler als Brand)    */
+  --rgb-danger-soft:214  58  74;
+  --rgb-info:        90 102 115;
+  --rgb-base:       245 245 245;   /* helles Grau, wie der Guide              */
+  --rgb-deep:       230 230 230;
+  --rgb-panel:      255 255 255;
+  --rgb-surface:    255 255 255;
+  --rgb-chrome:     240 240 240;
+  --rgb-chrome-2:   230 230 230;
+  --rgb-inset:      255 255 255;
+
+  --bg:           rgb(var(--rgb-base));
+  --bg-panel:     rgb(var(--rgb-panel) / 0.94);
+  --edge:         #cccccc;
+  --neon:         rgb(var(--rgb-primary));
+  --neon-dim:     #b00014;
+  --accent:       rgb(var(--rgb-accent));
+  --accent-soft:  #0c63a6;
+  --accent-strong:#0a4f86;
+  --good:         rgb(var(--rgb-good));
+  --warn:         rgb(var(--rgb-warn));
+  --info:         rgb(var(--rgb-info));
+  --danger:       rgb(var(--rgb-danger));
+  --danger-soft:  #b00014;
+  --danger-strong:#a00010;
+  --danger-deep:  #80000d;
+  --text:         #1a1a1a;         /* schwarze Schrift                        */
+  --text-dim:     #5a5a5a;
+  --text-bright:  #fff;
+  --glow:         0 0 0 transparent;   /* flach, kein Glow */
+
+  --backdrop-opacity: 1;
+  --backdrop:
+    radial-gradient(circle at 100% 0%, rgb(var(--rgb-primary) / 0.06), transparent 38%),
+    var(--bg);
+  --canvas-bg:
+    radial-gradient(circle at 50% 0%, rgb(var(--rgb-primary) / 0.04), transparent 60%),
+    rgb(var(--rgb-deep) / 0.7);
+  --orbit-bg:
+    radial-gradient(circle at 50% 50%, rgb(var(--rgb-primary) / 0.05), transparent 60%),
+    rgb(var(--rgb-deep) / 0.7);
+}

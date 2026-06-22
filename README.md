@@ -22,6 +22,10 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
   · status bar) over the space look, driven by a declarative **contribution
   registry** so new diagrams and tools plug in with one `View` entry plus a
   fragment handler. See [`docs/FRAMEWORK.md`](docs/FRAMEWORK.md).
+- **Selectable themes** over a portable token contract: the space look (*Nebula*)
+  is now one theme among *Aurora*, *Carbon* and *Swiss*, switchable from the
+  status bar and rendered server-side (FOUC-free) from a cookie. The contract is
+  built to be reusable by Clio's `/ui`. See [`docs/THEMES.md`](docs/THEMES.md).
 - Single Go binary with the UI, templates, CSS and htmx baked in via `embed.FS`.
 - File-backed **draft store** (`WORKBENCH_DATA`): drafts are versionable JSON.
 - A **start page** in the Clio space-look (starfield + neon HUD) where you
