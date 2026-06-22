@@ -1125,7 +1125,7 @@ html, body {
 /* Outline process editor */
 .step-add { display: flex; gap: 14px; }
 .step-list { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.step-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--edge); border-radius: 9px; background: rgba(8, 14, 28, 0.6); }
+.step-item { display: flex; flex-direction: column; align-items: stretch; gap: 10px; padding: 8px 10px; border: 1px solid var(--edge); border-radius: 9px; background: rgba(8, 14, 28, 0.6); }
 .step-kind { flex: none; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--edge); }
 .step-kind-event { color: var(--neon); border-color: rgba(56, 225, 255, 0.4); }
 .step-kind-task { color: var(--accent); border-color: rgba(124, 92, 255, 0.4); }
