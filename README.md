@@ -151,6 +151,11 @@ go test ./...
 go vet ./...
 ```
 
+> Working with an AI agent (Claude Code or otherwise)? [`CLAUDE.md`](CLAUDE.md)
+> is the canonical agent briefing — the shortest binding statement of the guiding
+> principles and conventions. Claude Code loads it automatically; for other tools
+> paste it as the opening prompt of each new session.
+
 ### Layout
 
 ```
@@ -168,4 +173,5 @@ docs/WORKBENCH.md     architecture & idea paper
 docs/TESTSTUDIO.md    the Test Studio: architecture & idea paper (testing models)
 docs/FRAMEWORK.md     the UI framework (shell regions + how to add a view)
 docs/SCOPE.md         the scope concept (environment · queries · discipline lens)
+CLAUDE.md             agent briefing: guiding principles + conventions for AI sessions
 ```
