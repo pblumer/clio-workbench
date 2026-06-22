@@ -107,7 +107,7 @@ Bereits heute vorhandene Linsen:
 | Disziplin | Linse | Quelle |
 |---|---|---|
 | **Process** | Subject-Prefix + Source-Substring | Query-Param `subject`, `source` |
-| **Event Space** | Frame (die letzten *N* Events) | Query-Param `frame` |
+| **Event Space** | In-Panel-Filter (`queryStage`: Subject/Typen/Bounds/Source) plus freitextliche Typ/Subject-Substrings, dazu der Frame (die letzten *N* Events) | Query-Param `q`, `frame` |
 | **Gegenprobe** *(geplant)* | Subject-Teilbaum des Soll-Modells | Draft-Auswahl |
 
 Eine Linse ist gegenüber Queries das Spiegelbild: Queries sind **geteilt und

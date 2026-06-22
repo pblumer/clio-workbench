@@ -11,14 +11,14 @@ import (
 
 func TestParseSpaceFilter(t *testing.T) {
 	f := parseSpaceFilter("subject:/orders type:created,shipped from:001 to:099 foo Bar")
-	if f.stage.Subject != "/orders" {
-		t.Errorf("subject = %q", f.stage.Subject)
+	if f.lens.Subject != "/orders" {
+		t.Errorf("subject = %q", f.lens.Subject)
 	}
-	if !reflect.DeepEqual(f.stage.Types, []string{"created", "shipped"}) {
-		t.Errorf("types = %v", f.stage.Types)
+	if !reflect.DeepEqual(f.lens.Types, []string{"created", "shipped"}) {
+		t.Errorf("types = %v", f.lens.Types)
 	}
-	if f.stage.LowerBound != "001" || f.stage.UpperBound != "099" {
-		t.Errorf("bounds = %q..%q", f.stage.LowerBound, f.stage.UpperBound)
+	if f.lens.LowerBound != "001" || f.lens.UpperBound != "099" {
+		t.Errorf("bounds = %q..%q", f.lens.LowerBound, f.lens.UpperBound)
 	}
 	// Bare tokens become lower-cased needles.
 	if !reflect.DeepEqual(f.needles, []string{"foo", "bar"}) {
@@ -33,33 +33,46 @@ func TestParseSpaceFilter(t *testing.T) {
 }
 
 func TestSpaceFilterMatch(t *testing.T) {
+	ek := func(subject, typ, id string) eventKey {
+		return eventKey{Subject: subject, Type: typ, ID: id}
+	}
+
 	// type pin: only the exact type survives.
 	f := parseSpaceFilter("type:created")
-	if !f.match("/orders/1", "created", "002") {
+	if !f.match(ek("/orders/1", "created", "002")) {
 		t.Errorf("created should match a type:created filter")
 	}
-	if f.match("/orders/1", "shipped", "002") {
+	if f.match(ek("/orders/1", "shipped", "002")) {
 		t.Errorf("shipped should not match a type:created filter")
+	}
+
+	// source substring (the dimension shared with the Queries layer).
+	src := parseSpaceFilter("source:checkout")
+	if !src.match(eventKey{Subject: "/orders/1", Type: "created", ID: "1", Source: "checkout-svc"}) {
+		t.Errorf("source substring should match")
+	}
+	if src.match(eventKey{Subject: "/orders/1", Type: "created", ID: "1", Source: "billing"}) {
+		t.Errorf("source substring should reject a non-match")
 	}
 
 	// free-text needle: matches type OR subject by substring, case-insensitive.
 	n := parseSpaceFilter("ORDER")
-	if !n.match("/orders/1", "login", "001") {
+	if !n.match(ek("/orders/1", "login", "001")) {
 		t.Errorf("needle should match against the subject")
 	}
-	if !n.match("/users/9", "order.created", "001") {
+	if !n.match(ek("/users/9", "order.created", "001")) {
 		t.Errorf("needle should match against the type")
 	}
-	if n.match("/users/9", "login", "001") {
+	if n.match(ek("/users/9", "login", "001")) {
 		t.Errorf("needle should reject a non-matching event")
 	}
 
 	// multiple needles must all hold.
 	m := parseSpaceFilter("order created")
-	if !m.match("/orders/1", "created", "001") {
+	if !m.match(ek("/orders/1", "created", "001")) {
 		t.Errorf("both needles satisfied → match")
 	}
-	if m.match("/orders/1", "shipped", "001") {
+	if m.match(ek("/orders/1", "shipped", "001")) {
 		t.Errorf("one needle missing → no match")
 	}
 }
@@ -88,7 +101,7 @@ func TestSpaceFilterToggleAndString(t *testing.T) {
 
 	// The original filter is not mutated by a toggle (slice copy).
 	if !f.hasType("created") || f.hasType("shipped") {
-		t.Errorf("withTypeToggled mutated the receiver: %v", f.stage.Types)
+		t.Errorf("withTypeToggled mutated the receiver: %v", f.lens.Types)
 	}
 }
 

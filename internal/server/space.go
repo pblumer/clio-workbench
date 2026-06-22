@@ -144,7 +144,7 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	if !filter.empty() {
 		kept := events[:0:0]
 		for _, e := range events {
-			if filter.match(e.Subject, e.Type, e.ID) {
+			if filter.match(eventKey{e.Subject, e.Type, e.ID, e.Source}) {
 				kept = append(kept, e)
 			}
 		}
@@ -171,7 +171,7 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 			Legend:       chips,
 			Query:        filter.String(),
 			Filtered:     true,
-			TypeFilterOn: len(filter.stage.Types) > 0,
+			TypeFilterOn: len(filter.lens.Types) > 0,
 		})
 		return
 	}
@@ -193,24 +193,28 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	v.Legend = chips
 	v.Query = filter.String()
 	v.Filtered = !filter.empty()
-	v.TypeFilterOn = len(filter.stage.Types) > 0
+	v.TypeFilterOn = len(filter.lens.Types) > 0
 	s.render(w, "space.html", v)
 }
 
-// spaceFilter is the Event Space's in-panel refinement: a view-only narrowing
-// of the charted events. It reuses the pipeline's queryStage for the structured
-// dimensions (subject prefix, exact types, id bounds) and adds free-text
-// needles that match an event's type or subject by case-insensitive substring,
-// so the same filter can be clicked together from the type chips or typed by
-// hand (e.g. `type:order.created subject:/orders orders`).
+// spaceFilter is the Event Space's discipline lens (docs/SCOPE.md §3.3): the
+// view-only, per-panel layer that narrows the charted events on top of the
+// global Environment and the shared Queries pipeline, without touching either.
+// Its structured dimensions are carried by the shared queryStage primitive
+// (subject prefix, exact types, id bounds, source substring) so it composes
+// through the same seam as every other layer; on top it adds free-text needles
+// that match an event's type or subject by case-insensitive substring — the
+// playful escape hatch a plain queryStage can't express. The same filter can be
+// clicked together from the type chips or typed by hand (e.g.
+// `type:order.created subject:/orders orders`).
 type spaceFilter struct {
-	stage   queryStage
+	lens    queryStage
 	needles []string // lower-cased substrings; an event must contain them all
 }
 
 // parseSpaceFilter reads a space-separated filter expression. Recognised keys
-// are subject/type(s)/from/to (with a few aliases); every other token is a
-// free-text needle.
+// are subject/type(s)/from/to/source (with a few aliases); every other token is
+// a free-text needle.
 func parseSpaceFilter(raw string) spaceFilter {
 	var f spaceFilter
 	for _, tok := range strings.Fields(raw) {
@@ -225,13 +229,15 @@ func parseSpaceFilter(raw string) spaceFilter {
 		}
 		switch strings.ToLower(key) {
 		case "subject", "subj", "s":
-			f.stage.Subject = val
+			f.lens.Subject = val
 		case "type", "types", "t":
-			f.stage.Types = append(f.stage.Types, splitTypes(val)...)
+			f.lens.Types = append(f.lens.Types, splitTypes(val)...)
 		case "from", "after", "lower", "min":
-			f.stage.LowerBound = val
+			f.lens.LowerBound = val
 		case "to", "before", "upper", "max":
-			f.stage.UpperBound = val
+			f.lens.UpperBound = val
+		case "source", "src":
+			f.lens.Source = val
 		default:
 			f.needles = append(f.needles, strings.ToLower(tok))
 		}
@@ -241,12 +247,12 @@ func parseSpaceFilter(raw string) spaceFilter {
 
 // empty reports whether the filter carries no constraint (a no-op).
 func (f spaceFilter) empty() bool {
-	return f.stage.empty() && len(f.needles) == 0
+	return f.lens.empty() && len(f.needles) == 0
 }
 
 // hasType reports whether t is currently pinned by the filter.
 func (f spaceFilter) hasType(t string) bool {
-	for _, x := range f.stage.Types {
+	for _, x := range f.lens.Types {
 		if x == t {
 			return true
 		}
@@ -254,29 +260,34 @@ func (f spaceFilter) hasType(t string) bool {
 	return false
 }
 
-// match reports whether an event survives the filter.
-func (f spaceFilter) match(subject, typ, id string) bool {
-	if !matchStage(subject, typ, id, f.stage) {
-		return false
+// matchNeedles reports whether the free-text needles all hit the event's type
+// or subject. The structured dimensions are matched via the shared matchStage.
+func (f spaceFilter) matchNeedles(subject, typ string) bool {
+	if len(f.needles) == 0 {
+		return true
 	}
-	if len(f.needles) > 0 {
-		ls, lt := strings.ToLower(subject), strings.ToLower(typ)
-		for _, n := range f.needles {
-			if !strings.Contains(lt, n) && !strings.Contains(ls, n) {
-				return false
-			}
+	ls, lt := strings.ToLower(subject), strings.ToLower(typ)
+	for _, n := range f.needles {
+		if !strings.Contains(lt, n) && !strings.Contains(ls, n) {
+			return false
 		}
 	}
 	return true
+}
+
+// match reports whether an event survives the whole filter: the structured
+// lens (via the shared matcher) and the free-text needles.
+func (f spaceFilter) match(k eventKey) bool {
+	return matchStage(k, f.lens) && f.matchNeedles(k.Subject, k.Type)
 }
 
 // withTypeToggled returns a copy of the filter with type t flipped in or out of
 // the pinned-type set — the effect of clicking a type chip.
 func (f spaceFilter) withTypeToggled(t string) spaceFilter {
 	nf := f
-	types := make([]string, 0, len(f.stage.Types)+1)
+	types := make([]string, 0, len(f.lens.Types)+1)
 	found := false
-	for _, x := range f.stage.Types {
+	for _, x := range f.lens.Types {
 		if x == t {
 			found = true
 			continue
@@ -286,7 +297,7 @@ func (f spaceFilter) withTypeToggled(t string) spaceFilter {
 	if !found {
 		types = append(types, t)
 	}
-	nf.stage.Types = types
+	nf.lens.Types = types
 	return nf
 }
 
@@ -294,17 +305,20 @@ func (f spaceFilter) withTypeToggled(t string) spaceFilter {
 // filter round-trips and the input always shows a normalised form.
 func (f spaceFilter) String() string {
 	var parts []string
-	if f.stage.Subject != "" {
-		parts = append(parts, "subject:"+f.stage.Subject)
+	if f.lens.Subject != "" {
+		parts = append(parts, "subject:"+f.lens.Subject)
 	}
-	for _, t := range f.stage.Types {
+	for _, t := range f.lens.Types {
 		parts = append(parts, "type:"+t)
 	}
-	if f.stage.LowerBound != "" {
-		parts = append(parts, "from:"+f.stage.LowerBound)
+	if f.lens.LowerBound != "" {
+		parts = append(parts, "from:"+f.lens.LowerBound)
 	}
-	if f.stage.UpperBound != "" {
-		parts = append(parts, "to:"+f.stage.UpperBound)
+	if f.lens.UpperBound != "" {
+		parts = append(parts, "to:"+f.lens.UpperBound)
+	}
+	if f.lens.Source != "" {
+		parts = append(parts, "source:"+f.lens.Source)
 	}
 	parts = append(parts, f.needles...)
 	return strings.Join(parts, " ")

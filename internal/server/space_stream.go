@@ -119,7 +119,9 @@ func (s *Server) readSince(ctx context.Context, after string, filter spaceFilter
 	if err != nil {
 		return nil, ""
 	}
-	stages := s.stages()
+	// Compose Queries with the in-panel discipline lens through the shared seam,
+	// then apply the lens's free-text needles on top.
+	stages := s.refinement(filter.lens)
 	max := after
 	var out []streamDot
 	for _, e := range events {
@@ -132,7 +134,7 @@ func (s *Server) readSince(ctx context.Context, after string, filter spaceFilter
 		if !survives(eventKey{e.Subject, e.Type, e.ID, e.Source}, stages) {
 			continue
 		}
-		if !filter.match(e.Subject, e.Type, e.ID) {
+		if !filter.matchNeedles(e.Subject, e.Type) {
 			continue
 		}
 		_, phase := process.Classify(e.Type)
