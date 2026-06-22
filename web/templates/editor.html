@@ -1,11 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="{{.Theme}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{.Name}} · clio Workbench — wo Geschichte entsteht</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/css/themes.css">
   <link rel="stylesheet" href="/static/css/workbench.css">
+  <script src="/static/js/theme.js"></script>
   <script src="/static/js/htmx.min.js" defer></script>
 </head>
 <body>
@@ -17,7 +19,18 @@
       <span class="brand-name">{{.Name}}</span>
       <span class="brand-sub">process editor</span>
     </div>
-    <a class="conn-btn" href="/">← back</a>
+    <div class="status">
+      <label class="theme-pick" title="Theme wählen">
+        <span class="theme-pick-icon" aria-hidden="true">◐</span>
+        <select class="theme-select" aria-label="Theme" onchange="setTheme(this.value)">
+          {{- $cur := .Theme}}
+          {{- range .Themes}}
+          <option value="{{.ID}}"{{if eq .ID $cur}} selected{{end}}>{{.Label}}</option>
+          {{- end}}
+        </select>
+      </label>
+      <a class="conn-btn" href="/">← back</a>
+    </div>
   </header>
 
   <main class="grid">

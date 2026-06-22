@@ -91,8 +91,12 @@ und ein BPMN-Parallel-Gateway sind die nächsten Schritte.)
    durchgereicht, nie ins Browser-JS gelegt.
 5. **Der Entwurf ist das Artefakt.** Das Modell ist die Quelle der Wahrheit;
    Schemas und Doku werden daraus *generiert*, nicht umgekehrt.
-6. **Space-Look.** Visuell im selben Sci-Fi/HUD-Register wie Clios `/ui`
-   (Sternenfeld, Neon-Glow) — gemeinsame Designsprache ohne Code-Kopplung.
+6. **Space-Look (als Default-Theme).** Visuell im selben Sci-Fi/HUD-Register wie
+   Clios `/ui` (Sternenfeld, Neon-Glow) — gemeinsame Designsprache ohne
+   Code-Kopplung. Der Look ist heute *ein wählbares Theme* (»Nebula«) über einem
+   portablen Token-Vertrag; wem das Space-Feeling nicht liegt, wählt ein anderes
+   (Aurora, Carbon, Swiss). Der Vertrag ist bewusst so gebaut, dass ihn auch
+   Clios `/ui` übernehmen kann. Details: [`docs/THEMES.md`](THEMES.md).
 
 ---
 

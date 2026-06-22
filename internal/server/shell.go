@@ -53,10 +53,12 @@ type View struct {
 // existing start-page data and adds the resolved contribution registry.
 type shellData struct {
 	indexData
-	Activities []Activity // activity bar + their sidebar Views
-	Editor     []View     // editor-area tabs (the diagrams)
-	Panel      []View     // bottom-panel tabs
-	Stufe      string     // roadmap stage badge for the status bar
+	Activities []Activity    // activity bar + their sidebar Views
+	Editor     []View        // editor-area tabs (the diagrams)
+	Panel      []View        // bottom-panel tabs
+	Stufe      string        // roadmap stage badge for the status bar
+	Theme      string        // active palette id, rendered as <html data-theme>
+	Themes     []themeOption // the theme switcher catalogue (docs/THEMES.md)
 }
 
 // contributions returns the static registry of Views that make up the
