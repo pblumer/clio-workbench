@@ -53,7 +53,12 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
 - A **dynamic Event Space**: a *frame* keeps the last N events, dots are
   coloured by **event type** (with a type legend), a **live** toggle streams new
   events in over SSE (the Workbench tails Clio server-side), and hovering a dot
-  opens a card with the event's metadata and pretty-printed payload.
+  opens a card with the event's metadata and pretty-printed payload. An in-panel
+  **filter** — the Event Space's *discipline lens* (`docs/SCOPE.md`) — narrows
+  *which* events are charted: click a type in the legend to toggle it, or type
+  the same filter directly (`type:… subject:… from:… to:… source:…`, plus free
+  text matched against type/subject). It is view-only and transient: the
+  environment and the query pipeline stay untouched.
 
 Still ahead per the roadmap (`docs/WORKBENCH.md` §8): the drawing canvas and
 state-machine view (Stufe 1), event-type schema editor and export (Stufe 2),
