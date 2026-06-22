@@ -31,13 +31,21 @@ const (
 	mdlPadX    = 56.0  // pool inner padding, left/right of the chain
 	mdlLaneHdr = 28.0  // width of the vertical lane header band
 	mdlLaneH   = 168.0 // pool/lane height
-	mdlGap     = 56.0  // horizontal gap between shapes
+	mdlGap     = 56.0  // minimum horizontal gap between shape bodies
 	mdlEventR  = 19.0  // event circle radius
 	mdlEndR    = 21.0  // end event circle radius (drawn bolder)
 	mdlMarkerR = 16.0  // start/end pseudo marker radius
 	mdlTaskW   = 116.0 // send-task width
 	mdlTaskH   = 76.0  // send-task height
 	mdlPadY    = 28.0  // pool padding above/below the lane
+
+	// Event labels sit *under* the orb, centred, and are often wider than the
+	// orb itself ("order-delivered" is ~5× the circle). The geometric gap alone
+	// therefore lets long names collide, so the layout also reserves room from
+	// the estimated label width (html/template has no text metrics). mdlCharW is
+	// a deliberately generous per-glyph advance at the 11px label font.
+	mdlCharW    = 6.4  // estimated glyph advance at the label font-size
+	mdlLabelGap = 16.0 // minimum horizontal gap between adjacent labels
 )
 
 // mdlShape is one laid-out BPMN element on the canvas. Derived coordinates are
@@ -171,19 +179,35 @@ func buildModeler(d *model.Draft, sel string) modelerData {
 		}
 	}
 
-	x := mdlPadX + mdlLaneHdr
 	midY := mdlPadY + mdlLaneH/2
 
-	place := func(sh mdlShape, halfW float64) mdlShape {
-		sh.CX = x + halfW
+	// Shapes are placed left-to-right. Each centre sits far enough from the
+	// previous one to clear *both* the orb bodies (mdlGap) and the labels
+	// (mdlLabelGap) — the larger of the two pitches wins, so long event names
+	// push their neighbours apart instead of overlapping. labelHalf is the
+	// outward reach of a shape's own label (0 for markers and tasks, whose
+	// captions live inside the body).
+	var shapes []mdlShape
+	var prevCX, prevHalf, prevLabelHalf float64
+	placed := false
+	place := func(sh mdlShape, halfW, labelHalf float64) mdlShape {
+		if !placed {
+			sh.CX = mdlPadX + mdlLaneHdr + halfW
+			placed = true
+		} else {
+			pitch := prevHalf + mdlGap + halfW
+			if lbl := prevLabelHalf + mdlLabelGap + labelHalf; lbl > pitch {
+				pitch = lbl
+			}
+			sh.CX = prevCX + pitch
+		}
 		sh.CY = midY
-		x = sh.CX + halfW + mdlGap
+		prevCX, prevHalf, prevLabelHalf = sh.CX, halfW, labelHalf
 		return sh
 	}
 
-	var shapes []mdlShape
 	// Leading start marker (the "trigger" before the first real event).
-	shapes = append(shapes, place(mdlShape{Kind: "marker-start", R: mdlMarkerR}, mdlMarkerR))
+	shapes = append(shapes, place(mdlShape{Kind: "marker-start", R: mdlMarkerR}, mdlMarkerR, 0))
 
 	for i, st := range d.Steps {
 		sh := mdlShape{StepID: st.ID, Phase: st.Phase, Label: st.Name, Selected: st.ID == sel && sel != ""}
@@ -197,14 +221,14 @@ func buildModeler(d *model.Draft, sel string) modelerData {
 			default:
 				sh.Kind = "catch"
 			}
-			sh = place(sh, sh.R)
+			sh = place(sh, sh.R, estLabelHalf(st.Name, "event"))
 			sh.X, sh.Y = sh.CX-sh.R, sh.CY-sh.R
 			sh.HaloR = sh.R + 7
 			sh.InnerR = sh.R - 4
 			sh.LabelY = sh.CY + sh.R + 15
 		} else {
 			sh.Kind, sh.W, sh.H = "task", mdlTaskW, mdlTaskH
-			sh = place(sh, mdlTaskW/2)
+			sh = place(sh, mdlTaskW/2, 0)
 			sh.X, sh.Y = sh.CX-mdlTaskW/2, sh.CY-mdlTaskH/2
 			sh.IconX, sh.IconY = sh.X+9, sh.Y+17
 		}
@@ -212,7 +236,7 @@ func buildModeler(d *model.Draft, sel string) modelerData {
 	}
 
 	// Trailing end marker (a terminal sink after the last step).
-	shapes = append(shapes, place(mdlShape{Kind: "marker-end", R: mdlMarkerR}, mdlMarkerR))
+	shapes = append(shapes, place(mdlShape{Kind: "marker-end", R: mdlMarkerR}, mdlMarkerR, 0))
 
 	// Straight horizontal sequence flows between consecutive shapes.
 	var flows []mdlFlow
@@ -225,7 +249,7 @@ func buildModeler(d *model.Draft, sel string) modelerData {
 
 	md.Shapes = shapes
 	md.Flows = flows
-	md.W = x - mdlGap + mdlPadX
+	md.W = prevCX + prevHalf + mdlPadX // right edge of the trailing marker
 	md.H = mdlPadY*2 + mdlLaneH
 	md.HalfH = md.H / 2
 	md.Empty = len(d.Steps) == 0
@@ -238,6 +262,17 @@ func shapeHalf(sh mdlShape) float64 {
 		return sh.W / 2
 	}
 	return sh.R
+}
+
+// estLabelHalf approximates half the rendered width of a centred label, so the
+// layout can reserve horizontal room and long event names never collide. An
+// empty name falls back to the placeholder the template draws. There is no text
+// metric available server-side; mdlCharW is intentionally generous.
+func estLabelHalf(name, placeholder string) float64 {
+	if name == "" {
+		name = placeholder
+	}
+	return float64(len([]rune(name))) * mdlCharW / 2
 }
 
 // laneLabel derives the pool caption from the subject template (the collection),

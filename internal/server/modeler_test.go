@@ -217,6 +217,57 @@ func TestBuildModeler(t *testing.T) {
 	}
 }
 
+// TestBuildModelerLabelSpacing guards the fix for overlapping event captions:
+// adjacent labels are centred under their orbs, so when a name is wider than the
+// geometric pitch the layout must spread the shapes from the label width. We
+// assert that no two consecutive event labels' estimated extents overlap, even
+// for long names — and that short names still use the tight geometric spacing.
+func TestBuildModelerLabelSpacing(t *testing.T) {
+	long := &model.Draft{Name: "Order", Steps: []model.Step{
+		{ID: "a", Kind: model.StepEvent, Name: "order-placed"},
+		{ID: "b", Kind: model.StepEvent, Name: "order-paid"},
+		{ID: "c", Kind: model.StepEvent, Name: "order-shipped"},
+		{ID: "d", Kind: model.StepEvent, Name: "order-delivered"},
+		{ID: "e", Kind: model.StepEvent, Name: "order-cancelled"},
+	}}
+	md := buildModeler(long, "")
+
+	// Collect the event shapes in order (skip the synthetic markers).
+	var evs []mdlShape
+	for _, sh := range md.Shapes {
+		if sh.StepID != "" {
+			evs = append(evs, sh)
+		}
+	}
+	for i := 0; i+1 < len(evs); i++ {
+		a, b := evs[i], evs[i+1]
+		aRight := a.CX + estLabelHalf(a.Label, "event")
+		bLeft := b.CX - estLabelHalf(b.Label, "event")
+		if bLeft < aRight {
+			t.Errorf("labels %q/%q overlap: %.1f > %.1f", a.Label, b.Label, aRight, bLeft)
+		}
+	}
+
+	// Short names must not pay the label tax: spacing stays the geometric pitch.
+	short := &model.Draft{Name: "P", Steps: []model.Step{
+		{ID: "a", Kind: model.StepEvent, Name: "a"},
+		{ID: "b", Kind: model.StepEvent, Name: "b"},
+	}}
+	sm := buildModeler(short, "")
+	var sa, sb mdlShape
+	for _, sh := range sm.Shapes {
+		if sh.StepID == "a" {
+			sa = sh
+		} else if sh.StepID == "b" {
+			sb = sh
+		}
+	}
+	wantPitch := sa.R + mdlGap + sb.R
+	if got := sb.CX - sa.CX; got != wantPitch {
+		t.Errorf("short-name pitch = %.1f, want geometric %.1f", got, wantPitch)
+	}
+}
+
 func TestHandleReorderStep(t *testing.T) {
 	s := newTestServer(t, defaultCfg())
 	id := seedDraft(t, s, "Reorder")
