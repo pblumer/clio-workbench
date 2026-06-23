@@ -1,7 +1,7 @@
 {{define "space.html" -}}
 <div class="events-head">
   <h2 class="panel-title">Event space
-    {{- if eq .State "ok"}} <span class="proc-stat">{{.Shown}}{{if .Capped}}/{{.Total}}{{end}} subjects · {{.Events}} events{{if .Framed}} · last {{.Frame}}{{end}}{{if .Filtered}} · filtered{{end}} · {{.Axis}}</span>{{end -}}
+    {{- if eq .State "ok"}} <span class="proc-stat" title="{{if .Capped}}top {{.Shown}} of {{thousands .Total}} subjects shown · {{else}}{{.Shown}} subjects · {{end}}{{thousands .Events}} events charted">{{thousands .Shown}}{{if .Capped}} / {{thousands .Total}}{{end}} subjects · {{thousands .Events}} events{{if .Framed}} · last {{thousands .Frame}}{{end}}{{if .Filtered}} · filtered{{end}} · {{.Axis}}</span>{{end -}}
   </h2>
   <button class="reconnect" type="button"
           hx-get="/space" hx-include="#space-frame"
@@ -51,7 +51,7 @@
             title="Blip on each new event (live &amp; replay) — click to cycle the volume">♪ off</button>
   </form>
 
-  {{if .Truncated}}<p class="trunc-note">⚠ read the first {{.Cap}} events (oldest first) — newer events may be missing. Raise the environment limit or <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
+  {{if .Truncated}}<p class="trunc-note">⚠ loaded the first {{thousands .Cap}} events (oldest first) — newer events may be missing. Raise the environment limit or <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
 
   {{if eq .State "ok"}}
   <div class="dotted-graph" data-after="{{.AfterID}}">

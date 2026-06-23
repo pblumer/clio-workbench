@@ -54,6 +54,7 @@ func New(cfg config.Config, st *store.Store, envs *envstore.Store, scen *scenari
 	tmpl, err := template.New("").Funcs(template.FuncMap{
 		"eventSchema": schemagen.EventSchema,
 		"inc":         func(i int) int { return i + 1 },
+		"thousands":   thousands,
 		"partial": func(name string, data any) (template.HTML, error) {
 			var b bytes.Buffer
 			if err := root.ExecuteTemplate(&b, name, data); err != nil {

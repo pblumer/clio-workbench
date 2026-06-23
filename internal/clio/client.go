@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -387,7 +388,26 @@ func (c *Client) scopedURL(base string, sc Scope) string {
 	if sc.UpperBound != "" {
 		q.Set("upperBound", sc.UpperBound)
 	}
+	if sc.Limit > 0 {
+		q.Set("limit", strconv.Itoa(sc.Limit))
+	}
 	return base + path + "?" + q.Encode()
+}
+
+// withLimit appends Clio's `limit` query parameter when n > 0. Without it Clio
+// caps a read at its own default ceiling, so the Workbench would silently load
+// fewer events than its configured limit advertises — the read must carry the
+// limit for "limit kappt den Read" (docs/SCOPE.md §3.1) to actually hold. A
+// non-positive n means "read all" and is left untouched.
+func withLimit(rawURL string, n int) string {
+	if n <= 0 {
+		return rawURL
+	}
+	sep := "&"
+	if !strings.Contains(rawURL, "?") {
+		sep = "?"
+	}
+	return rawURL + sep + "limit=" + strconv.Itoa(n)
 }
 
 // ReadScoped streams the minimal event projection for a scope.
@@ -463,7 +483,7 @@ func (c *Client) readFullEventsURL(ctx context.Context, fullURL string, limit in
 // A limit <= 0 reads all available events. The token is injected server-side;
 // ErrOffline / ErrUnauthorized are returned for those states.
 func (c *Client) ReadEvents(ctx context.Context, limit int) ([]Event, error) {
-	return c.readEventsURL(ctx, c.eventsURL(eventsPath+"?recursive=true"), limit)
+	return c.readEventsURL(ctx, withLimit(c.eventsURL(eventsPath+"?recursive=true"), limit), limit)
 }
 
 // ReadEventsUnder streams up to limit events under a subject prefix via
@@ -474,7 +494,7 @@ func (c *Client) ReadEventsUnder(ctx context.Context, subjectPrefix string, limi
 	if p == "" {
 		return c.ReadEvents(ctx, limit)
 	}
-	return c.readEventsURL(ctx, c.eventsURL(eventsPath+"/"+p+"?recursive=true"), limit)
+	return c.readEventsURL(ctx, withLimit(c.eventsURL(eventsPath+"/"+p+"?recursive=true"), limit), limit)
 }
 
 func (c *Client) eventsURL(path string) string {
@@ -550,7 +570,7 @@ func (c *Client) ReadFullEvents(ctx context.Context, limit int) ([]FullEvent, er
 	if base == "" {
 		return nil, ErrOffline
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+eventsPath+"?recursive=true", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, withLimit(base+eventsPath+"?recursive=true", limit), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -604,7 +624,7 @@ func (c *Client) ReadEventsByType(ctx context.Context, typ string, limit int) ([
 		return nil, ErrOffline
 	}
 
-	u := base + eventsPath + "?recursive=true&type=" + url.QueryEscape(typ)
+	u := withLimit(base+eventsPath+"?recursive=true&type="+url.QueryEscape(typ), limit)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err
