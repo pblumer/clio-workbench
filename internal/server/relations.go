@@ -50,7 +50,7 @@ func (s *Server) handleRelations(w http.ResponseWriter, r *http.Request) {
 		v.Refs = process.BuildReferences(refIn).Edges
 		v.Subjects = len(distinct)
 		v.Events = len(events)
-		v.Truncated = len(events) >= sc.Limit
+		v.Truncated = sc.Limit > 0 && len(events) >= sc.Limit
 		v.Cap = sc.Limit
 	case errors.Is(err, clio.ErrOffline):
 		v.State, v.Message = "offline", "no Clio connected — pick a server to map relationships"

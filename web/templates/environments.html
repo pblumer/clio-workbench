@@ -8,7 +8,7 @@
       {{- end}}
     </select>
   </label>
-  <span class="env-limit" title="max events loaded from Clio per panel — raise via the environment limit or WORKBENCH_EVENT_CAP">limit {{thousands .Limit}}</span>
+  {{if .Limit}}<span class="env-limit" title="max events loaded from Clio per panel — set via the environment limit or WORKBENCH_EVENT_CAP; remove it to load all">limit {{thousands .Limit}}</span>{{else}}<span class="env-limit env-limit-off" title="no read cap — every event is loaded; set an environment limit or WORKBENCH_EVENT_CAP to opt into a cap">no limit</span>{{end}}
   {{if .HasActive}}
   <span class="env-scope">
     {{- if .Active.ServerURL}}<code>{{.Active.ServerURL}}</code> · {{end -}}

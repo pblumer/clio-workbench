@@ -61,7 +61,9 @@ Drei Regeln machen das Konzept eindeutig — sie gelten immer und überall:
    **Read-Limit** fest. `Queries` und `Linse` sind reine In-Process-Filter über
    dem bereits gelesenen Universum. Daraus folgt: das Limit gehört dem
    Environment (bzw. dem globalen Cap `WORKBENCH_EVENT_CAP`), nie einer
-   Verfeinerung.
+   Verfeinerung. Standardmäßig gibt es **kein** Limit — alle Events werden
+   gelesen; ein positives `WORKBENCH_EVENT_CAP` oder ein Environment-Limit ist
+   ein bewusstes Opt-in gegen Über-Reads auf sehr großen Stores.
 
 ---
 
@@ -73,7 +75,8 @@ Ein **Environment** ist ein gespeicherter, umschaltbarer Arbeitskontext: ein
 Server plus ein Basis-Scope.
 
 - **Felder:** `ServerURL`, `Subject` (Prefix), `Types`, `LowerBound`,
-  `UpperBound`, `Limit` (`0` = globaler Cap).
+  `UpperBound`, `Limit` (`0` = globaler Cap; der ist per Default selbst `0`,
+  also kein Limit).
 - **Persistent & umschaltbar:** in `environments.json` gespeichert; genau eines
   ist aktiv (oder „— all data —", dann gilt nur der globale Cap). Das Aktivieren
   eines Environments, das einen Server nennt, schwenkt auch den `/api`-Proxy

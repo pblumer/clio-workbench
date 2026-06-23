@@ -109,7 +109,7 @@ func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
 	// §3.3): they narrow only the Process view, on top of the shared scope.
 	sc := s.activeScope()
 	events, err := s.scopedEvents(ctx, queryStage{Subject: subject, Source: source})
-	truncated := err == nil && len(events) >= sc.Limit
+	truncated := err == nil && sc.Limit > 0 && len(events) >= sc.Limit
 	if err != nil {
 		v := processView{Subject: subject, Source: source}
 		switch {
