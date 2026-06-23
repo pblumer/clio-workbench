@@ -26,6 +26,7 @@ type connectionView struct {
 	EventsTotal int64
 	Limit       int
 	LimitHit    bool
+	NotLoaded   int64 // events beyond the limit (only when LimitHit)
 }
 
 // statusLabels maps a status onto the HUD label shown in the header pill.
@@ -62,6 +63,9 @@ func (s *Server) connectionView(ctx context.Context, res clio.Result) connection
 			v.EventsTotal = info.EventsTotal
 			v.Limit = s.effectiveLimit()
 			v.LimitHit = info.EventsTotal > int64(v.Limit)
+			if v.LimitHit {
+				v.NotLoaded = info.EventsTotal - int64(v.Limit)
+			}
 		}
 	}
 	return v

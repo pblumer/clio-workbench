@@ -81,7 +81,10 @@ Server plus ein Basis-Scope.
 - **Der Token wird nie gespeichert** — er bleibt im Connect-Fluss (siehe
   `README.md`, *Connection status*).
 - **Einzige Lage mit Server-Wirkung:** Subject/Types/Bounds werden zur
-  Clio-Query, `Limit` kappt den Read. Alles Weitere passiert lokal.
+  Clio-Query, `Limit` kappt den Read — es wird als `limit`-Parameter an Clios
+  `GET /api/v1/events` mitgegeben, sonst griffe Clios eigene Default-Obergrenze
+  und die Werkbank lüde stillschweigend weniger Events, als das Limit verspricht.
+  Alles Weitere passiert lokal.
 
 ### 3.2 Queries — der geteilte Trichter (global, Session)
 

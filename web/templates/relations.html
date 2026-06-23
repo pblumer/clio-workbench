@@ -1,7 +1,7 @@
 {{define "relations.html" -}}
 <div class="events-head">
   <h2 class="panel-title">Relationships
-    {{- if eq .State "ok"}} <span class="proc-stat">{{.Subjects}} subjects · {{.Events}} events · 1:n from subject paths</span>{{end -}}
+    {{- if eq .State "ok"}} <span class="proc-stat">{{thousands .Subjects}} subjects · {{thousands .Events}} events · 1:n from subject paths</span>{{end -}}
   </h2>
   <button class="reconnect" type="button"
           hx-get="/relations"
@@ -11,7 +11,7 @@
           aria-label="Refresh">⟳</button>
 </div>
 
-{{if .Truncated}}<p class="trunc-note">⚠ read the first {{.Cap}} events (oldest first) — newer events may be missing. Raise <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
+{{if .Truncated}}<p class="trunc-note">⚠ loaded the first {{thousands .Cap}} events (oldest first) — newer events may be missing. Raise <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
 {{if eq .State "ok"}}
   <h3 class="rel-sub">Containment (subject hierarchy)</h3>
   <ul class="rel-tree rel-root">
@@ -56,5 +56,5 @@
 {{define "rellabel" -}}
 <span class="rel-seg">{{if .IsID}}{id}{{else}}{{.Seg}}{{end}}</span>
 {{- if .IsID}} <span class="rel-card">1:n · {{.Instances}}</span>{{end}}
-<span class="rel-count">{{.Events}} ev</span>
+<span class="rel-count">{{thousands .Events}} ev</span>
 {{- end}}

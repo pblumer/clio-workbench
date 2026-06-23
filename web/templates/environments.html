@@ -8,7 +8,7 @@
       {{- end}}
     </select>
   </label>
-  <span class="env-limit" title="max events read per panel">limit {{.Limit}}</span>
+  <span class="env-limit" title="max events loaded from Clio per panel — raise via the environment limit or WORKBENCH_EVENT_CAP">limit {{thousands .Limit}}</span>
   {{if .HasActive}}
   <span class="env-scope">
     {{- if .Active.ServerURL}}<code>{{.Active.ServerURL}}</code> · {{end -}}
@@ -41,7 +41,7 @@
   <li class="env-item{{if eq .ID $.ActiveID}} env-active{{end}}">
     <span class="env-name">{{.Name}}</span>
     <span class="env-item-scope">
-      {{- if .Subject}}<code>{{.Subject}}</code>{{end}}{{if .Types}} · {{len .Types}} types{{end}}{{if .Limit}} · limit {{.Limit}}{{end}}
+      {{- if .Subject}}<code>{{.Subject}}</code>{{end}}{{if .Types}} · {{len .Types}} types{{end}}{{if .Limit}} · limit {{thousands .Limit}}{{end}}
     </span>
     <button class="btn-link btn-danger" hx-post="/environments/delete"
             hx-vals='{"id":"{{.ID}}"}' hx-target="#environments-slot" hx-swap="innerHTML"

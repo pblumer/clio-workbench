@@ -112,14 +112,24 @@ func TestLogConnectionCheck(t *testing.T) {
 // by making the instance report more events than the effective cap.
 func TestConnectionOnlineLimitHit(t *testing.T) {
 	cfg := defaultCfg()
-	cfg.EventCap = 1
+	cfg.EventCap = 1000
 	s := newTestServer(t, cfg)
 	f := newFakeClio(t)
-	f.infoJSON = `{"eventsTotal":1000}`
+	f.infoJSON = `{"eventsTotal":55723}`
 	f.connect(s)
 
 	rec := s.do(http.MethodGet, "/connection", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	// The warning must read loaded-of-total in plain language, with thousands
+	// separators, so the numbers are stimmig auf den ersten Blick.
+	if !strings.Contains(body, "loaded 1,000 of 55,723") {
+		t.Errorf("connection body missing loaded/total warning:\n%s", body)
+	}
+	// The newest 54,723 events are beyond the cap and not loaded.
+	if !strings.Contains(body, "54,723") {
+		t.Errorf("connection body missing not-loaded count (54,723):\n%s", body)
 	}
 }

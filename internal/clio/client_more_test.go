@@ -435,8 +435,8 @@ func TestReadFullEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if gotPath != "/api/v1/events" || gotQuery != "recursive=true" {
-		t.Errorf("path=%q query=%q", gotPath, gotQuery)
+	if gotPath != "/api/v1/events" || !strings.Contains(gotQuery, "recursive=true") || !strings.Contains(gotQuery, "limit=1") {
+		t.Errorf("path=%q query=%q, want recursive=true & limit=1", gotPath, gotQuery)
 	}
 	if len(evs) != 1 || string(evs[0].Data) != `{"k":"v"}` {
 		t.Fatalf("events = %+v", evs)
@@ -744,6 +744,83 @@ func TestReadEventsByType_BlankLineSkip(t *testing.T) {
 	}
 	if len(evs) != 2 {
 		t.Fatalf("got %d events, want 2 (blank line skipped)", len(evs))
+	}
+}
+
+// TestReadLimitReachesClio guards the core fix: every capped read must carry
+// the limit to Clio as a `limit` query param (otherwise Clio applies its own
+// default ceiling and the Workbench silently loads fewer events than its limit
+// advertises). A non-positive limit is "read all" and must omit the param.
+func TestReadLimitReachesClio(t *testing.T) {
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		_, _ = w.Write([]byte(`{"id":"1","subject":"/o/1","type":"x"}` + "\n"))
+	}))
+	defer srv.Close()
+	c := New(srv.URL, "tok", WithHTTPClient(srv.Client()))
+	ctx := context.Background()
+
+	cases := []struct {
+		name string
+		call func()
+		want string // "" means: limit must be absent
+	}{
+		{"ReadScoped", func() { _, _ = c.ReadScoped(ctx, Scope{Limit: 7}) }, "limit=7"},
+		{"ReadScoped/all", func() { _, _ = c.ReadScoped(ctx, Scope{}) }, ""},
+		{"ReadFullScoped", func() { _, _ = c.ReadFullScoped(ctx, Scope{Limit: 8}) }, "limit=8"},
+		{"ReadEvents", func() { _, _ = c.ReadEvents(ctx, 9) }, "limit=9"},
+		{"ReadEvents/all", func() { _, _ = c.ReadEvents(ctx, 0) }, ""},
+		{"ReadEventsUnder", func() { _, _ = c.ReadEventsUnder(ctx, "/o", 11) }, "limit=11"},
+		{"ReadFullEvents", func() { _, _ = c.ReadFullEvents(ctx, 12) }, "limit=12"},
+		{"ReadEventsByType", func() { _, _ = c.ReadEventsByType(ctx, "t", 13) }, "limit=13"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			gotQuery = ""
+			tc.call()
+			has := strings.Contains(gotQuery, "limit=")
+			if tc.want == "" {
+				if has {
+					t.Errorf("query %q carries a limit, want none", gotQuery)
+				}
+				return
+			}
+			if !strings.Contains(gotQuery, tc.want) {
+				t.Errorf("query %q missing %q", gotQuery, tc.want)
+			}
+		})
+	}
+}
+
+// TestScopedURLLimit checks the limit param is emitted only for a positive cap.
+func TestScopedURLLimit(t *testing.T) {
+	c := New("http://example.test", "tok")
+	if got := c.scopedURL("http://example.test", Scope{Limit: 500}); !strings.Contains(got, "limit=500") {
+		t.Errorf("url %q missing limit=500", got)
+	}
+	if got := c.scopedURL("http://example.test", Scope{}); strings.Contains(got, "limit=") {
+		t.Errorf("url %q should not carry a limit", got)
+	}
+}
+
+// TestWithLimit covers the small URL helper directly, including the
+// query-separator choice and the read-all no-op.
+func TestWithLimit(t *testing.T) {
+	cases := []struct {
+		raw  string
+		n    int
+		want string
+	}{
+		{"http://x/api/v1/events?recursive=true", 5, "http://x/api/v1/events?recursive=true&limit=5"},
+		{"http://x/api/v1/events", 5, "http://x/api/v1/events?limit=5"},
+		{"http://x/api/v1/events?recursive=true", 0, "http://x/api/v1/events?recursive=true"},
+		{"http://x/api/v1/events", -1, "http://x/api/v1/events"},
+	}
+	for _, tc := range cases {
+		if got := withLimit(tc.raw, tc.n); got != tc.want {
+			t.Errorf("withLimit(%q, %d) = %q, want %q", tc.raw, tc.n, got, tc.want)
+		}
 	}
 }
 
