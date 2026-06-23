@@ -149,9 +149,10 @@ und ein BPMN-Parallel-Gateway sind die nächsten Schritte.)
   Punkte (Radar-Ping, Zeilen-Blitz, optionaler synthetischer Ton) in ihre
   Subject-Zeile streamt.
 - **Replay** im Event Space: die bereits geladenen Punkte spielen sich
-  clientseitig ältest-zuerst entlang ihrer Zeitachse ein — derselbe Plop wie live,
-  mit Play/Pause, Tempo und Scrubber. Rein im Browser, also auch offline nutzbar
-  (das genannte „Timeline-Replay" aus §2 als erstes Laborgerät).
+  clientseitig ältest-zuerst ein — derselbe Plop wie live, im selben einfachen
+  Modell wie das Process-Timeline-Replay (fester Takt per Timer, Play/Pause,
+  Range-Slider zum Scrubben, „N / total · Zeitstempel"-Label). Rein im Browser,
+  also auch offline nutzbar (das genannte „Timeline-Replay" aus §2).
 
 ### 3.3 Konfiguration (Clio-Stil)
 
