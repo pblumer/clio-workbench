@@ -6,6 +6,10 @@
 // event type from its authored fields. Every walk is seeded, so the same seed
 // and model yield an identical stream (§4.4) — the basis for reproducible runs.
 //
+// The walk honours per-subject cardinality (model.CardinalityOnce): a "once"
+// edge is taken at most once per stream, so generated streams never contradict
+// the same rule the validation engine enforces.
+//
 // The generator deliberately walks the graph directly rather than reaching into
 // validate.Machine: it *produces* streams, while internal/validate *checks*
 // them. A completed walk is, by construction, a valid sequence — property tests
@@ -96,16 +100,20 @@ func Generate(d model.Draft, opts Options) (Stream, error) {
 
 	cur := g.starts[rng.Intn(len(g.starts))]
 	st := Stream{Seed: opts.Seed, Path: []string{cur}}
+	usedOnce := map[string]bool{} // event types already emitted via a "once" edge
 	for i := 0; i < max; i++ {
 		if g.isEnd[cur] {
 			st.Complete = true
 			break
 		}
-		edges := g.out[cur]
+		edges := availableEdges(g.out[cur], usedOnce)
 		if len(edges) == 0 {
-			break // dead end (not marked terminal)
+			break // dead end (no outgoing edge, or all spent by cardinality)
 		}
 		e := pickEdge(edges, opts.Weights, rng)
+		if e.Cardinality == model.CardinalityOnce {
+			usedOnce[e.Type] = true
+		}
 		st.Events = append(st.Events, Event{Type: e.Type, Data: fakePayload(g.fields[e.Type], rng)})
 		st.EdgeIDs = append(st.EdgeIDs, e.ID)
 		cur = e.To
@@ -139,6 +147,32 @@ func EdgeCoverage(d model.Draft, streams []Stream) (covered, total int) {
 		}
 	}
 	return len(seen), len(d.Edges)
+}
+
+// availableEdges drops "once" edges whose type was already emitted in this walk,
+// so a generated stream never violates per-subject cardinality (and thus always
+// validates). It returns the input unchanged when nothing is filtered, avoiding
+// an allocation on the common (cardinality-free) path; otherwise it copies so
+// the graph's backing slice is never mutated.
+func availableEdges(edges []model.Edge, usedOnce map[string]bool) []model.Edge {
+	spent := false
+	for _, e := range edges {
+		if e.Cardinality == model.CardinalityOnce && usedOnce[e.Type] {
+			spent = true
+			break
+		}
+	}
+	if !spent {
+		return edges
+	}
+	avail := make([]model.Edge, 0, len(edges))
+	for _, e := range edges {
+		if e.Cardinality == model.CardinalityOnce && usedOnce[e.Type] {
+			continue
+		}
+		avail = append(avail, e)
+	}
+	return avail
 }
 
 // pickEdge chooses an outgoing edge by weight. weightOf is ≥1, so total ≥1 and

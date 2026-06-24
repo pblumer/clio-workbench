@@ -10,8 +10,18 @@ import (
 )
 
 // connectionTimeout bounds a /connection probe so a slow Clio cannot hang the
-// request handler.
+// request handler. It is deliberately tight: the probe and /info are
+// lightweight, single-line reads, so a Clio that does not answer promptly is
+// reported unreachable rather than waited on.
 const connectionTimeout = 6 * time.Second
+
+// readTimeout bounds a scoped event read for an analysis panel (Event Space,
+// Process, Relationships, the inspector, the query funnel). Unlike the probe,
+// such a read streams the whole active environment — up to its configured limit
+// of tens of thousands of events — so it needs a far roomier budget than
+// connectionTimeout. On the happy path the read returns as soon as Clio is done
+// streaming; this only caps a genuinely stalled instance.
+const readTimeout = 45 * time.Second
 
 // connectionView is the view model for the connection-status fragment. It is
 // deliberately token-free: only the status, a label, a safe detail message,
@@ -26,6 +36,7 @@ type connectionView struct {
 	EventsTotal int64
 	Limit       int
 	LimitHit    bool
+	NotLoaded   int64 // events beyond the limit (only when LimitHit)
 }
 
 // statusLabels maps a status onto the HUD label shown in the header pill.
@@ -61,7 +72,10 @@ func (s *Server) connectionView(ctx context.Context, res clio.Result) connection
 			v.HasInfo = true
 			v.EventsTotal = info.EventsTotal
 			v.Limit = s.effectiveLimit()
-			v.LimitHit = info.EventsTotal > int64(v.Limit)
+			v.LimitHit = v.Limit > 0 && info.EventsTotal > int64(v.Limit)
+			if v.LimitHit {
+				v.NotLoaded = info.EventsTotal - int64(v.Limit)
+			}
 		}
 	}
 	return v

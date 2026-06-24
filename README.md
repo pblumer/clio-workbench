@@ -22,10 +22,23 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
   · status bar) over the space look, driven by a declarative **contribution
   registry** so new diagrams and tools plug in with one `View` entry plus a
   fragment handler. See [`docs/FRAMEWORK.md`](docs/FRAMEWORK.md).
+- **Selectable themes** over a portable token contract: the space look (*Nebula*)
+  is now one theme among *Aurora*, *Carbon* and *Swiss*, switchable from the
+  status bar and rendered server-side (FOUC-free) from a cookie. The contract is
+  built to be reusable by Clio's `/ui`. See [`docs/THEMES.md`](docs/THEMES.md).
 - Single Go binary with the UI, templates, CSS and htmx baked in via `embed.FS`.
 - File-backed **draft store** (`WORKBENCH_DATA`): drafts are versionable JSON.
 - A **start page** in the Clio space-look (starfield + neon HUD) where you
   create and list drafts.
+- A **BPMN-style Modeler** (editor tab): the draft is drawn left-to-right as a
+  chain of BPMN shapes — start/catch/end message events and send tasks in a
+  pool/lane — in the space look, à la bpmn.io / Camunda Modeler but with no build
+  step. A vertical **palette** adds events/tasks, a **properties panel** edits the
+  selected element (name, phase, data fields), and the canvas supports pan, zoom
+  and drag-to-reorder. The shapes mirror the BPMN export one-to-one; edits persist
+  through the same step endpoints, so nothing new is stored. Opened via *edit* in
+  the model list; the low-code outline stays one click away. See
+  [`docs/WORKBENCH.md`](docs/WORKBENCH.md) §5.5.
 - `/api/*` **reverse proxy** to an upstream Clio with the bearer token injected
   **server-side** (never exposed to the browser) and `FlushInterval: -1` so
   NDJSON/SSE streams are not buffered. Disabled gracefully when no `CLIO_URL`
@@ -33,11 +46,18 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
 - A **live connection status** in the header that reports whether Clio is
   actually reachable and the token accepted — not merely whether `CLIO_URL` is
   configured (see below).
+- **A layered scope concept** (`docs/SCOPE.md`): every analysis panel reads
+  events through three composed layers — a global, persistent **Environment**
+  (server + base scope + optional read limit), the shared session **Queries**
+  pipeline, and a per-panel **discipline lens**. Global to define, local to
+  shape; each layer only narrows, and only the Environment reaches Clio and sets
+  the limit.
 - **Environments**: saved, switchable working contexts — a server plus a data
-  scope (subject prefix, event types, lower/upperBound, per-env event limit).
-  The active scope applies to all analysis panels; the token is never stored.
-  Limits are shown prominently and the header blinks a warning when the store
-  holds more events than the active limit.
+  scope (subject prefix, event types, lower/upperBound, optional per-env event
+  limit). The active scope applies to all analysis panels; the token is never
+  stored. By default every event is loaded (no cap); when a limit is set it is
+  shown prominently and the header blinks a warning if the store holds more
+  events than the limit loads.
 - A rudimentary **events view**: the event types written to Clio
   (`read-event-types`) rendered as BPMN **send tasks** with an attached data
   object, a per-type count bubble, and a header bubble summing all occurrences.
@@ -48,11 +68,19 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
 - A **dynamic Event Space**: a *frame* keeps the last N events, dots are
   coloured by **event type** (with a type legend), a **live** toggle streams new
   events in over SSE (the Workbench tails Clio server-side), and hovering a dot
-  opens a card with the event's metadata and pretty-printed payload.
+  opens a card with the event's metadata and pretty-printed payload. An in-panel
+  **filter** — the Event Space's *discipline lens* (`docs/SCOPE.md`) — narrows
+  *which* events are charted: click a type in the legend to toggle it, or type
+  the same filter directly (`type:… subject:… from:… to:… source:…`, plus free
+  text matched against type/subject). It is view-only and transient: the
+  environment and the query pipeline stay untouched.
 
-Still ahead per the roadmap (`docs/WORKBENCH.md` §8): the drawing canvas and
-state-machine view (Stufe 1), event-type schema editor and export (Stufe 2),
-BPMN view and schema push (Stufe 3), and the Soll/Ist Gegenprobe (Stufe 4).
+The BPMN Modeler is a first, hybrid take on the drawing canvas: it renders the
+ordered step outline, so it is a derived view rather than free-form graph editing
+yet. Still ahead per the roadmap (`docs/WORKBENCH.md` §8): free-form placement
+with gateways/branches and the state-machine view on the underlying graph model
+(the rest of Stufe 1), event-type schema editor and export (Stufe 2), schema push
+(Stufe 3), and the Soll/Ist Gegenprobe (Stufe 4).
 
 ## Quick start
 
@@ -66,6 +94,21 @@ To enable push and the (later) conformance check against a running Clio:
 ```sh
 CLIO_URL=http://localhost:3000 CLIO_API_TOKEN=… go run ./cmd/clio-workbench
 ```
+
+### Hosted / SaaS usage
+
+The Workbench is designed to run **headless behind a URL** as well — users reach
+it with nothing but a browser, no shell or filesystem access. Everything the
+local flow does on disk or the command line has a GUI equivalent:
+
+- **Drafts & suites** are imported through the GUI — one-click demo, an import
+  URL, or by **pasting JSON** (sidebar → *Modell importieren*; Test Studio →
+  *Suite importieren*). No `cp` into `WORKBENCH_DATA` required.
+- **The Clio server** is picked at runtime in the status bar (*⚙ Server*), with
+  the token kept server-side. No `CLIO_URL`/`CLIO_API_TOKEN` env needed.
+
+The [Test Studio learning path](examples/teststudio/LEARNING-PATH.md) is written
+to work either way.
 
 ## Connection status
 
@@ -128,7 +171,10 @@ CLIO_URL=http://localhost:3999 CLIO_API_TOKEN=x go run ./cmd/clio-workbench
 | `WORKBENCH_ADDR`  | no       | `:8080`            | Listen address                            |
 | `WORKBENCH_DATA`  | no       | `./workbench-data` | Where drafts are stored                   |
 | `WORKBENCH_SERVERS` | no     | `https://clio.blumer.cloud` | Preset Clio URLs for the connect menu |
-| `WORKBENCH_EVENT_CAP` | no   | `50000`            | Max events the analysis panels read from Clio |
+| `WORKBENCH_EVENT_CAP` | no   | `0` (no cap)       | Optional max events the analysis panels read from Clio; `0`/unset loads all |
+| `WORKBENCH_SPACE_MAX_ROWS` | no | `0` (built-in `70`) | Event Space subject-row budget before it aggregates into a density grid |
+| `WORKBENCH_SPACE_MAX_DOTS` | no | `0` (built-in `6000`) | Event Space charted-event budget before it switches to the density grid |
+| `WORKBENCH_SPACE_COLS` | no   | `0` (built-in `120`) | Time-column count of the density grid |
 
 \* Without `CLIO_URL`/token the Workbench works offline on the draft; only push
 and the Gegenprobe need an instance.
@@ -140,6 +186,11 @@ go build ./...
 go test ./...
 go vet ./...
 ```
+
+> Working with an AI agent (Claude Code or otherwise)? [`CLAUDE.md`](CLAUDE.md)
+> is the canonical agent briefing — the shortest binding statement of the guiding
+> principles and conventions. Claude Code loads it automatically; for other tools
+> paste it as the opening prompt of each new session.
 
 ### Layout
 
@@ -157,4 +208,6 @@ web/                  embedded templates, CSS, htmx
 docs/WORKBENCH.md     architecture & idea paper
 docs/TESTSTUDIO.md    the Test Studio: architecture & idea paper (testing models)
 docs/FRAMEWORK.md     the UI framework (shell regions + how to add a view)
+docs/SCOPE.md         the scope concept (environment · queries · discipline lens)
+CLAUDE.md             agent briefing: guiding principles + conventions for AI sessions
 ```

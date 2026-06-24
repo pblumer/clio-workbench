@@ -11,7 +11,9 @@
         <span>· {{len .Nodes}} states · {{len .Edges}} events</span>
       </div>
       <div class="draft-actions">
-        <a class="btn-link" href="/editor/{{.ID}}">edit</a>
+        <button type="button" class="btn-link" data-open-tab="modeler"
+                hx-get="/modeler?draft={{.ID}}"
+                hx-target="#modeler-slot" hx-swap="innerHTML">edit</button>
         <a class="btn-link" href="/drafts/{{.ID}}">JSON</a>
         <button class="btn-link btn-danger"
                 hx-delete="/drafts/{{.ID}}"

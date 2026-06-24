@@ -1,0 +1,54 @@
+{
+  "id": "employee-identity",
+  "name": "Employee Identity",
+  "kind": "entity",
+  "namespace": "identity.employee",
+  "subjectStyle": "/employees/{id}",
+  "nodes": [
+    {"id": "none",   "label": "Noch nicht angelegt", "start": true, "x": 100, "y": 100},
+    {"id": "active", "label": "Aktiv",                "x": 360, "y": 100}
+  ],
+  "edges": [
+    {"id": "e1", "type": "identity.employee.new.v2",             "from": "none",   "to": "active",  "cardinality": "once",
+     "description": "Anlage des Mitarbeiters — genau einmal pro Subject."},
+    {"id": "e2", "type": "identity.employee.email-verified.v1",  "from": "active", "to": "active",  "cardinality": "once",
+     "description": "E-Mail-Verifikation — Self-Loop, aber höchstens einmal je Subject."},
+    {"id": "e3", "type": "identity.employee.profile-updated.v1", "from": "active", "to": "active",  "cardinality": "many",
+     "description": "Profiländerung — darf beliebig oft feuern (wie ein Messwert eines Fühlers)."}
+  ],
+  "steps": [
+    {
+      "id": "s1", "kind": "event", "name": "identity.employee.new.v2",
+      "phase": "active",
+      "description": "Ein Mitarbeiter wird angelegt. Lifecycle-Event: genau einmal pro Subject (cardinality: once).",
+      "fields": [
+        {"id": "f1", "name": "employeeId",  "type": "string",   "required": true},
+        {"id": "f2", "name": "firstName",   "type": "string",   "required": true},
+        {"id": "f3", "name": "lastName",    "type": "string",   "required": true},
+        {"id": "f4", "name": "displayName", "type": "string"},
+        {"id": "f5", "name": "department",  "type": "string"},
+        {"id": "f6", "name": "role",        "type": "string"},
+        {"id": "f7", "name": "requestedAt", "type": "datetime", "required": true}
+      ]
+    },
+    {
+      "id": "s2", "kind": "event", "name": "identity.employee.email-verified.v1",
+      "phase": "info",
+      "description": "Die E-Mail-Adresse wird bestätigt. Topologisch ein Self-Loop, aber je Subject nur einmal sinnvoll (cardinality: once).",
+      "fields": [
+        {"id": "f8", "name": "employeeId", "type": "string",   "required": true},
+        {"id": "f9", "name": "verifiedAt", "type": "datetime", "required": true}
+      ]
+    },
+    {
+      "id": "s3", "kind": "event", "name": "identity.employee.profile-updated.v1",
+      "phase": "info",
+      "description": "Eine Profiländerung. Darf beliebig oft je Subject feuern (cardinality: many).",
+      "fields": [
+        {"id": "f10", "name": "employeeId", "type": "string", "required": true},
+        {"id": "f11", "name": "field",      "type": "string", "required": true},
+        {"id": "f12", "name": "value",      "type": "string"}
+      ]
+    }
+  ]
+}

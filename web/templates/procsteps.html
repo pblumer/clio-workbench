@@ -2,21 +2,22 @@
 <div class="events-head">
   <h2 class="panel-title">Steps</h2>
   <span class="step-add">
-    <button type="button" class="btn-link" hx-post="/drafts/{{.ID}}/steps?kind=event" hx-target="#proc-steps" hx-swap="innerHTML">+ Event</button>
-    <button type="button" class="btn-link" hx-post="/drafts/{{.ID}}/steps?kind=task" hx-target="#proc-steps" hx-swap="innerHTML">+ Task</button>
+    <button type="button" class="btn-chip" hx-post="/drafts/{{.ID}}/steps?kind=event" hx-target="#proc-steps" hx-swap="innerHTML">+ Event</button>
+    <button type="button" class="btn-chip" hx-post="/drafts/{{.ID}}/steps?kind=task" hx-target="#proc-steps" hx-swap="innerHTML">+ Task</button>
   </span>
 </div>
 
 <ol class="step-list">
-  {{- range .Steps}}{{$step := .}}
+  {{- range $idx, $s := .Steps}}{{$step := .}}
   <li class="step-item step-{{.Kind}}">
     <div class="step-row">
+      <span class="step-no">{{inc $idx}}</span>
       <span class="step-kind step-kind-{{.Kind}}">{{.Kind}}</span>
       <form class="step-form" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-trigger="change">
-        <input type="text" name="name" value="{{.Name}}" autocomplete="off"
+        <input id="ed-step-name-{{.ID}}" type="text" name="name" value="{{.Name}}" autocomplete="off"
                placeholder="{{if eq .Kind "event"}}event type, e.g. identity.employee.created{{else}}command, e.g. attachMailbox{{end}}">
         {{- if eq .Kind "event"}}
-        <select name="phase" title="lifecycle phase">
+        <select id="ed-step-phase-{{.ID}}" name="phase" class="phase-select phase-{{.Phase}}" title="lifecycle phase">
           <option value="active" {{if eq .Phase "active"}}selected{{end}}>active</option>
           <option value="complete" {{if eq .Phase "complete"}}selected{{end}}>complete</option>
           <option value="error" {{if eq .Phase "error"}}selected{{end}}>error</option>
@@ -25,22 +26,29 @@
         {{- end}}
       </form>
       <span class="step-ops">
-        <button type="button" class="btn-link" title="up" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}/move?dir=up" hx-target="#proc-steps" hx-swap="innerHTML">↑</button>
-        <button type="button" class="btn-link" title="down" hx-post="/drafts/{{$.ID}}/steps/{{.ID}}/move?dir=down" hx-target="#proc-steps" hx-swap="innerHTML">↓</button>
-        <button type="button" class="btn-link btn-danger" title="delete" hx-delete="/drafts/{{$.ID}}/steps/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-confirm="Delete this step?">✕</button>
+        <button type="button" class="btn-icon" title="move up" {{if eq $idx 0}}disabled{{end}} hx-post="/drafts/{{$.ID}}/steps/{{.ID}}/move?dir=up" hx-target="#proc-steps" hx-swap="innerHTML">↑</button>
+        <button type="button" class="btn-icon" title="move down" {{if eq (inc $idx) (len $.Steps)}}disabled{{end}} hx-post="/drafts/{{$.ID}}/steps/{{.ID}}/move?dir=down" hx-target="#proc-steps" hx-swap="innerHTML">↓</button>
+        <button type="button" class="btn-icon btn-danger" title="delete step" hx-delete="/drafts/{{$.ID}}/steps/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-confirm="Delete this step?">✕</button>
       </span>
     </div>
 
     {{- if eq .Kind "event"}}
     <details class="step-fields"{{if .Fields}} open{{end}}>
-      <summary>{{len .Fields}} data field(s)</summary>
+      <summary>
+        <span class="fields-label">Data fields</span>
+        <span class="fields-count">{{len .Fields}}</span>
+      </summary>
+
+      {{- if .Fields}}
       <ul class="field-list">
-        {{- range .Fields}}
+        <li class="field-head" aria-hidden="true">
+          <span>field</span><span>type</span><span>constraint</span><span>req</span><span></span>
+        </li>
+        {{- range .Fields}}{{$t := .Type}}
         <li class="field-row">
           <form class="field-form" hx-post="/drafts/{{$.ID}}/steps/{{$step.ID}}/fields/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML" hx-trigger="change">
-            <input type="text" name="name" value="{{.Name}}" placeholder="field name" autocomplete="off">
-            <select name="type">
-              {{- $t := .Type}}
+            <input id="ed-fld-name-{{.ID}}" class="f-name" type="text" name="name" value="{{.Name}}" placeholder="field name" autocomplete="off">
+            <select id="ed-fld-type-{{.ID}}" class="f-type" name="type" title="data type">
               <option value="string" {{if eq $t "string"}}selected{{end}}>text</option>
               <option value="integer" {{if eq $t "integer"}}selected{{end}}>integer</option>
               <option value="number" {{if eq $t "number"}}selected{{end}}>number</option>
@@ -49,18 +57,41 @@
               <option value="enum" {{if eq $t "enum"}}selected{{end}}>enum</option>
               <option value="reference" {{if eq $t "reference"}}selected{{end}}>reference</option>
             </select>
-            <label class="field-req"><input type="checkbox" name="required" value="1" {{if .Required}}checked{{end}}> req</label>
-            <input type="text" name="format" value="{{.Format}}" placeholder="format (uuid…)" autocomplete="off">
-            <input type="text" name="ref" value="{{.Ref}}" placeholder="ref → collection" autocomplete="off">
-            <input type="text" name="enum" value="{{range $i,$v := .Enum}}{{if $i}},{{end}}{{$v}}{{end}}" placeholder="enum a,b,c" autocomplete="off">
+            <span class="f-qual">
+              {{- if eq $t "string"}}
+              <input id="ed-fld-format-{{.ID}}" type="text" name="format" value="{{.Format}}" placeholder="format — uuid, email…" autocomplete="off">
+              {{- else if eq $t "reference"}}
+              <input id="ed-fld-ref-{{.ID}}" type="text" name="ref" value="{{.Ref}}" placeholder="→ collection" autocomplete="off">
+              <input id="ed-fld-format-{{.ID}}" type="text" name="format" value="{{.Format}}" placeholder="id format" autocomplete="off">
+              {{- else if eq $t "enum"}}
+              <input id="ed-fld-enum-{{.ID}}" type="text" name="enum" value="{{range $i,$v := .Enum}}{{if $i}}, {{end}}{{$v}}{{end}}" placeholder="values — a, b, c" autocomplete="off">
+              {{- else if eq $t "datetime"}}
+              <span class="f-hint">ISO-8601 timestamp</span>
+              {{- else if eq $t "boolean"}}
+              <span class="f-hint">true / false</span>
+              {{- else}}
+              <span class="f-hint">numeric value</span>
+              {{- end}}
+            </span>
+            <label class="field-req" title="required field"><input id="ed-fld-req-{{.ID}}" type="checkbox" name="required" value="1" {{if .Required}}checked{{end}}><span>req</span></label>
           </form>
-          <button type="button" class="btn-link btn-danger" title="delete field"
+          <button type="button" class="btn-icon btn-danger" title="delete field"
                   hx-delete="/drafts/{{$.ID}}/steps/{{$step.ID}}/fields/{{.ID}}" hx-target="#proc-steps" hx-swap="innerHTML">✕</button>
         </li>
         {{- end}}
       </ul>
-      <button type="button" class="btn-link" hx-post="/drafts/{{$.ID}}/steps/{{$step.ID}}/fields" hx-target="#proc-steps" hx-swap="innerHTML">+ field</button>
-      <pre class="field-schema">{{eventSchema .Fields}}</pre>
+      {{- else}}
+      <p class="field-empty">No data fields yet — events without a payload are valid too.</p>
+      {{- end}}
+
+      <button type="button" class="btn-chip btn-chip-ghost" hx-post="/drafts/{{$.ID}}/steps/{{$step.ID}}/fields" hx-target="#proc-steps" hx-swap="innerHTML">+ field</button>
+
+      {{- if .Fields}}
+      <div class="schema-block">
+        <span class="schema-label">generated JSON Schema</span>
+        <pre class="field-schema">{{eventSchema .Fields}}</pre>
+      </div>
+      {{- end}}
     </details>
     {{- end}}
   </li>

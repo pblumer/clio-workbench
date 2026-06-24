@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -48,8 +49,16 @@ const (
 // in one request (see package doc and docs/WORKBENCH.md §6.1).
 const probePath = "/api/v1/read-event-types"
 
-// defaultTimeout bounds a single connection probe.
-const defaultTimeout = 5 * time.Second
+// defaultTimeout is the HTTP client's overall wall-clock backstop. It covers
+// the *entire* request including streaming the response body, so it must stay
+// generous: a scoped read of a large environment streams tens of thousands of
+// NDJSON lines and legitimately takes many seconds. The real operational bound
+// is the per-request context deadline every call already carries — a quick one
+// for the connection probe, a roomier one for data reads (see the server's
+// connectionTimeout vs readTimeout). A too-tight client timeout here would
+// silently abort large reads regardless of the caller's context, surfacing as
+// "could not read events from Clio".
+const defaultTimeout = 60 * time.Second
 
 // maxDrain caps how much of the probe response body we read so the connection
 // can be reused without slurping a potentially long NDJSON stream.
@@ -103,11 +112,22 @@ func WithTimeout(d time.Duration) Option {
 	}
 }
 
+// normalizeBaseURL trimmt Whitespace/Slashes und entfernt ein redundantes
+// "/api/v1"-Suffix, da der Client "/api/v1/..." selbst anhängt. So heilt sich
+// die Basis-URL selbst, wenn jemand die volle API-URL einträgt (z. B. aus
+// CLIO_URL="…/api/v1") — sonst verdoppelt sich der Pfad zu "…/api/v1/api/v1/…"
+// und Clio antwortet mit 404 (sichtbar als UNREACHABLE).
+func normalizeBaseURL(raw string) string {
+	u := strings.TrimRight(strings.TrimSpace(raw), "/")
+	u = strings.TrimSuffix(u, "/api/v1")
+	return strings.TrimRight(u, "/")
+}
+
 // New builds a Client for the given Clio base URL and bearer token. An empty
 // baseURL yields a client that always reports StatusOffline.
 func New(baseURL, token string, opts ...Option) *Client {
 	c := &Client{
-		baseURL: strings.TrimRight(baseURL, "/"),
+		baseURL: normalizeBaseURL(baseURL),
 		token:   token,
 		httpc:   &http.Client{Timeout: defaultTimeout},
 	}
@@ -122,7 +142,7 @@ func New(baseURL, token string, opts ...Option) *Client {
 func (c *Client) SetTarget(baseURL, token string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	c.baseURL = normalizeBaseURL(baseURL)
 	c.token = token
 }
 
@@ -376,7 +396,26 @@ func (c *Client) scopedURL(base string, sc Scope) string {
 	if sc.UpperBound != "" {
 		q.Set("upperBound", sc.UpperBound)
 	}
+	if sc.Limit > 0 {
+		q.Set("limit", strconv.Itoa(sc.Limit))
+	}
 	return base + path + "?" + q.Encode()
+}
+
+// withLimit appends Clio's `limit` query parameter when n > 0. Without it Clio
+// caps a read at its own default ceiling, so the Workbench would silently load
+// fewer events than its configured limit advertises — the read must carry the
+// limit for "limit kappt den Read" (docs/SCOPE.md §3.1) to actually hold. A
+// non-positive n means "read all" and is left untouched.
+func withLimit(rawURL string, n int) string {
+	if n <= 0 {
+		return rawURL
+	}
+	sep := "&"
+	if !strings.Contains(rawURL, "?") {
+		sep = "?"
+	}
+	return rawURL + sep + "limit=" + strconv.Itoa(n)
 }
 
 // ReadScoped streams the minimal event projection for a scope.
@@ -452,7 +491,7 @@ func (c *Client) readFullEventsURL(ctx context.Context, fullURL string, limit in
 // A limit <= 0 reads all available events. The token is injected server-side;
 // ErrOffline / ErrUnauthorized are returned for those states.
 func (c *Client) ReadEvents(ctx context.Context, limit int) ([]Event, error) {
-	return c.readEventsURL(ctx, c.eventsURL(eventsPath+"?recursive=true"), limit)
+	return c.readEventsURL(ctx, withLimit(c.eventsURL(eventsPath+"?recursive=true"), limit), limit)
 }
 
 // ReadEventsUnder streams up to limit events under a subject prefix via
@@ -463,7 +502,7 @@ func (c *Client) ReadEventsUnder(ctx context.Context, subjectPrefix string, limi
 	if p == "" {
 		return c.ReadEvents(ctx, limit)
 	}
-	return c.readEventsURL(ctx, c.eventsURL(eventsPath+"/"+p+"?recursive=true"), limit)
+	return c.readEventsURL(ctx, withLimit(c.eventsURL(eventsPath+"/"+p+"?recursive=true"), limit), limit)
 }
 
 func (c *Client) eventsURL(path string) string {
@@ -539,7 +578,7 @@ func (c *Client) ReadFullEvents(ctx context.Context, limit int) ([]FullEvent, er
 	if base == "" {
 		return nil, ErrOffline
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+eventsPath+"?recursive=true", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, withLimit(base+eventsPath+"?recursive=true", limit), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -593,7 +632,7 @@ func (c *Client) ReadEventsByType(ctx context.Context, typ string, limit int) ([
 		return nil, ErrOffline
 	}
 
-	u := base + eventsPath + "?recursive=true&type=" + url.QueryEscape(typ)
+	u := withLimit(base+eventsPath+"?recursive=true&type="+url.QueryEscape(typ), limit)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
 		return nil, err

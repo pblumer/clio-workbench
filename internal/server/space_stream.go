@@ -53,6 +53,9 @@ func (s *Server) handleSpaceStream(w http.ResponseWriter, r *http.Request) {
 		// whole history into the live feed.
 		after = s.currentMaxID(ctx)
 	}
+	// The same in-panel space filter applies to the live feed, so streamed dots
+	// match the charted ones.
+	filter := parseSpaceFilter(r.URL.Query().Get("q"))
 
 	flusher.Flush()
 	ticker := time.NewTicker(streamPoll)
@@ -63,7 +66,7 @@ func (s *Server) handleSpaceStream(w http.ResponseWriter, r *http.Request) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			newer, max := s.readSince(ctx, after)
+			newer, max := s.readSince(ctx, after, filter)
 			if max != "" {
 				after = max
 			}
@@ -85,7 +88,7 @@ func (s *Server) handleSpaceStream(w http.ResponseWriter, r *http.Request) {
 // currentMaxID reads the active scope once and returns the highest event id, so
 // a freshly opened stream resumes from the present rather than the past.
 func (s *Server) currentMaxID(ctx context.Context) string {
-	rctx, cancel := context.WithTimeout(ctx, connectionTimeout)
+	rctx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 	events, err := s.clio.ReadScoped(rctx, s.activeScope())
 	if err != nil {
@@ -101,11 +104,11 @@ func (s *Server) currentMaxID(ctx context.Context) string {
 }
 
 // readSince tails the active scope for events with an id strictly greater than
-// after, applies the query pipeline, and returns them as stream dots plus the
-// new high-water id. It scopes the Clio read with lowerBound = after so only
-// fresh events come back.
-func (s *Server) readSince(ctx context.Context, after string) ([]streamDot, string) {
-	rctx, cancel := context.WithTimeout(ctx, connectionTimeout)
+// after, applies the query pipeline and the in-panel space filter, and returns
+// them as stream dots plus the new high-water id. It scopes the Clio read with
+// lowerBound = after so only fresh events come back.
+func (s *Server) readSince(ctx context.Context, after string, filter spaceFilter) ([]streamDot, string) {
+	rctx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
 	sc := s.activeScope()
@@ -116,7 +119,9 @@ func (s *Server) readSince(ctx context.Context, after string) ([]streamDot, stri
 	if err != nil {
 		return nil, ""
 	}
-	stages := s.stages()
+	// Compose Queries with the in-panel discipline lens through the shared seam,
+	// then apply the lens's free-text needles on top.
+	stages := s.refinement(filter.lens)
 	max := after
 	var out []streamDot
 	for _, e := range events {
@@ -126,7 +131,10 @@ func (s *Server) readSince(ctx context.Context, after string) ([]streamDot, stri
 		if e.ID > max {
 			max = e.ID
 		}
-		if !survives(e.Subject, e.Type, e.ID, stages) {
+		if !survives(eventKey{e.Subject, e.Type, e.ID, e.Source}, stages) {
+			continue
+		}
+		if !filter.matchNeedles(e.Subject, e.Type) {
 			continue
 		}
 		_, phase := process.Classify(e.Type)

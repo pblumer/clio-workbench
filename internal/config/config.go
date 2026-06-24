@@ -25,15 +25,28 @@ type Config struct {
 	ClioToken string
 	// Servers are preset Clio URLs offered for quick selection in the UI.
 	Servers []string
-	// EventCap bounds how many events the analysis panels read from Clio.
+	// EventCap optionally bounds how many events the analysis panels read from
+	// Clio. The default is 0 — no cap, every event is loaded. A positive
+	// WORKBENCH_EVENT_CAP (or a per-environment limit) opts into a read limit
+	// to protect against over-reads on very large stores.
 	EventCap int
+	// SpaceMaxRows, SpaceMaxDots and SpaceCols tune the Event Space's
+	// level-of-detail switch (docs/SPACE-LOD.md): the subject-row budget, the
+	// charted-event budget beyond which the view aggregates into a density grid,
+	// and that grid's time-column count. Each defaults to 0 — the built-in value
+	// is used; a positive override opts into a different budget.
+	SpaceMaxRows int
+	SpaceMaxDots int
+	SpaceCols    int
 }
 
 // Defaults mirror docs/WORKBENCH.md §3.3.
 const (
-	defaultAddr     = ":8080"
-	defaultDataDir  = "./workbench-data"
-	defaultEventCap = 50000
+	defaultAddr    = ":8080"
+	defaultDataDir = "./workbench-data"
+	// defaultEventCap is 0: no read cap by default. The cap is opt-in via a
+	// positive WORKBENCH_EVENT_CAP or an environment limit.
+	defaultEventCap = 0
 )
 
 // defaultServers are offered in the connect menu when WORKBENCH_SERVERS is unset.
@@ -48,6 +61,10 @@ func Load() Config {
 		ClioToken: os.Getenv("CLIO_API_TOKEN"),
 		Servers:   serverList(os.Getenv("WORKBENCH_SERVERS")),
 		EventCap:  intEnvOr("WORKBENCH_EVENT_CAP", defaultEventCap),
+		// 0 → the Event Space uses its built-in level-of-detail budgets.
+		SpaceMaxRows: intEnvOr("WORKBENCH_SPACE_MAX_ROWS", 0),
+		SpaceMaxDots: intEnvOr("WORKBENCH_SPACE_MAX_DOTS", 0),
+		SpaceCols:    intEnvOr("WORKBENCH_SPACE_COLS", 0),
 	}
 }
 
@@ -68,12 +85,23 @@ func serverList(s string) []string {
 	})
 	out := make([]string, 0, len(fields))
 	for _, f := range fields {
-		out = append(out, strings.TrimRight(f, "/"))
+		out = append(out, normalizeBaseURL(f))
 	}
 	if len(out) == 0 {
 		return defaultServers
 	}
 	return out
+}
+
+// normalizeBaseURL trimmt Slashes und entfernt ein redundantes "/api/v1"-Suffix
+// aus einer Preset-URL. Der clio.Client hängt "/api/v1/..." selbst an; eine
+// durchgeschleuste API-URL würde den Pfad sonst verdoppeln (→ 404/UNREACHABLE).
+// Die Logik spiegelt clio.normalizeBaseURL — hier lokal gehalten, um einen
+// Import-Zyklus zwischen config und clio zu vermeiden.
+func normalizeBaseURL(raw string) string {
+	u := strings.TrimRight(strings.TrimSpace(raw), "/")
+	u = strings.TrimSuffix(u, "/api/v1")
+	return strings.TrimRight(u, "/")
 }
 
 // ProxyEnabled reports whether an upstream Clio is configured, which is the

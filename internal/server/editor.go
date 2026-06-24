@@ -12,6 +12,16 @@ import (
 	"github.com/pblumer/clio-workbench/internal/store"
 )
 
+// editorPage wraps a draft with the chrome the standalone editor page needs.
+// The embedded *model.Draft promotes every field, so the editor's body
+// templates keep receiving the draft via "." unchanged; only the page shell
+// reads .Theme / .Themes for the theme switch (docs/THEMES.md).
+type editorPage struct {
+	*model.Draft
+	Theme  string
+	Themes []themeOption
+}
+
 // handleEditor renders the full outline editor page for a draft.
 func (s *Server) handleEditor(w http.ResponseWriter, r *http.Request) {
 	d, err := s.store.Get(r.PathValue("id"))
@@ -23,7 +33,7 @@ func (s *Server) handleEditor(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, "get draft", err)
 		return
 	}
-	s.render(w, "editor.html", d)
+	s.render(w, "editor.html", editorPage{Draft: d, Theme: themeFromRequest(r), Themes: themeOptions})
 }
 
 // handleSaveMeta updates the process metadata (name, namespace, subject).
@@ -44,6 +54,10 @@ func (s *Server) handleSaveMeta(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
+	if r.FormValue("view") == "modeler" {
+		s.renderModeler(w, d, strings.TrimSpace(r.FormValue("sel")))
+		return
+	}
 	s.renderMeta(w, d)
 }
 
@@ -57,11 +71,13 @@ func (s *Server) handleAddStep(w http.ResponseWriter, r *http.Request) {
 	if kind != model.StepEvent && kind != model.StepTask {
 		kind = model.StepEvent
 	}
-	d.Steps = append(d.Steps, model.Step{ID: newStepID(), Kind: kind})
+	id := newStepID()
+	d.Steps = append(d.Steps, model.Step{ID: id, Kind: kind})
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	// On the canvas, surface the fresh shape as the selected element.
+	s.renderAfterEdit(w, r, d, id)
 }
 
 // handleUpdateStep edits a step's name/phase/description.
@@ -94,7 +110,7 @@ func (s *Server) handleUpdateStep(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }
 
 // handleMoveStep reorders a step up or down.
@@ -121,7 +137,7 @@ func (s *Server) handleMoveStep(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }
 
 // handleDeleteStep removes a step.
@@ -141,7 +157,7 @@ func (s *Server) handleDeleteStep(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }
 
 func (s *Server) loadDraft(w http.ResponseWriter, r *http.Request) (*model.Draft, bool) {
@@ -199,7 +215,7 @@ func (s *Server) handleAddField(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }
 
 // handleUpdateField edits a field's name/type/required/format/ref/enum.
@@ -231,7 +247,7 @@ func (s *Server) handleUpdateField(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }
 
 // handleDeleteField removes a field from an event step.
@@ -253,5 +269,5 @@ func (s *Server) handleDeleteField(w http.ResponseWriter, r *http.Request) {
 	if !s.saveDraft(w, d) {
 		return
 	}
-	s.renderSteps(w, d)
+	s.renderAfterEdit(w, r, d, "")
 }

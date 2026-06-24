@@ -127,6 +127,62 @@ func TestCheckSequenceMultipleStarts(t *testing.T) {
 	}
 }
 
+// employeeLifecycle is an entity model where cardinality, not topology, is the
+// decider: "new.v2" creates the subject once, "profile-updated" recurs freely,
+// and "email-verified" is a self-loop that may still fire only once per subject.
+//
+//	(start) none --new.v2(once)--> active --profile-updated(many)--> active
+//	                                       --email-verified(once)---> active
+func employeeLifecycle() model.Draft {
+	return model.Draft{
+		Nodes: []model.Node{
+			{ID: "none", Label: "Neu", Start: true},
+			{ID: "active", Label: "Aktiv"},
+		},
+		Edges: []model.Edge{
+			{ID: "e1", Type: "new.v2", From: "none", To: "active", Cardinality: model.CardinalityOnce},
+			{ID: "e2", Type: "profile-updated", From: "active", To: "active", Cardinality: model.CardinalityMany},
+			{ID: "e3", Type: "email-verified", From: "active", To: "active", Cardinality: model.CardinalityOnce},
+		},
+	}
+}
+
+func TestCheckSequenceCardinality(t *testing.T) {
+	m := NewMachine(employeeLifecycle())
+	tests := []struct {
+		name     string
+		types    []string
+		wantOK   bool
+		wantFail int
+		reasonIs string // exact reason expected on failure ("" = don't check)
+	}{
+		{"onboarding, then many updates", []string{"new.v2", "profile-updated", "profile-updated"}, true, -1, ""},
+		{"verify once is fine", []string{"new.v2", "email-verified", "profile-updated"}, true, -1, ""},
+		// Two creations in a row — the user's EMP-40008 finding. Here topology
+		// already has no "new.v2" edge out of "active", so it fails on transition.
+		{"double creation", []string{"new.v2", "new.v2"}, false, 1,
+			`no transition from state "Aktiv" via event type "new.v2"`},
+		// A self-loop edge: topology WOULD allow the repeat, so cardinality is the
+		// sole reason the second "email-verified" is rejected.
+		{"double verification", []string{"new.v2", "email-verified", "email-verified"}, false, 2,
+			`event type "email-verified" may occur at most once per subject`},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := m.CheckSequence(tc.types)
+			if got.OK != tc.wantOK {
+				t.Fatalf("OK = %v, want %v (reason %q)", got.OK, tc.wantOK, got.Reason)
+			}
+			if got.FailIx != tc.wantFail {
+				t.Errorf("FailIx = %d, want %d", got.FailIx, tc.wantFail)
+			}
+			if tc.reasonIs != "" && got.Reason != tc.reasonIs {
+				t.Errorf("Reason = %q, want %q", got.Reason, tc.reasonIs)
+			}
+		})
+	}
+}
+
 // A node whose label is empty falls back to its id in messages.
 func TestLabelFallsBackToID(t *testing.T) {
 	d := model.Draft{Nodes: []model.Node{{ID: "lonely", Start: true}}}

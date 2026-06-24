@@ -53,6 +53,51 @@ func TestBuildProcessViewRich(t *testing.T) {
 	}
 }
 
+// TestBuildProcessViewConcurrency checks that a concurrent block produces a
+// parallel backdrop and that the within-block edges are folded away (not drawn).
+func TestBuildProcessViewConcurrency(t *testing.T) {
+	g := process.Graph{
+		Subjects:   2,
+		Events:     8,
+		Traces:     2,
+		// The second group references types that aren't laid out → it is skipped
+		// (a block needs ≥2 present members to get a backdrop).
+		Concurrent: [][]string{{"b", "c"}, {"x", "y"}},
+		Nodes: []process.Node{
+			{Type: "a", Count: 2, StartCount: 2, Rank: 0},
+			{Type: "b", Count: 2, Rank: 1},
+			{Type: "c", Count: 2, Rank: 1},
+			{Type: "d", Count: 2, EndCount: 2, Rank: 2},
+		},
+		Edges: []process.Edge{
+			{From: "a", To: "b", Count: 2},
+			{From: "a", To: "c", Count: 2},
+			{From: "b", To: "d", Count: 2},
+			{From: "c", To: "d", Count: 2},
+			{From: "b", To: "c", Count: 1, Parallel: true}, // folded into the block
+			{From: "c", To: "b", Count: 1, Parallel: true}, // folded into the block
+		},
+		Variants: []process.Variant{{Sequence: []string{"a", "b", "c", "d"}, Count: 2}},
+	}
+
+	v := buildProcessView(g)
+	if len(v.Parallels) != 1 {
+		t.Fatalf("parallels = %+v, want one block", v.Parallels)
+	}
+	if v.Parallels[0].Members != "b,c" || !strings.Contains(v.Parallels[0].Label, "parallel") {
+		t.Errorf("parallel block = %+v", v.Parallels[0])
+	}
+	// The two Parallel edges must not be drawn; the four spine edges remain.
+	if len(v.Edges) != 4 {
+		t.Errorf("edges = %d, want 4 (within-block edges folded)", len(v.Edges))
+	}
+	for _, e := range v.Edges {
+		if (e.From == "b" && e.To == "c") || (e.From == "c" && e.To == "b") {
+			t.Errorf("within-block edge %s→%s was drawn", e.From, e.To)
+		}
+	}
+}
+
 func TestReplayJSON(t *testing.T) {
 	out := replayJSON([]clio.Event{
 		{Subject: "/o/1", Type: "created", Time: "t1"},

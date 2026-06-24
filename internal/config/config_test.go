@@ -13,6 +13,9 @@ func TestLoadDefaults(t *testing.T) {
 	t.Setenv("CLIO_API_TOKEN", "")
 	t.Setenv("WORKBENCH_SERVERS", "")
 	t.Setenv("WORKBENCH_EVENT_CAP", "")
+	t.Setenv("WORKBENCH_SPACE_MAX_ROWS", "")
+	t.Setenv("WORKBENCH_SPACE_MAX_DOTS", "")
+	t.Setenv("WORKBENCH_SPACE_COLS", "")
 
 	c := Load()
 	if c.Addr != defaultAddr {
@@ -33,6 +36,10 @@ func TestLoadDefaults(t *testing.T) {
 	if c.EventCap != defaultEventCap {
 		t.Errorf("EventCap = %d, want %d", c.EventCap, defaultEventCap)
 	}
+	// The space LOD budgets default to 0 → the server uses its built-in values.
+	if c.SpaceMaxRows != 0 || c.SpaceMaxDots != 0 || c.SpaceCols != 0 {
+		t.Errorf("space budgets = %d/%d/%d, want all 0 (built-in)", c.SpaceMaxRows, c.SpaceMaxDots, c.SpaceCols)
+	}
 }
 
 func TestLoadOverrides(t *testing.T) {
@@ -42,6 +49,9 @@ func TestLoadOverrides(t *testing.T) {
 	t.Setenv("CLIO_API_TOKEN", "secret-token")
 	t.Setenv("WORKBENCH_SERVERS", "https://a.example.com/, https://b.example.com")
 	t.Setenv("WORKBENCH_EVENT_CAP", "100")
+	t.Setenv("WORKBENCH_SPACE_MAX_ROWS", "40")
+	t.Setenv("WORKBENCH_SPACE_MAX_DOTS", "3000")
+	t.Setenv("WORKBENCH_SPACE_COLS", "200")
 
 	c := Load()
 	if c.Addr != ":9090" {
@@ -63,6 +73,9 @@ func TestLoadOverrides(t *testing.T) {
 	}
 	if c.EventCap != 100 {
 		t.Errorf("EventCap = %d, want 100", c.EventCap)
+	}
+	if c.SpaceMaxRows != 40 || c.SpaceMaxDots != 3000 || c.SpaceCols != 200 {
+		t.Errorf("space budgets = %d/%d/%d, want 40/3000/200", c.SpaceMaxRows, c.SpaceMaxDots, c.SpaceCols)
 	}
 }
 
@@ -104,6 +117,8 @@ func TestServerList(t *testing.T) {
 		{"newline separated", "a\nb", []string{"a", "b"}},
 		{"tab and carriage return", "a\tb\rc", []string{"a", "b", "c"}},
 		{"mixed with trailing slashes", "https://a/ , https://b/", []string{"https://a", "https://b"}},
+		{"redundant api/v1 suffix stripped", "https://clio.blumer.cloud/api/v1", []string{"https://clio.blumer.cloud"}},
+		{"api/v1 suffix with trailing slash", "https://clio.blumer.cloud/api/v1/", []string{"https://clio.blumer.cloud"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -111,6 +126,25 @@ func TestServerList(t *testing.T) {
 				t.Errorf("serverList(%q) = %v, want %v", tt.in, got, tt.want)
 			}
 		})
+	}
+}
+
+// TestNormalizeBaseURL belegt, dass Presets keine volle API-URL durchschleusen:
+// ein redundantes "/api/v1"-Suffix wird entfernt, weil der clio.Client den
+// Pfad selbst anhängt (sonst Pfad-Verdopplung → 404 → UNREACHABLE).
+func TestNormalizeBaseURL(t *testing.T) {
+	const want = "https://clio.blumer.cloud"
+	tests := []string{
+		"https://clio.blumer.cloud/api/v1",
+		"https://clio.blumer.cloud/api/v1/",
+		"  https://clio.blumer.cloud/api/v1  ",
+		"https://clio.blumer.cloud/",
+		"https://clio.blumer.cloud",
+	}
+	for _, in := range tests {
+		if got := normalizeBaseURL(in); got != want {
+			t.Errorf("normalizeBaseURL(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 

@@ -1,0 +1,56 @@
+{
+  "_about": "Practice payloads for Lesson 1 (Schema Test). Copy a `data` object into the schema-test input for the matching event type. The `valid` entries must accept; each `invalid` entry must reject with the noted field/rule.",
+  "order-placed": {
+    "valid": [
+      { "customerEmail": "alice@example.com", "itemsCount": 3 }
+    ],
+    "invalid": [
+      { "_why": "missing required field customerEmail (rule: required)",
+        "data": { "itemsCount": 3 } },
+      { "_why": "itemsCount is a string, not an integer (rule: type)",
+        "data": { "customerEmail": "alice@example.com", "itemsCount": "three" } },
+      { "_why": "customerEmail is not a valid email (rule: format)",
+        "data": { "customerEmail": "not-an-email", "itemsCount": 3 } }
+    ]
+  },
+  "order-paid": {
+    "valid": [
+      { "amount": 149.99, "paidAt": "2025-06-20T10:00:00Z" }
+    ],
+    "invalid": [
+      { "_why": "missing required field paidAt (rule: required)",
+        "data": { "amount": 149.99 } },
+      { "_why": "amount is a string, not a number (rule: type)",
+        "data": { "amount": "149.99", "paidAt": "2025-06-20T10:00:00Z" } }
+    ]
+  },
+  "order-shipped": {
+    "valid": [
+      { "trackingId": "550e8400-e29b-41d4-a716-446655440000", "carrier": "DHL" }
+    ],
+    "invalid": [
+      { "_why": "carrier 'Hermes' is not in the enum DHL/UPS/FedEx (rule: enum)",
+        "data": { "trackingId": "550e8400-e29b-41d4-a716-446655440000", "carrier": "Hermes" } },
+      { "_why": "trackingId is not a valid uuid (rule: format)",
+        "data": { "trackingId": "not-a-uuid", "carrier": "UPS" } }
+    ]
+  },
+  "order-delivered": {
+    "valid": [
+      { "deliveredAt": "2025-06-22T14:30:00Z" }
+    ],
+    "invalid": [
+      { "_why": "missing required field deliveredAt (rule: required)",
+        "data": {} }
+    ]
+  },
+  "order-cancelled": {
+    "valid": [
+      { "reason": "customer changed their mind" }
+    ],
+    "invalid": [
+      { "_why": "missing required field reason (rule: required)",
+        "data": {} }
+    ]
+  }
+}

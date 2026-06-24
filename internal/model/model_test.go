@@ -32,6 +32,14 @@ func TestValidateOK(t *testing.T) {
 	if err := d.Validate(); err != nil {
 		t.Fatalf("process/empty-namespace draft rejected: %v", err)
 	}
+	// Both explicit cardinalities (and the empty default) are valid.
+	for _, c := range []Cardinality{"", CardinalityOnce, CardinalityMany} {
+		d := baseDraft()
+		d.Edges[0].Cardinality = c
+		if err := d.Validate(); err != nil {
+			t.Fatalf("cardinality %q rejected: %v", c, err)
+		}
+	}
 }
 
 func TestValidateErrors(t *testing.T) {
@@ -53,6 +61,7 @@ func TestValidateErrors(t *testing.T) {
 		}, "duplicate edge id"},
 		{"unknown source", func(d *Draft) { d.Edges[0].From = "ghost" }, "unknown source node"},
 		{"unknown target", func(d *Draft) { d.Edges[0].To = "ghost" }, "unknown target node"},
+		{"invalid cardinality", func(d *Draft) { d.Edges[0].Cardinality = "twice" }, "invalid cardinality"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

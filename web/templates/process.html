@@ -1,7 +1,7 @@
 {{define "process.html" -}}
 <div class="events-head">
   <h2 class="panel-title">Process
-    {{- if eq .State "ok"}} <span class="proc-stat">{{.Subjects}} subjects · {{.Events}} events</span>{{end -}}
+    {{- if eq .State "ok"}} <span class="proc-stat">{{thousands .Subjects}} subjects · {{thousands .Events}} events</span>{{end -}}
   </h2>
   <button class="reconnect" type="button"
           hx-get="/process"
@@ -12,7 +12,7 @@
           aria-label="Refresh">⟳</button>
 </div>
 
-{{if .Truncated}}<p class="trunc-note">⚠ read the first {{.Cap}} events (oldest first) — newer events may be missing. Raise <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
+{{if .Truncated}}<p class="trunc-note">⚠ loaded the first {{thousands .Cap}} events (oldest first) — newer events may be missing. Raise <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
 {{if or (eq .State "ok") (eq .State "empty")}}
 <div class="proc-tools">
   <input class="proc-filter" type="search" list="proc-types" placeholder="filter type… (pick or type)" autocomplete="off" aria-label="Filter event types">
@@ -47,6 +47,12 @@
         </marker>
       </defs>
       <g class="proc-viewport">
+      {{range .Parallels}}
+      <g class="proc-parallel" data-members="{{.Members}}">
+        <rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="18"/>
+        <text class="proc-parallel-label" x="{{.X}}" y="{{.Y}}" dx="12" dy="14">{{.Label}}</text>
+      </g>
+      {{end}}
       {{range .Groups}}
       <g class="proc-group" data-task="{{.Label}}">
         <rect x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="14"/>
@@ -96,6 +102,7 @@
     <span class="lg lg-start">▸ start</span>
     <span class="lg lg-end">◉ end</span>
     <span class="lg lg-flow">→ directly-follows (count)</span>
+    <span class="lg lg-parallel">∥ parallel (concurrent block)</span>
     <span class="lg lg-hint">✋ drag · click a node → its events &amp; data · ⌨ in Solo: space ⏯ · j/k subject · p pin</span>
   </div>
 

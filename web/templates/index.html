@@ -1,17 +1,21 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="{{.Theme}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>clio · Workbench — wo Geschichte entsteht</title>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="stylesheet" href="/static/css/themes.css">
   <link rel="stylesheet" href="/static/css/workbench.css">
+  <script src="/static/js/theme.js"></script>
   <script src="/static/js/htmx.min.js" defer></script>
   <script src="/static/js/shell.js" defer></script>
   <script src="/static/js/process.js" defer></script>
+  <script src="/static/js/modeler.js" defer></script>
   <script src="/static/js/subjects.js" defer></script>
   <script src="/static/js/inspector-follow.js" defer></script>
   <script src="/static/js/dotted.js" defer></script>
+  <script src="/static/js/density.js" defer></script>
 </head>
 <body>
   <div class="starfield" aria-hidden="true"></div>
@@ -166,6 +170,15 @@
       <div class="wb-status-right">
         <button type="button" class="wb-status-btn wb-panel-toggle" title="Panel umschalten"
                 aria-label="Toggle panel">≡ Panel</button>
+        <label class="theme-pick" title="Theme wählen">
+          <span class="theme-pick-icon" aria-hidden="true">◐</span>
+          <select class="theme-select" aria-label="Theme" onchange="setTheme(this.value)">
+            {{- $cur := .Theme}}
+            {{- range .Themes}}
+            <option value="{{.ID}}"{{if eq .ID $cur}} selected{{end}}>{{.Label}}</option>
+            {{- end}}
+          </select>
+        </label>
         <span class="wb-status-item">data · <code>{{.DataDir}}</code></span>
         <span class="wb-status-item wb-stage">{{.Stufe}}</span>
       </div>

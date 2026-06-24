@@ -1,7 +1,7 @@
 {{define "space.html" -}}
 <div class="events-head">
   <h2 class="panel-title">Event space
-    {{- if eq .State "ok"}} <span class="proc-stat">{{.Shown}}{{if .Capped}}/{{.Total}}{{end}} subjects · {{.Events}} events{{if .Framed}} · last {{.Frame}}{{end}} · {{.Axis}}</span>{{end -}}
+    {{- if eq .State "ok"}} <span class="proc-stat" title="{{if eq .Mode "density"}}all {{thousands .Total}} subjects rolled up into {{.Shown}} bands · {{else if .Capped}}top {{.Shown}} of {{thousands .Total}} subjects shown · {{else}}{{.Shown}} subjects · {{end}}{{thousands .Events}} events charted">{{if eq .Mode "density"}}{{thousands .Total}} subjects in {{thousands .Shown}} bands · {{thousands .Events}} events · density{{else}}{{thousands .Shown}}{{if .Capped}} / {{thousands .Total}}{{end}} subjects · {{thousands .Events}} events{{end}}{{if .Framed}} · last {{thousands .Frame}}{{end}}{{if .Filtered}} · filtered{{end}} · {{.Axis}}</span>{{end -}}
   </h2>
   <button class="reconnect" type="button"
           hx-get="/space" hx-include="#space-frame"
@@ -11,10 +11,11 @@
           aria-label="Refresh">⟳</button>
 </div>
 
-{{if eq .State "ok"}}
-  <form class="space-frame" id="space-frame">
+{{if or (eq .State "ok") (eq .State "filtered-empty")}}
+  <form class="space-frame" id="space-frame" onsubmit="return false">
+    <input type="hidden" name="group" value="{{.Group}}">
     <label class="frame-pick">Frame
-      <select name="frame" hx-get="/space" hx-include="#space-frame"
+      <select name="frame" id="space-frame-size" hx-get="/space" hx-include="#space-frame"
               hx-target="#events-slot" hx-swap="innerHTML">
         <option value="all"{{if not .Frame}} selected{{end}}>all</option>
         <option value="200"{{if eq .Frame 200}} selected{{end}}>last 200</option>
@@ -22,13 +23,77 @@
         <option value="5000"{{if eq .Frame 5000}} selected{{end}}>last 5000</option>
       </select>
     </label>
+
+    <label class="space-filter" title="Refine which events are charted. Keys: subject: (a prefix, or a range a..b) type: from: to: source: — anything else matches the type or subject. Or click a type below.">
+      <span class="space-filter-icon" aria-hidden="true">⌕</span>
+      <input type="search" name="q" value="{{.Query}}" autocomplete="off" spellcheck="false"
+             placeholder="filter… press ⏎ — e.g. type:order.created subject:/orders"
+             hx-get="/space" hx-include="#space-frame"
+             hx-target="#events-slot" hx-swap="innerHTML"
+             hx-trigger="search, change">
+    </label>
+    {{if .Filtered}}
+    <button type="button" class="filter-clear" title="Clear the filter"
+            hx-get="/space" hx-vals='{"q":""}' hx-include="#space-frame-size"
+            hx-target="#events-slot" hx-swap="innerHTML">× clear</button>
+    {{end}}
+
+    <button type="button" class="mode-toggle{{if eq .Mode "density"}} on{{end}}"
+            hx-get="/space" hx-vals='{"mode":"{{if eq .Mode "density"}}dots{{else}}density{{end}}"}'
+            hx-include="#space-frame" hx-target="#events-slot" hx-swap="innerHTML"
+            title="{{if eq .Mode "density"}}Switch to the per-event detail view (slower on large scopes){{else}}Switch to the aggregated density overview{{end}}">
+      {{if eq .Mode "density"}}⊙ detail{{else}}⊞ overview{{end}}</button>
+
+    {{if eq .Mode "density"}}
+    <button type="button" class="mode-toggle{{if eq .Group "variant"}} on{{end}}"
+            hx-get="/space" hx-vals='{"group":"{{if eq .Group "variant"}}subject{{else}}variant{{end}}"}'
+            hx-include="#space-frame" hx-target="#events-slot" hx-swap="innerHTML"
+            title="Group rows by subject order or by process variant (same behaviour shares a row)">
+      {{if eq .Group "variant"}}rows: variant{{else}}rows: subject{{end}}</button>
+    {{end}}
+
+    {{if ne .Mode "density"}}
     <button type="button" class="live-toggle" data-after="{{.AfterID}}"
             aria-pressed="false" title="Stream new events live">● live</button>
     <span class="live-state" hidden></span>
+
+    <button type="button" class="replay-toggle" aria-pressed="false"
+            title="Replay how the dots arrived, oldest first">▶ replay</button>
+    <input type="range" class="replay-range" min="0" max="0" value="0" step="1" hidden
+           aria-label="Replay position">
+    <span class="replay-label" hidden></span>
+    <button type="button" class="replay-stop" hidden title="Exit replay">⏹</button>
+    <button type="button" class="sound-toggle" aria-pressed="false"
+            title="Blip on each new event (live &amp; replay) — click to cycle the volume">♪ off</button>
+    {{end}}
   </form>
 
-  {{if .Truncated}}<p class="trunc-note">⚠ read the first {{.Cap}} events (oldest first) — newer events may be missing. Raise the environment limit or <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
+  {{if .Truncated}}<p class="trunc-note">⚠ loaded the first {{thousands .Cap}} events (oldest first) — newer events may be missing. Raise the environment limit or <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
 
+  {{if eq .State "ok"}}
+  {{if eq .Mode "density"}}
+  <div class="density-graph">
+    <svg viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Density grid of events per subject band over time">
+      <g class="dotted-viewport">
+        {{range .Rows}}
+        <rect class="dot-row" x="{{$.PlotL}}" y="{{.BandY}}" width="{{$.PlotW}}" height="20"/>
+        <text class="dot-label" x="{{$.LabelX}}" y="{{.TextY}}" text-anchor="end" dominant-baseline="central" title="{{.Label}}">{{.Label}}</text>
+        {{end}}
+        {{range .Grid}}
+        <line class="dot-grid" x1="{{.X}}" y1="{{$.GridTop}}" x2="{{.X}}" y2="{{$.GridBot}}"/>
+        {{end}}
+        <text class="dot-axis" x="{{.AxisX}}" y="{{.AxisY}}" text-anchor="end">{{.Axis}}</text>
+        {{range .Cells}}
+        <rect class="dcell dcell-{{.Phase}}" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}"
+              fill-opacity="{{.Opacity}}" data-count="{{.Count}}" data-prefix="{{.Prefix}}"
+              data-sfrom="{{.SFrom}}" data-sto="{{.STo}}" data-min="{{.MinID}}" data-max="{{.MaxID}}"/>
+        {{end}}
+      </g>
+    </svg>
+    <button type="button" class="proc-reset" title="Reset view">⤢</button>
+    <div class="dot-card" hidden></div>
+  </div>
+  {{else}}
   <div class="dotted-graph" data-after="{{.AfterID}}">
     <svg viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Dotted chart of events per subject over time">
       <g class="dotted-viewport">
@@ -45,18 +110,46 @@
                 data-id="{{.ID}}" data-subject="{{.Subject}}" data-type="{{.Type}}"
                 data-time="{{.Time}}" data-phase="{{.Phase}}"/>
         {{end}}
+        <g class="dot-fx-layer"></g>
         <g class="dot-live-layer"></g>
       </g>
     </svg>
     <button type="button" class="proc-reset" title="Reset view">⤢</button>
     <div class="dot-card" hidden></div>
   </div>
+  {{end}}
+  {{else}}
+  <p class="panel-hint dot-nomatch">No events match this filter. Toggle a type back on or <button type="button" class="linklike"
+        hx-get="/space" hx-vals='{"q":""}' hx-include="#space-frame-size"
+        hx-target="#events-slot" hx-swap="innerHTML">clear the filter</button>.</p>
+  {{end}}
 
   <div class="proc-legend dot-legend">
     {{range .Legend}}
+    {{if .Chip}}
+    <button type="button" class="lg lg-toggle{{if .Active}} on{{else if $.TypeFilterOn}} off{{end}}"
+            title="Toggle this type in the filter"
+            hx-get="/space" hx-vals='{"q":"{{.Toggled}}"}' hx-include="#space-frame-size"
+            hx-target="#events-slot" hx-swap="innerHTML">
+      <span class="lg-swatch" style="background:{{.Color}}"></span>{{.Type}}{{if .Count}} <small>{{.Count}}</small>{{end}}
+    </button>
+    {{else}}
     <span class="lg"><span class="lg-swatch" style="background:{{if .Color}}{{.Color}}{{else}}transparent{{end}}"></span>{{.Type}}{{if .Count}} <small>{{.Count}}</small>{{end}}</span>
     {{end}}
-    <span class="lg lg-hint">✋ drag · scroll to zoom · hover a dot</span>
+    {{end}}
+    {{if .TypeBulk}}
+    <span class="lg-bulk" role="group" aria-label="Show all or no event types">
+      <button type="button" class="lg lg-toggle lg-bulk-btn{{if .AllActive}} on{{end}}"
+              title="Chart every event type"
+              hx-get="/space" hx-vals='{"q":"{{.ShowAllQ}}"}' hx-include="#space-frame-size"
+              hx-target="#events-slot" hx-swap="innerHTML">all</button>
+      <button type="button" class="lg lg-toggle lg-bulk-btn{{if .NoneActive}} on{{end}}"
+              title="Chart no event type — then click types back on"
+              hx-get="/space" hx-vals='{"q":"{{.ShowNoneQ}}"}' hx-include="#space-frame-size"
+              hx-target="#events-slot" hx-swap="innerHTML">none</button>
+    </span>
+    {{end}}
+    <span class="lg lg-hint">{{if eq .Mode "density"}}✋ drag · scroll to zoom · hover a cell · click to drill in{{else}}✋ drag · scroll to zoom · hover a dot · click a type to filter{{end}}</span>
   </div>
 {{else if eq .State "empty"}}
   <p class="panel-hint">{{.Message}}</p>

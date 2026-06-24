@@ -54,6 +54,7 @@ func New(cfg config.Config, st *store.Store, envs *envstore.Store, scen *scenari
 	tmpl, err := template.New("").Funcs(template.FuncMap{
 		"eventSchema": schemagen.EventSchema,
 		"inc":         func(i int) int { return i + 1 },
+		"thousands":   thousands,
 		"partial": func(name string, data any) (template.HTML, error) {
 			var b bytes.Buffer
 			if err := root.ExecuteTemplate(&b, name, data); err != nil {
@@ -123,7 +124,7 @@ func (s *Server) routes() error {
 	// Test Studio: scenario editor + sequence tests + path view (WP-4).
 	s.mux.HandleFunc("GET /studio/scenarios", s.handleScenarios)
 	s.mux.HandleFunc("POST /studio/scenarios", s.handleCreateSuite)
-	s.mux.HandleFunc("POST /studio/scenarios/import", s.handleImportScenarioFromURL)
+	s.mux.HandleFunc("POST /studio/scenarios/import", s.handleImportScenario)
 	s.mux.HandleFunc("POST /studio/scenarios/{suite}/delete", s.handleDeleteSuite)
 	s.mux.HandleFunc("POST /studio/scenarios/{suite}/cases", s.handleAddCase)
 	s.mux.HandleFunc("POST /studio/scenarios/{suite}/cases/{case}/delete", s.handleDeleteCase)
@@ -149,16 +150,20 @@ func (s *Server) routes() error {
 	s.mux.HandleFunc("POST /studio/gegenprobe/run", s.handleGegenprobeRun)
 	s.mux.HandleFunc("GET /drafts", s.handleListDrafts)
 	s.mux.HandleFunc("POST /drafts", s.handleCreateDraft)
-	s.mux.HandleFunc("POST /drafts/import", s.handleImportDraftFromURL)
+	s.mux.HandleFunc("POST /drafts/import", s.handleImportDraft)
 	s.mux.HandleFunc("GET /drafts/{id}", s.handleGetDraft)
 	s.mux.HandleFunc("DELETE /drafts/{id}", s.handleDeleteDraft)
 
-	// Outline process editor.
+	// Process editor: the BPMN-style canvas (Modeler tab) and the outline.
+	// Both author the same draft Steps; the modeler is a derived canvas view
+	// (docs/FRAMEWORK.md, docs/WORKBENCH.md §5.1).
+	s.mux.HandleFunc("GET /modeler", s.handleModeler)
 	s.mux.HandleFunc("GET /editor/{id}", s.handleEditor)
 	s.mux.HandleFunc("POST /drafts/{id}/meta", s.handleSaveMeta)
 	s.mux.HandleFunc("POST /drafts/{id}/steps", s.handleAddStep)
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}", s.handleUpdateStep)
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/move", s.handleMoveStep)
+	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/reorder", s.handleReorderStep)
 	s.mux.HandleFunc("DELETE /drafts/{id}/steps/{stepId}", s.handleDeleteStep)
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/fields", s.handleAddField)
 	s.mux.HandleFunc("POST /drafts/{id}/steps/{stepId}/fields/{fieldId}", s.handleUpdateField)

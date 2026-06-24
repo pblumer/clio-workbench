@@ -1,0 +1,56 @@
+{
+  "id": "order-lifecycle-exercises",
+  "name": "Order Lifecycle – Übungen (Lernpfad)",
+  "draftId": "order-lifecycle",
+  "draftRev": "c6ac54f6d18d",
+  "createdAt": "2026-06-20T10:00:00Z",
+  "updatedAt": "2026-06-20T10:00:00Z",
+  "cases": [
+    {
+      "id": "cancel-after-ship-forbidden",
+      "name": "Storno nach Versand ist verboten (Lektion 2/3)",
+      "seed": 47,
+      "steps": [
+        { "type": "order-placed", "subject": "/orders/ORD-EX-001",
+          "data": { "customerEmail": "erin@example.com", "itemsCount": 1 } },
+        { "type": "order-paid",
+          "data": { "amount": 10.0, "paidAt": "2026-06-20T10:00:00Z" } },
+        { "type": "order-shipped",
+          "data": { "trackingId": "770e8400-e29b-41d4-a716-446655440002", "carrier": "FedEx" } },
+        { "type": "order-cancelled",
+          "data": { "reason": "too late" } }
+      ],
+      "expect": { "outcome": "reject" }
+    },
+    {
+      "id": "ship-with-invalid-carrier",
+      "name": "Versand mit ungültigem Carrier (Lektion 1, enum)",
+      "seed": 48,
+      "steps": [
+        { "type": "order-placed", "subject": "/orders/ORD-EX-002",
+          "data": { "customerEmail": "frank@example.com", "itemsCount": 2 } },
+        { "type": "order-paid",
+          "data": { "amount": 59.0, "paidAt": "2026-06-20T11:00:00Z" } },
+        { "type": "order-shipped",
+          "data": { "trackingId": "880e8400-e29b-41d4-a716-446655440003", "carrier": "Hermes" } }
+      ],
+      "expect": { "outcome": "reject" }
+    },
+    {
+      "id": "happy-path-express",
+      "name": "Zweiter gültiger Vollpfad (Kontrast, grün)",
+      "seed": 49,
+      "steps": [
+        { "type": "order-placed", "subject": "/orders/ORD-EX-003",
+          "data": { "customerEmail": "grace@example.com", "itemsCount": 5 } },
+        { "type": "order-paid",
+          "data": { "amount": 320.5, "paidAt": "2026-06-20T12:00:00Z" } },
+        { "type": "order-shipped",
+          "data": { "trackingId": "990e8400-e29b-41d4-a716-446655440004", "carrier": "UPS" } },
+        { "type": "order-delivered",
+          "data": { "deliveredAt": "2026-06-21T09:15:00Z" } }
+      ],
+      "expect": { "outcome": "accept", "endState": "completed" }
+    }
+  ]
+}

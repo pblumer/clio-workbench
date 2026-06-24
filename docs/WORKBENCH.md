@@ -63,6 +63,20 @@ den Graphen verfolgen, Streams solo abspielen, Pfade vergleichen) zahlen auf
 genau dieses Ziel ein. Die Gegenprobe aus Abschnitt 7 ist der Spezialfall, bei
 dem die Forschung einen konkreten Entwurf als Messlatte hat.
 
+**Nebenläufigkeit statt Spaghetti.** Ein reiner Directly-Follows-Graph kann
+*Parallelität* nicht ausdrücken: Laufen Aktivitäten nebenläufig, ist ihre
+Reihenfolge zufällig, und jede beobachtete Verschachtelung wird zu einer eigenen
+dünnen Kante und jede Umordnung zu einer eigenen „Variante" — ein dichtes Netz,
+das mehr Varianten vortäuscht, als real existieren. Die Discovery erkennt solche
+Paare über das Heuristics-Miner-Abhängigkeitsmaß (`internal/process`,
+`detectConcurrency`: in **beiden** Richtungen gesehen, mit ausgewogener
+Häufigkeit) und fasst sie zu **Nebenläufigkeits-Blöcken** zusammen. Der Effekt:
+die Verschachtelungen eines Blocks fallen zu **einer** Variante zusammen, die
+Block-internen Kanten weichen einem `∥`-Rahmen, und die parallelen Aktivitäten
+teilen sich eine Spalte. (Erste Stufe: maximale Gruppen als
+Zusammenhangskomponenten der `∥`-Relation; eine Verschärfung zu echten Cliquen
+und ein BPMN-Parallel-Gateway sind die nächsten Schritte.)
+
 ---
 
 ## 2. Leitprinzipien
@@ -77,8 +91,12 @@ dem die Forschung einen konkreten Entwurf als Messlatte hat.
    durchgereicht, nie ins Browser-JS gelegt.
 5. **Der Entwurf ist das Artefakt.** Das Modell ist die Quelle der Wahrheit;
    Schemas und Doku werden daraus *generiert*, nicht umgekehrt.
-6. **Space-Look.** Visuell im selben Sci-Fi/HUD-Register wie Clios `/ui`
-   (Sternenfeld, Neon-Glow) — gemeinsame Designsprache ohne Code-Kopplung.
+6. **Space-Look (als Default-Theme).** Visuell im selben Sci-Fi/HUD-Register wie
+   Clios `/ui` (Sternenfeld, Neon-Glow) — gemeinsame Designsprache ohne
+   Code-Kopplung. Der Look ist heute *ein wählbares Theme* (»Nebula«) über einem
+   portablen Token-Vertrag; wem das Space-Feeling nicht liegt, wählt ein anderes
+   (Aurora, Carbon, Swiss). Der Vertrag ist bewusst so gebaut, dass ihn auch
+   Clios `/ui` übernehmen kann. Details: [`docs/THEMES.md`](THEMES.md).
 
 ---
 
@@ -126,7 +144,15 @@ dem die Forschung einen konkreten Entwurf als Messlatte hat.
   setzen, benennen, verbinden. Siehe Abschnitt 5.
 - **HTMX** für die umgebende Werkbank: Eigenschafts-Panels, Schema-Editor pro
   Event-Typ, Modell-Liste, Export-Dialoge. Das Backend rendert Fragmente.
-- **SSE** nur für die optionale Gegenprobe (Live-Vergleich Soll/Ist).
+- **SSE** für Live-Ströme: der optionale Soll/Ist-Vergleich der Gegenprobe und
+  der Live-Tail des Event Space, der neu eintreffende Events als „ploppende"
+  Punkte (Radar-Ping, Zeilen-Blitz, optionaler synthetischer Ton) in ihre
+  Subject-Zeile streamt.
+- **Replay** im Event Space: die bereits geladenen Punkte spielen sich
+  clientseitig ältest-zuerst ein — derselbe Plop wie live, im selben einfachen
+  Modell wie das Process-Timeline-Replay (fester Takt per Timer, Play/Pause,
+  Range-Slider zum Scrubben, „N / total · Zeitstempel"-Label). Rein im Browser,
+  also auch offline nutzbar (das genannte „Timeline-Replay" aus §2).
 
 ### 3.3 Konfiguration (Clio-Stil)
 
@@ -139,6 +165,15 @@ dem die Forschung einen konkreten Entwurf als Messlatte hat.
 
 *Ohne `CLIO_URL`/Token arbeitet die Workbench rein offline am Entwurf; nur Push
 und Gegenprobe brauchen eine Instanz.
+
+### 3.4 Scope — welche Events betrachtet werden
+
+Jede Analyse-Ansicht liest Events; *welche*, regelt ein geschichtetes
+Scope-Konzept: ein global definiertes **Environment** (Server + Basis-Scope +
+Limit), eine geteilte **Query-Pipeline** und — pro Disziplin — eine lokale
+**Linse**. Global definierbar, lokal gestaltbar, mit einem klaren
+Auflösungsvertrag (nur verengen, nie erweitern; nur das Environment erreicht
+Clio und setzt das Limit). Das eigene Papier dazu ist [`SCOPE.md`](SCOPE.md).
 
 ---
 
@@ -153,7 +188,8 @@ Artefakt ab:
 2. **Zeichnen** — Zustände/Schritte als Knoten, Event-Typen als gerichtete Kanten
    dazwischen (Abschnitt 5).
 3. **Event-Typen ausgestalten** — pro Kante: Name, Beschreibung, JSON-Schema der
-   `data`-Payload, optional Preconditions/Invarianten.
+   `data`-Payload, optional Kardinalität pro Subject (`once`/`many`) und
+   Preconditions/Invarianten.
 4. **Validieren** — das Modell auf Konsistenz prüfen (erreichbare Zustände,
    Sackgassen, fehlende Schemas) — siehe 5.4.
 5. **Exportieren** — Clio-Schemas und Dokumentation generieren (Abschnitt 6).
@@ -175,7 +211,8 @@ Egal welche Sicht, intern ist der Entwurf ein gerichteter Graph:
   (Prozess-Sicht). Mit Start- und Endmarkierungen.
 - **Kanten** = **Event-Typen**. Eine Kante von Zustand A nach B bedeutet: das
   Event dieses Typs führt die Entität von A nach B. Hier hängen Name,
-  `data`-Schema und Preconditions.
+  `data`-Schema, Kardinalität pro Subject (`TESTSTUDIO.md` §6.3) und
+  Preconditions.
 
 Diese Entkopplung — ein Datenmodell, zwei Renderings — ist die zentrale
 Designentscheidung. Sie macht den „umschaltbar"-Wunsch billig.
@@ -220,6 +257,40 @@ Schon beim Entwerfen prüfbar, rein auf dem Graphen:
 - Sackgassen: Endzustände ohne ausgehende Kanten — beabsichtigt oder Fehler?
 - Vollständigkeit: Event-Typen ohne `data`-Schema markieren.
 - Namenskonflikte: doppelte Event-Typ-Namen im Namensraum.
+
+### 5.5 Der BPMN-Modeler (umgesetzt, Stufe 1 — hybrid)
+
+Die erste umgesetzte Gestaltungs-Sicht ist ein **BPMN-artiger Canvas-Editor** im
+Space-Look — visuell und in der Bedienung an bpmn.io / Camunda Modeler angelehnt,
+aber strikt nach den Leitprinzipien (ein Binary, kein Build-Step, schlankes
+Vanilla-JS). Er ist ein eigener Editor-Tab der Schale (**„Modeler"**, siehe
+[`FRAMEWORK.md`](FRAMEWORK.md)) und wird über *edit* in der Modell-Liste geöffnet.
+
+Aufbau wie ein BPMN-Werkzeug:
+
+- **Palette** (vertikale Leiste links): Event bzw. Task hinzufügen.
+- **Canvas** (SVG, serverseitig gerendert): eine Pool-/Lane-Spur mit der
+  Schritt-Kette von links nach rechts — Start-/Catch-/End-Events als
+  phasenfarbige Kreise, Tasks als Send-Task-Rechtecke, dazwischen
+  Sequence-Flows. `modeler.js` ergänzt nur die Gesten: Pan, Zoom, Auswahl per
+  Klick und Drag-to-Reorder. Persistiert wird ausschließlich über HTMX auf den
+  geteilten Step-Endpunkten. Der Shape-Abstand skaliert mit der Labelbreite
+  (geschätzt serverseitig), damit lange Event-Namen unter den Kreisen nicht
+  überlappen — bei kurzen Namen bleibt es beim engen geometrischen Abstand.
+- **Properties-Panel** (rechts): Eigenschaften des gewählten Shapes (Name, Phase,
+  Beschreibung, Datenfelder) — ersetzt die Inline-Formulare der Outline.
+
+**Hybrid-Entscheidung (Stufe 1):** Der Modeler ist eine *abgeleitete* Sicht auf
+die geordnete `Steps`-Outline; die Shape-Abbildung (erstes Event → Start,
+letztes → End, mittlere → Catch, Task → Send-Task) ist **deckungsgleich mit
+`internal/bpmngen`**, sodass der Canvas exakt das zeigt, was der BPMN-Export
+erzeugt. Es wird nichts Neues persistiert — Schema-, BPMN-, Producer- und
+Teststudio-Generatoren bleiben unangetastet. Die Low-Code-Outline
+(`/editor/{id}`, `procsteps.html`) bleibt als alternative Autoren-Sicht erhalten
+(Link „outline" in der Modeler-Toolbar).
+
+Spätere Stufen (frei platzierbare Knoten, Gateways/Verzweigungen) wandern auf das
+schon vorhandene Graphmodell (`Nodes`/`Edges`) — siehe §5.1/§5.2.
 
 ---
 

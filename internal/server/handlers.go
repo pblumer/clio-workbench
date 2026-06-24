@@ -41,6 +41,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		Editor:     editor,
 		Panel:      panel,
 		Stufe:      "Stufe 0 — Gerüst",
+		Theme:      themeFromRequest(r),
+		Themes:     themeOptions,
 	})
 }
 

@@ -1,0 +1,124 @@
+{
+  "id": "employee-identity-tests",
+  "name": "Employee Identity – Kardinalität pro Subject",
+  "draftId": "employee-identity",
+  "draftRev": "7323a0804fab",
+  "createdAt": "2026-06-24T10:00:00Z",
+  "updatedAt": "2026-06-24T10:00:00Z",
+  "cases": [
+    {
+      "id": "onboarding-with-updates",
+      "name": "Onboarding + Verifikation + Profiländerungen (gültig)",
+      "seed": 1,
+      "steps": [
+        {
+          "type": "identity.employee.new.v2",
+          "subject": "/employees/EMP-40009",
+          "data": {
+            "employeeId": "EMP-40009",
+            "firstName": "Anna",
+            "lastName": "Berger",
+            "displayName": "Berger Anna Operations",
+            "department": "operations",
+            "role": "warehouse-lead",
+            "requestedAt": "2026-06-18T14:48:59Z"
+          }
+        },
+        {
+          "type": "identity.employee.email-verified.v1",
+          "data": {"employeeId": "EMP-40009", "verifiedAt": "2026-06-18T15:02:11Z"}
+        },
+        {
+          "type": "identity.employee.profile-updated.v1",
+          "data": {"employeeId": "EMP-40009", "field": "department", "value": "logistics"}
+        },
+        {
+          "type": "identity.employee.profile-updated.v1",
+          "data": {"employeeId": "EMP-40009", "field": "role", "value": "shift-lead"}
+        }
+      ],
+      "expect": {
+        "outcome": "accept",
+        "endState": "active"
+      }
+    },
+    {
+      "id": "double-creation-emp-40008",
+      "name": "Doppelte Anlage – der EMP-40008-Fund (Verletzung)",
+      "seed": 2,
+      "steps": [
+        {
+          "type": "identity.employee.new.v2",
+          "subject": "/employees/EMP-40008",
+          "data": {
+            "employeeId": "EMP-40008",
+            "firstName": "Markus",
+            "lastName": "Koch",
+            "displayName": "Koch Markus Operations",
+            "department": "operations",
+            "role": "warehouse-lead",
+            "requestedAt": "2026-06-18T14:48:59Z"
+          }
+        },
+        {
+          "type": "identity.employee.new.v2",
+          "data": {
+            "employeeId": "EMP-40008",
+            "firstName": "Markus",
+            "lastName": "Koch",
+            "displayName": "Koch Markus Operations",
+            "department": "operations",
+            "role": "warehouse-lead",
+            "requestedAt": "2026-06-18T14:49:06Z"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "reject"
+      }
+    },
+    {
+      "id": "double-verification",
+      "name": "Doppelte E-Mail-Verifikation (Verletzung der Kardinalität am Self-Loop)",
+      "seed": 3,
+      "steps": [
+        {
+          "type": "identity.employee.new.v2",
+          "subject": "/employees/EMP-40010",
+          "data": {
+            "employeeId": "EMP-40010",
+            "firstName": "Sven",
+            "lastName": "Maier",
+            "requestedAt": "2026-06-18T14:48:59Z"
+          }
+        },
+        {
+          "type": "identity.employee.email-verified.v1",
+          "data": {"employeeId": "EMP-40010", "verifiedAt": "2026-06-18T15:00:00Z"}
+        },
+        {
+          "type": "identity.employee.email-verified.v1",
+          "data": {"employeeId": "EMP-40010", "verifiedAt": "2026-06-18T15:05:00Z"}
+        }
+      ],
+      "expect": {
+        "outcome": "reject"
+      }
+    },
+    {
+      "id": "update-without-creation",
+      "name": "Profiländerung ohne Anlage (ungültige Sequenz)",
+      "seed": 4,
+      "steps": [
+        {
+          "type": "identity.employee.profile-updated.v1",
+          "subject": "/employees/EMP-40011",
+          "data": {"employeeId": "EMP-40011", "field": "role", "value": "intern"}
+        }
+      ],
+      "expect": {
+        "outcome": "reject"
+      }
+    }
+  ]
+}

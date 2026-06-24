@@ -15,24 +15,20 @@ import (
 	"github.com/pblumer/clio-workbench/internal/store"
 )
 
-// handleImportDraftFromURL fetches a JSON draft from an arbitrary URL and
-// creates it in the local store. The primary use-case is pulling example
-// drafts (e.g. from GitHub raw) into the Workbench without manual file
-// copying.
-func (s *Server) handleImportDraftFromURL(w http.ResponseWriter, r *http.Request) {
+// handleImportDraft creates a draft in the local store from JSON supplied
+// either inline (pasted into a textarea) or fetched from an arbitrary URL.
+// Both paths exist so a Workbench reached only through a browser — e.g. a
+// hosted/SaaS deployment with no shell or filesystem access — can still load
+// example drafts without manual file copying.
+func (s *Server) handleImportDraft(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
 	}
-	urlStr := strings.TrimSpace(r.FormValue("url"))
-	if urlStr == "" {
-		s.renderDraftsWithMessage(w, "Import URL required")
-		return
-	}
 
-	body, err := fetchURL(r.Context(), urlStr)
+	body, _, err := importBody(r.Context(), r)
 	if err != nil {
-		s.renderDraftsWithMessage(w, fmt.Sprintf("fetch failed: %v", err))
+		s.renderDraftsWithMessage(w, err.Error())
 		return
 	}
 
@@ -55,7 +51,7 @@ func (s *Server) handleImportDraftFromURL(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	s.log.Info("draft imported from URL", "id", draft.ID, "url", urlStr)
+	s.log.Info("draft imported", "id", draft.ID)
 	drafts, err := s.store.List()
 	if err != nil {
 		s.serverError(w, "list drafts", err)
@@ -64,23 +60,20 @@ func (s *Server) handleImportDraftFromURL(w http.ResponseWriter, r *http.Request
 	s.render(w, "drafts.html", drafts)
 }
 
-// handleImportScenarioFromURL fetches a JSON scenario suite from an arbitrary
-// URL and saves it into the local scenario store.
-func (s *Server) handleImportScenarioFromURL(w http.ResponseWriter, r *http.Request) {
+// handleImportScenario saves a scenario suite into the local scenario store
+// from JSON supplied either inline (pasted) or fetched from an arbitrary URL —
+// the suite counterpart to handleImportDraft, so the Studio is fully usable
+// from a browser-only (e.g. SaaS) Workbench.
+func (s *Server) handleImportScenario(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "bad form", http.StatusBadRequest)
 		return
 	}
-	urlStr := strings.TrimSpace(r.FormValue("url"))
 	draftID := strings.TrimSpace(r.FormValue("draft"))
-	if urlStr == "" {
-		s.renderScenarioImportError(w, "Import URL required")
-		return
-	}
 
-	body, err := fetchURL(r.Context(), urlStr)
+	body, _, err := importBody(r.Context(), r)
 	if err != nil {
-		s.renderScenarioImportError(w, fmt.Sprintf("fetch failed: %v", err))
+		s.renderScenarioImportError(w, err.Error())
 		return
 	}
 
@@ -106,8 +99,27 @@ func (s *Server) handleImportScenarioFromURL(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	s.log.Info("scenario suite imported from URL", "id", suite.ID, "url", urlStr)
+	s.log.Info("scenario suite imported", "id", suite.ID)
 	s.renderScenario(w, draftID, suite.ID)
+}
+
+// importBody resolves the JSON payload for an import request. A non-empty
+// "json" form field (pasted content) wins; otherwise the "url" field is
+// fetched. It returns the raw bytes and a human-readable source label, or a
+// user-facing error if neither field is usable.
+func importBody(ctx context.Context, r *http.Request) (body []byte, source string, err error) {
+	if pasted := strings.TrimSpace(r.FormValue("json")); pasted != "" {
+		return []byte(pasted), "pasted JSON", nil
+	}
+	urlStr := strings.TrimSpace(r.FormValue("url"))
+	if urlStr == "" {
+		return nil, "", errors.New("paste JSON or provide an import URL")
+	}
+	body, err = fetchURL(ctx, urlStr)
+	if err != nil {
+		return nil, "", fmt.Errorf("fetch failed: %v", err)
+	}
+	return body, urlStr, nil
 }
 
 // fetchURL performs a GET with a 10-second timeout. It accepts any 2xx status.

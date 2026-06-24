@@ -98,15 +98,38 @@
   <button type="submit" class="btn-primary">Suite anlegen</button>
 </form>
 
-<form class="sc-newsuite sc-import"
-      hx-post="/studio/scenarios/import"
-      hx-target="#scenario-slot"
-      hx-swap="innerHTML"
-      hx-on::after-request="if(event.detail.successful) this.reset()">
-  <input type="hidden" name="draft" value="{{.DraftID}}">
-  <input type="url" name="url" placeholder="https://raw.githubusercontent.com/…/suite.json" required autocomplete="off">
-  <button type="submit" class="btn-primary">Suite importieren</button>
-</form>
+<details class="wb-import">
+  <summary class="wb-import-summary">↧ Suite importieren</summary>
+  <div class="wb-import-body">
+    <p class="wb-hint">Keine Datei nötig — ideal für eine gehostete Workbench:
+      lade die Demo-Suite per Klick, aus einer URL, oder füge Suite-JSON direkt
+      ein.</p>
+
+    <button type="button" class="btn-demo"
+            hx-post="/studio/scenarios/import"
+            hx-vals='{"draft":"{{.DraftID}}","url":"https://raw.githubusercontent.com/pblumer/clio-workbench/main/examples/teststudio/suite-order-lifecycle-tests.json"}'
+            hx-target="#scenario-slot" hx-swap="innerHTML">
+      ✦ Demo-Suite laden
+    </button>
+
+    <form class="sc-newsuite sc-import" hx-post="/studio/scenarios/import"
+          hx-target="#scenario-slot" hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.successful) this.reset()">
+      <input type="hidden" name="draft" value="{{.DraftID}}">
+      <input type="url" name="url" placeholder="https://…/suite.json" autocomplete="off">
+      <button type="submit" class="btn-primary">Aus URL importieren</button>
+    </form>
+
+    <form class="sc-import-paste" hx-post="/studio/scenarios/import"
+          hx-target="#scenario-slot" hx-swap="innerHTML"
+          hx-on::after-request="if(event.detail.successful) this.reset()">
+      <input type="hidden" name="draft" value="{{.DraftID}}">
+      <textarea name="json" rows="6" class="st-data" spellcheck="false"
+                placeholder='{ "id": "…", "name": "…", "cases": [ … ] }'></textarea>
+      <button type="submit" class="btn-primary">JSON einfügen &amp; importieren</button>
+    </form>
+  </div>
+</details>
 
 {{if .Suite}}
   {{if .Drift}}

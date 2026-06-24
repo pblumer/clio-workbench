@@ -109,8 +109,10 @@ Eine Sequenz von Event-Typen wird gegen den Lifecycle-Graphen gehalten:
 - Beginnt die Sequenz an einem **Startzustand**?
 - Ist jeder Übergang eine **existierende Kante** vom aktuellen Zustand?
 - Endet die Sequenz in einem **gültigen** (ggf. End-)Zustand?
-- Werden **Invarianten/Preconditions** der durchlaufenen Kanten eingehalten
+- Wird die **Kardinalität pro Subject** der durchlaufenen Kanten eingehalten
   (Abschnitt 6.3)?
+- Werden **Invarianten/Preconditions** der durchlaufenen Kanten eingehalten
+  (Abschnitt 6.4)?
 
 Ergebnis ist nicht nur grün/rot, sondern der **durchlaufene Pfad** im Graphen
 (im Studio einfärbbar — Space-Look) und die Stelle, an der eine Sequenz
@@ -243,7 +245,31 @@ aktueller Zustand → erlaubte Kanten → Folgezustand. Diese Logik ist klein un
 existiert in Verwandtschaft schon im Process-/Relations-Code; das Studio
 formalisiert sie als prüfbare Maschine.
 
-### 6.3 Invarianten / Preconditions
+### 6.3 Kardinalität pro Subject
+
+Manche Event-Typen treten je Subject **genau einmal** auf (Lifecycle-/Anlage-
+Events wie `…new.v2`), andere **beliebig oft** (ein Messwert eines Fühlers, eine
+Profiländerung). Diese Unterscheidung ist *keine* Schema-Frage — ein JSON-Schema
+validiert immer nur ein **einzelnes** Event. Sie ist eine **Sequenz-Regel** über
+den ganzen Strom eines Subjects und gehört darum zur Übergangsschicht.
+
+Das Modell trägt sie als optionale Eigenschaft der Kante (`model.Edge.Cardinality`,
+Werte `once` | `many`; leer = unbeschränkt). Die Engine zählt beim Graphlauf,
+welche `once`-Typen ein Subject schon gesehen hat, und meldet ein zweites
+Auftreten als Abweichung — **auch dort, wo die Topologie es erlauben würde** (ein
+Self-Loop, ein Rückkehr-Pfad zum Startzustand). Bei sauberer Topologie ist `once`
+für reine Anlage-Events redundant (aus dem Folgezustand führt ohnehin keine
+`new`-Kante zurück); seinen eigentlichen Wert spielt es aus, sobald derselbe Typ
+strukturell wiederholbar wäre, aber fachlich nur einmal gelten darf, sowie als
+**explizite, exportierbare Dokumentation** der Absicht.
+
+Weil die Kardinalität das Ergebnis eines Laufs verändert, fließt sie in den
+`DraftRev`-Fingerabdruck ein (Drift-Erkennung) und der Generator (§4) hält sie
+ein: eine `once`-Kante wird je Strom höchstens einmal begangen, damit erzeugte
+Ströme nie der Regel widersprechen, die die Engine prüft. Beispiel:
+`examples/teststudio/draft-employee-identity.json` mit zugehöriger Suite.
+
+### 6.4 Invarianten / Preconditions
 
 Das Modell sieht optionale Preconditions/Invarianten pro Kante vor
 (`WORKBENCH.md` §4.3, §5.4). Clio selbst spricht **CEL** für Abfragen — naheliegend

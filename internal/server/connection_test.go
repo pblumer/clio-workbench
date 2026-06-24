@@ -112,14 +112,60 @@ func TestLogConnectionCheck(t *testing.T) {
 // by making the instance report more events than the effective cap.
 func TestConnectionOnlineLimitHit(t *testing.T) {
 	cfg := defaultCfg()
-	cfg.EventCap = 1
+	cfg.EventCap = 1000
 	s := newTestServer(t, cfg)
 	f := newFakeClio(t)
-	f.infoJSON = `{"eventsTotal":1000}`
+	f.infoJSON = `{"eventsTotal":55723}`
 	f.connect(s)
 
 	rec := s.do(http.MethodGet, "/connection", nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	// The warning must read loaded-of-total in plain language, with thousands
+	// separators, so the numbers are stimmig auf den ersten Blick.
+	if !strings.Contains(body, "loaded 1,000 of 55,723") {
+		t.Errorf("connection body missing loaded/total warning:\n%s", body)
+	}
+	// The newest 54,723 events are beyond the cap and not loaded.
+	if !strings.Contains(body, "54,723") {
+		t.Errorf("connection body missing not-loaded count (54,723):\n%s", body)
+	}
+}
+
+// TestConnectionOnlineNoCap guards the default: with no read cap (EventCap 0)
+// every event is loaded, so no limit warning may appear even when the store is
+// large. The activeScope must carry an unlimited (0) read.
+func TestConnectionOnlineNoCap(t *testing.T) {
+	cfg := defaultCfg()
+	cfg.EventCap = 0 // no cap — the new default
+	s := newTestServer(t, cfg)
+	f := newFakeClio(t)
+	f.infoJSON = `{"eventsTotal":55723}`
+	f.connect(s)
+
+	if sc := s.activeScope(); sc.Limit != 0 {
+		t.Fatalf("activeScope Limit = %d, want 0 (unlimited)", sc.Limit)
+	}
+
+	rec := s.do(http.MethodGet, "/connection", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	body := rec.Body.String()
+	// The store size is still shown, but no limit warning.
+	if !strings.Contains(body, "55,723 ev") {
+		t.Errorf("connection body should show the store size:\n%s", body)
+	}
+	if strings.Contains(body, "loaded") || strings.Contains(body, "limit-warn") {
+		t.Errorf("no-cap connection must not warn about a limit:\n%s", body)
+	}
+
+	// The environment panel reads "no limit" rather than "limit 0".
+	envRec := s.do(http.MethodGet, "/environments", nil)
+	envBody := envRec.Body.String()
+	if !strings.Contains(envBody, "no limit") || strings.Contains(envBody, "limit 0") {
+		t.Errorf("env panel should read \"no limit\":\n%s", envBody)
 	}
 }
