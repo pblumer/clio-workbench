@@ -95,6 +95,53 @@ func TestHandleSpaceGroupVariant(t *testing.T) {
 	}
 }
 
+// The configured budgets override the built-in defaults: a low row budget flips
+// even a tiny scope to density, a high one keeps a large scope in detail.
+func TestHandleSpaceConfiguredBudgets(t *testing.T) {
+	// Low row budget: 3 subjects exceed it → density.
+	low := defaultCfg()
+	low.SpaceMaxRows = 2
+	s := newTestServer(t, low)
+	f := newFakeClio(t)
+	f.ndjson = fakeEventsBody()
+	f.connect(s)
+	if body := s.do(http.MethodGet, "/space", nil).Body.String(); !strings.Contains(body, "class=\"dcell") {
+		t.Errorf("a low WORKBENCH_SPACE_MAX_ROWS should force density on a small scope")
+	}
+
+	// High row budget: 100 subjects stay under it → detail dots.
+	high := defaultCfg()
+	high.SpaceMaxRows = 1000
+	s2 := newTestServer(t, high)
+	f2 := newFakeClio(t)
+	f2.ndjson = manySubjectsBody(dMaxRows + 30)
+	f2.connect(s2)
+	body := s2.do(http.MethodGet, "/space", nil).Body.String()
+	if strings.Contains(body, "class=\"dcell") {
+		t.Errorf("a high WORKBENCH_SPACE_MAX_ROWS should keep a large scope in detail")
+	}
+	if !strings.Contains(body, "class=\"dot\"") {
+		t.Errorf("expected per-event dots under a high row budget")
+	}
+}
+
+// The space budget accessors return the config override when set, else the
+// built-in default.
+func TestSpaceBudgetAccessors(t *testing.T) {
+	def := newTestServer(t, defaultCfg())
+	if def.spaceMaxRows() != dMaxRows || def.spaceMaxDots() != dMaxDots || def.spaceCols() != dCols {
+		t.Errorf("defaults = %d/%d/%d, want %d/%d/%d",
+			def.spaceMaxRows(), def.spaceMaxDots(), def.spaceCols(), dMaxRows, dMaxDots, dCols)
+	}
+	cfg := defaultCfg()
+	cfg.SpaceMaxRows, cfg.SpaceMaxDots, cfg.SpaceCols = 40, 3000, 200
+	ov := newTestServer(t, cfg)
+	if ov.spaceMaxRows() != 40 || ov.spaceMaxDots() != 3000 || ov.spaceCols() != 200 {
+		t.Errorf("overrides = %d/%d/%d, want 40/3000/200",
+			ov.spaceMaxRows(), ov.spaceMaxDots(), ov.spaceCols())
+	}
+}
+
 // buildDensityView maps a process.Density onto the shared chart frame: a row per
 // band, a rect per non-empty cell, the time axis label and the density mode.
 func TestBuildDensityView(t *testing.T) {

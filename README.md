@@ -172,6 +172,9 @@ CLIO_URL=http://localhost:3999 CLIO_API_TOKEN=x go run ./cmd/clio-workbench
 | `WORKBENCH_DATA`  | no       | `./workbench-data` | Where drafts are stored                   |
 | `WORKBENCH_SERVERS` | no     | `https://clio.blumer.cloud` | Preset Clio URLs for the connect menu |
 | `WORKBENCH_EVENT_CAP` | no   | `0` (no cap)       | Optional max events the analysis panels read from Clio; `0`/unset loads all |
+| `WORKBENCH_SPACE_MAX_ROWS` | no | `0` (built-in `70`) | Event Space subject-row budget before it aggregates into a density grid |
+| `WORKBENCH_SPACE_MAX_DOTS` | no | `0` (built-in `6000`) | Event Space charted-event budget before it switches to the density grid |
+| `WORKBENCH_SPACE_COLS` | no   | `0` (built-in `120`) | Time-column count of the density grid |
 
 \* Without `CLIO_URL`/token the Workbench works offline on the draft; only push
 and the Gegenprobe need an instance.

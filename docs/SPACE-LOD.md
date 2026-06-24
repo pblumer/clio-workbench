@@ -92,13 +92,15 @@ die Automatik zu überstimmen.
    └───────────────────┘   aufzoomen    └──────────────┘          └──────────┘
 ```
 
-- **Stufe 1 — Übersicht / Dichte.** Greift bei `Total > dMaxRows` **oder**
-  gesprengtem Punkt-Budget. Go aggregiert zu einem Dichte-Raster (gruppierte
-  Subject-Bänder × Zeit-Buckets, je Zelle Count + dominante Phase/Typ). Das
-  Frontend zeichnet es auf ein `<canvas>` mit log/Perzentil-Farbe. Hover zeigt
+- **Stufe 1 — Übersicht / Dichte.** Greift, wenn das Zeilen- **oder**
+  Punkt-Budget überschritten wird. Go aggregiert zu einem Dichte-Raster
+  (gruppierte Subject-Bänder × Zeit-Buckets, je Zelle Count + dominante Phase).
+  Das Frontend rendert es als **server-seitiges SVG** (die Zellenzahl ist durchs
+  Raster begrenzt, nicht durch die Eventzahl → funktioniert auch ohne JS); Farbe
+  via Phasen-Klassen, Intensität als log-skalierte `fill-opacity`. Hover zeigt
   das Zell-Aggregat; **Klick driftet hinein**, indem er den bestehenden
-  `q`-Filter setzt (`subject:…`, `from:`/`to:`) — Drill-down = vorhandene
-  Filtermaschine, kein neuer Mechanismus.
+  `q`-Filter setzt (`subject:`-Präfix **oder** `subject:A..B`-Range, plus
+  `from:`/`to:`) — Drill-down = vorhandene Filtermaschine, kein neuer Mechanismus.
 - **Stufe 2 — Punkte (heute).** Sobald die Auswahl ins Budget passt: die
   bestehende SVG-Dotted-Chart mit Hover-Card, Klick-Detail, Pan/Zoom
   (`dotted.js`, `ZMIN..ZMAX`), Live-Stream und Replay. **Unverändert.**
@@ -109,12 +111,16 @@ die Automatik zu überstimmen.
 
 ## 5. Schwellen und Budget
 
-- **Zeilen-Budget:** `dMaxRows` (heute 70) bleibt die Grenze, ab der die
+- **Zeilen-Budget:** `dMaxRows` (Default 70) ist die Grenze, ab der die
   Zeilen-Achse gruppiert wird — aus einem Deckel wird ein Umschaltpunkt.
-- **Punkt-Budget:** ein Ziel-Maximum gezeichneter Dots (Größenordnung ~6 000),
-  ab dem auf Dichte umgeschaltet wird, auch wenn die Zeilen passen.
-- Beide Schwellen sind Konstanten neben den bestehenden Layout-Konstanten in
-  `space.go`; bei Bedarf später konfigurierbar.
+- **Punkt-Budget:** `dMaxDots` (Default 6 000) — mehr gezeichnete Dots schalten
+  auf Dichte, auch wenn die Zeilen passen.
+- **Spalten:** `dCols` (Default 120) — die Zeit-Buckets des Dichte-Rasters.
+- Alle drei sind über Umgebungsvariablen überschreibbar
+  (`WORKBENCH_SPACE_MAX_ROWS`/`_MAX_DOTS`/`_COLS`, Default `0` = eingebauter
+  Wert), gelesen in `config.Load`, angewandt über `Server.spaceMaxRows`/
+  `spaceMaxDots`/`spaceCols`. Das folgt der `WORKBENCH_EVENT_CAP`-Philosophie
+  (opt-in statt Pflichtwert).
 
 ---
 
@@ -151,7 +157,8 @@ Nicht alles auf einmal. Größter Hebel zuerst:
    einem `[From,To]`-Range — der Band-Klick verengt damit auch in *flachen*
    Namensräumen exakt, nicht nur über die Zeit-Achse. Variantenbänder bleiben
    verstreut und drillen weiterhin nur die Zeit.
-4. **Offen — konfigurierbare Schwellen** (`dMaxRows`/`dMaxDots`/`dCols`).
+4. **Erledigt — konfigurierbare Schwellen.** `dMaxRows`/`dMaxDots`/`dCols` sind
+   Defaults; je eine `WORKBENCH_SPACE_*`-Variable überschreibt sie (§5).
 
 Tests tabellengetrieben, nur Standardbibliothek; die Aggregation ist reine
 Go-Funktion (wie `BuildDotted`) und damit direkt testbar.

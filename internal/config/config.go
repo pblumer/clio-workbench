@@ -30,6 +30,14 @@ type Config struct {
 	// WORKBENCH_EVENT_CAP (or a per-environment limit) opts into a read limit
 	// to protect against over-reads on very large stores.
 	EventCap int
+	// SpaceMaxRows, SpaceMaxDots and SpaceCols tune the Event Space's
+	// level-of-detail switch (docs/SPACE-LOD.md): the subject-row budget, the
+	// charted-event budget beyond which the view aggregates into a density grid,
+	// and that grid's time-column count. Each defaults to 0 — the built-in value
+	// is used; a positive override opts into a different budget.
+	SpaceMaxRows int
+	SpaceMaxDots int
+	SpaceCols    int
 }
 
 // Defaults mirror docs/WORKBENCH.md §3.3.
@@ -53,6 +61,10 @@ func Load() Config {
 		ClioToken: os.Getenv("CLIO_API_TOKEN"),
 		Servers:   serverList(os.Getenv("WORKBENCH_SERVERS")),
 		EventCap:  intEnvOr("WORKBENCH_EVENT_CAP", defaultEventCap),
+		// 0 → the Event Space uses its built-in level-of-detail budgets.
+		SpaceMaxRows: intEnvOr("WORKBENCH_SPACE_MAX_ROWS", 0),
+		SpaceMaxDots: intEnvOr("WORKBENCH_SPACE_MAX_DOTS", 0),
+		SpaceCols:    intEnvOr("WORKBENCH_SPACE_COLS", 0),
 	}
 }
 

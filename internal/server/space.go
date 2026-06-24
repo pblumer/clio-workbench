@@ -49,10 +49,35 @@ const (
 // Level-of-detail switch (docs/SPACE-LOD.md): beyond either budget the Event
 // Space draws an aggregated density grid instead of one dot per event, so the
 // whole population stays visible rather than being capped to the busiest rows.
+// These are the built-in defaults; each is overridable via a positive
+// WORKBENCH_SPACE_* env var (see spaceMaxRows/spaceMaxDots/spaceCols).
 const (
 	dMaxDots = 6000 // point budget — more charted events than this flips to density
 	dCols    = 120  // density grid: number of time columns
 )
+
+// spaceMaxRows/spaceMaxDots/spaceCols return the configured level-of-detail
+// budgets, falling back to the built-in defaults when unset (config value 0).
+func (s *Server) spaceMaxRows() int {
+	if s.cfg.SpaceMaxRows > 0 {
+		return s.cfg.SpaceMaxRows
+	}
+	return dMaxRows
+}
+
+func (s *Server) spaceMaxDots() int {
+	if s.cfg.SpaceMaxDots > 0 {
+		return s.cfg.SpaceMaxDots
+	}
+	return dMaxDots
+}
+
+func (s *Server) spaceCols() int {
+	if s.cfg.SpaceCols > 0 {
+		return s.cfg.SpaceCols
+	}
+	return dCols
+}
 
 type dotPoint struct {
 	X, Y    float64
@@ -234,9 +259,10 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	// Pick the level of detail (docs/SPACE-LOD.md): one dot per event while it
 	// stays within budget, an aggregated density grid beyond it. ?mode= overrides
 	// the automatic choice so the user can force either view.
+	maxRows := s.spaceMaxRows()
 	mode := r.URL.Query().Get("mode")
 	dense := mode == "density" ||
-		(mode != "dots" && (distinctSubjects(events) > dMaxRows || len(events) > dMaxDots))
+		(mode != "dots" && (distinctSubjects(events) > maxRows || len(events) > s.spaceMaxDots()))
 	var v dottedView
 	if dense {
 		// Two roll-up strategies: contiguous subject bands (default) or grouping
@@ -244,14 +270,14 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 		group := r.URL.Query().Get("group")
 		var bands []process.Band
 		if group == "variant" {
-			bands = process.VariantBands(in, dMaxRows)
+			bands = process.VariantBands(in, maxRows)
 		} else {
-			bands = process.SubjectBands(in, dMaxRows)
+			bands = process.SubjectBands(in, maxRows)
 		}
-		v = buildDensityView(process.BuildDensity(in, bands, dCols))
+		v = buildDensityView(process.BuildDensity(in, bands, s.spaceCols()))
 		v.Group = group
 	} else {
-		v = buildDottedView(process.BuildDotted(in, dMaxRows))
+		v = buildDottedView(process.BuildDotted(in, maxRows))
 	}
 	v.Truncated = truncated
 	v.Cap = sc.Limit
