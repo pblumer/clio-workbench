@@ -1,0 +1,83 @@
+{
+  "id": "identity-lifecycle",
+  "name": "Identity Account Lifecycle",
+  "kind": "entity",
+  "namespace": "identity",
+  "subjectStyle": "/employees/{id}",
+  "nodes": [
+    {"id": "candidate",    "label": "Kandidat",          "start": true, "x": 150, "y": 100},
+    {"id": "active",       "label": "Aktiv",             "x": 350, "y": 100},
+    {"id": "has-primary",  "label": "Primary vorhanden", "x": 550, "y": 100},
+    {"id": "has-secondary","label": "Secondary",         "x": 750, "y": 50},
+    {"id": "has-admin",    "label": "Admin",             "x": 750, "y": 150},
+    {"id": "has-test",     "label": "Test Account",      "x": 750, "y": 250},
+    {"id": "archived",     "label": "Archiviert",        "end": true, "x": 950, "y": 100}
+  ],
+  "edges": [
+    {"id": "e1", "type": "employee.created",           "from": "candidate",   "to": "active",        "preconditions": ["Mitarbeiter muss intern oder extern klassifiziert werden"]},
+    {"id": "e2", "type": "primary-account.assigned",  "from": "active",      "to": "has-primary",   "preconditions": ["Mindestens ein Primary Account pro Employee"]},
+    {"id": "e3", "type": "secondary-account.linked",   "from": "has-primary","to": "has-secondary", "preconditions": ["Secondary braucht validen Primary Owner"]},
+    {"id": "e4", "type": "admin-account.assigned",     "from": "has-primary","to": "has-admin",     "preconditions": ["Nur nach Primary Account möglich"]},
+    {"id": "e5", "type": "test-account.assigned",      "from": "has-primary","to": "has-test",      "preconditions": ["Test Accounts optional, nur nach Primary"]},
+    {"id": "e6", "type": "employee.offboarded",        "from": "has-primary","to": "archived"},
+    {"id": "e7", "type": "employee.offboarded",        "from": "has-secondary","to": "archived"},
+    {"id": "e8", "type": "employee.offboarded",        "from": "has-admin",   "to": "archived"},
+    {"id": "e9", "type": "employee.offboarded",        "from": "has-test",    "to": "archived"}
+  ],
+  "steps": [
+    {
+      "id": "s1", "kind": "event", "name": "employee.created",
+      "phase": "active",
+      "fields": [
+        {"id": "f1", "name": "firstName",  "type": "string",  "required": true},
+        {"id": "f2", "name": "lastName",   "type": "string",  "required": true},
+        {"id": "f3", "name": "department", "type": "string",  "required": true, "enum": ["Engineering", "HR", "Sales", "Finance", "Operations"]},
+        {"id": "f4", "name": "type",       "type": "string",  "required": true, "enum": ["internal", "external"]}
+      ]
+    },
+    {
+      "id": "s2", "kind": "event", "name": "primary-account.assigned",
+      "phase": "active",
+      "fields": [
+        {"id": "f5", "name": "primaryAccountId", "type": "string", "required": true, "format": "uuid"},
+        {"id": "f6", "name": "username",         "type": "string", "required": true},
+        {"id": "f7", "name": "status",           "type": "string", "required": true, "enum": ["active", "inactive", "locked"]}
+      ]
+    },
+    {
+      "id": "s3", "kind": "event", "name": "secondary-account.linked",
+      "phase": "active",
+      "fields": [
+        {"id": "f8",  "name": "secondaryAccountId", "type": "string", "required": true, "format": "uuid"},
+        {"id": "f9",  "name": "ownerPrimaryAccountId","type": "string", "required": true, "format": "uuid"},
+        {"id": "f10", "name": "purpose",              "type": "string", "required": true, "enum": ["shared-inbox", "support", "automation", "backup"]}
+      ]
+    },
+    {
+      "id": "s4", "kind": "event", "name": "admin-account.assigned",
+      "phase": "active",
+      "fields": [
+        {"id": "f11", "name": "adminAccountId", "type": "string", "required": true, "format": "uuid"},
+        {"id": "f12", "name": "level",          "type": "string", "required": true, "enum": ["super", "regional", "support"]}
+      ]
+    },
+    {
+      "id": "s5", "kind": "event", "name": "test-account.assigned",
+      "phase": "info",
+      "fields": [
+        {"id": "f13", "name": "testAccountId", "type": "string", "required": true, "format": "uuid"},
+        {"id": "f14", "name": "scope",         "type": "string", "required": true, "enum": ["integration", "e2e", "performance", "manual"]},
+        {"id": "f15", "name": "expiryDate",    "type": "datetime", "required": true}
+      ]
+    },
+    {
+      "id": "s6", "kind": "event", "name": "employee.offboarded",
+      "phase": "complete",
+      "fields": [
+        {"id": "f16", "name": "reason", "type": "string", "required": true}
+      ]
+    }
+  ],
+  "createdAt": "2025-06-24T12:00:00Z",
+  "updatedAt": "2025-06-24T12:00:00Z"
+}
