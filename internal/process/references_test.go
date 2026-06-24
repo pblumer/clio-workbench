@@ -5,6 +5,32 @@ import (
 	"testing"
 )
 
+func TestReferenceCollection(t *testing.T) {
+	cases := []struct {
+		field string
+		want  string
+		ok    bool
+	}{
+		{"employeeId", "employees", true},
+		{"customerID", "customers", true},
+		{"tagIds", "tags", true},
+		{"productRef", "products", true},
+		{"managerRefs", "managers", true},
+		{"orderId", "orders", true},
+		{"id", "", false},   // the entity's own id is never a reference
+		{"ID", "", false},   // case-insensitive
+		{"name", "", false}, // no fk-like suffix
+		{"", "", false},
+	}
+	for _, c := range cases {
+		got, ok := ReferenceCollection(c.field)
+		if ok != c.ok || got != c.want {
+			t.Errorf("ReferenceCollection(%q) = (%q, %v), want (%q, %v)",
+				c.field, got, ok, c.want, c.ok)
+		}
+	}
+}
+
 func refEdge(g RefGraph, from, to string) *RefEdge {
 	for i := range g.Edges {
 		if g.Edges[i].From == from && g.Edges[i].To == to {

@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"html/template"
 	"net/http"
 	"strings"
 
 	"github.com/pblumer/clio-workbench/internal/clio"
+	"github.com/pblumer/clio-workbench/internal/process"
 )
 
 const nodeEventsCap = 300
@@ -18,7 +20,7 @@ type nodeEventItem struct {
 	Type    string // set in subject mode (the event's type); empty in type mode
 	Source  string
 	Time    string
-	Data    string // pretty-printed JSON ("—" when absent)
+	Data    template.HTML // pretty-printed JSON ("—" when absent); FK values linked
 }
 
 type nodeEventsView struct {
@@ -86,10 +88,16 @@ func (s *Server) handleNodeEvents(w http.ResponseWriter, r *http.Request) {
 	s.render(w, "nodeevents.html", v)
 }
 
-// prettyJSON indents a raw JSON payload for display, decoding \uXXXX escapes to
-// real characters (so "Müller" shows as "Müller") while preserving field
-// order. Empty/null becomes "—"; invalid JSON is shown as-is.
-func prettyJSON(raw json.RawMessage) string {
+// prettyJSON indents a raw JSON payload into safe HTML for display, decoding
+// \uXXXX escapes to real characters (so "Müller" shows as "Müller") while
+// preserving field order. Foreign-key-like string fields (employeeId, tagIds, …)
+// are wrapped in an <a class="ev-ref"> carrying the referenced subject, so the
+// browser can jump to that subject's events (see web/static/js/evref.js). Empty/
+// null becomes "—"; JSON that fails to stream is shown escaped, as-is.
+//
+// All text is HTML-escaped here because the result is rendered unescaped
+// (template.HTML); event payloads are untrusted input.
+func prettyJSON(raw json.RawMessage) template.HTML {
 	t := strings.TrimSpace(string(raw))
 	if t == "" || t == "null" {
 		return "—"
@@ -97,17 +105,21 @@ func prettyJSON(raw json.RawMessage) string {
 	dec := json.NewDecoder(strings.NewReader(t))
 	dec.UseNumber()
 	var b strings.Builder
-	if err := writeJSONValue(&b, dec, 0); err != nil {
-		var buf bytes.Buffer
-		if json.Indent(&buf, raw, "", "  ") == nil {
-			return buf.String()
-		}
-		return t
+	if err := writeJSONValue(&b, dec, 0, ""); err != nil {
+		return template.HTML(escText(t))
 	}
-	return b.String()
+	return template.HTML(b.String())
 }
 
 func jsonIndent(depth int) string { return strings.Repeat("  ", depth) }
+
+// jsonTextEscaper escapes the trio that matters inside element text (&, <, >),
+// leaving quotes literal so a payload without those characters renders
+// byte-for-byte like the underlying JSON. Attribute values use the stricter
+// template.HTMLEscapeString instead.
+var jsonTextEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
+
+func escText(s string) string { return jsonTextEscaper.Replace(s) }
 
 // encString re-encodes a Go string as JSON without HTML escaping and without
 // \uXXXX escaping of printable runes — so umlauts etc. render literally.
@@ -119,7 +131,10 @@ func encString(s string) string {
 	return strings.TrimRight(bb.String(), "\n")
 }
 
-func writeJSONValue(b *strings.Builder, dec *json.Decoder, depth int) error {
+// writeJSONValue renders one JSON value as HTML. key is the field name this
+// value sits under (empty at the top level or inside arrays); a string value
+// under a foreign-key-like key is linked to its referenced subject.
+func writeJSONValue(b *strings.Builder, dec *json.Decoder, depth int, key string) error {
 	tok, err := dec.Token()
 	if err != nil {
 		return err
@@ -133,7 +148,7 @@ func writeJSONValue(b *strings.Builder, dec *json.Decoder, depth int) error {
 			return writeJSONArray(b, dec, depth)
 		}
 	case string:
-		b.WriteString(encString(v))
+		writeJSONString(b, key, v)
 	case json.Number:
 		b.WriteString(v.String())
 	case bool:
@@ -146,6 +161,23 @@ func writeJSONValue(b *strings.Builder, dec *json.Decoder, depth int) error {
 		b.WriteString("null")
 	}
 	return nil
+}
+
+// writeJSONString writes a JSON string value, HTML-escaped. When key looks like
+// a foreign-key reference, the value is wrapped in a clickable <a class="ev-ref">
+// carrying the subject "/<collection>/<value>".
+func writeJSONString(b *strings.Builder, key, v string) {
+	enc := escText(encString(v)) // JSON-quoted, then HTML-safe
+	coll, ok := process.ReferenceCollection(key)
+	if !ok || v == "" {
+		b.WriteString(enc)
+		return
+	}
+	b.WriteString(`<a class="ev-ref" tabindex="0" data-subject="`)
+	b.WriteString(template.HTMLEscapeString("/" + coll + "/" + v))
+	b.WriteString(`">`)
+	b.WriteString(enc)
+	b.WriteString("</a>")
 }
 
 func writeJSONObject(b *strings.Builder, dec *json.Decoder, depth int) error {
@@ -162,9 +194,10 @@ func writeJSONObject(b *strings.Builder, dec *json.Decoder, depth int) error {
 		first = false
 		b.WriteString("\n")
 		b.WriteString(jsonIndent(depth + 1))
-		b.WriteString(encString(keyTok.(string)))
+		key := keyTok.(string)
+		b.WriteString(escText(encString(key)))
 		b.WriteString(": ")
-		if err := writeJSONValue(b, dec, depth+1); err != nil {
+		if err := writeJSONValue(b, dec, depth+1, key); err != nil {
 			return err
 		}
 	}
@@ -189,7 +222,7 @@ func writeJSONArray(b *strings.Builder, dec *json.Decoder, depth int) error {
 		first = false
 		b.WriteString("\n")
 		b.WriteString(jsonIndent(depth + 1))
-		if err := writeJSONValue(b, dec, depth+1); err != nil {
+		if err := writeJSONValue(b, dec, depth+1, ""); err != nil {
 			return err
 		}
 	}
