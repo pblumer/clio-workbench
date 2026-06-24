@@ -1,0 +1,249 @@
+{
+  "id": "identity-lifecycle-tests",
+  "name": "Identity Account Lifecycle – Demo-Testsuite",
+  "draftId": "identity-lifecycle",
+  "draftRev": "85f5795e01bc",
+  "createdAt": "2025-06-24T14:00:00Z",
+  "updatedAt": "2025-06-24T14:00:00Z",
+  "cases": [
+    {
+      "id": "happy-internal-full",
+      "name": "Full Hire – Intern mit Primary, Secondary, Admin und Test",
+      "seed": 101,
+      "steps": [
+        {
+          "type": "employee.created",
+          "subject": "/employees/E-2026-001",
+          "data": {
+            "firstName": "Max",
+            "lastName": "Muster",
+            "department": "Engineering",
+            "type": "internal"
+          }
+        },
+        {
+          "type": "primary-account.assigned",
+          "data": {
+            "primaryAccountId": "PUA-2026-001",
+            "username": "mmuster",
+            "status": "active"
+          }
+        },
+        {
+          "type": "secondary-account.linked",
+          "data": {
+            "secondaryAccountId": "SUA-2026-001",
+            "ownerPrimaryAccountId": "PUA-2026-001",
+            "purpose": "shared-inbox"
+          }
+        },
+        {
+          "type": "admin-account.assigned",
+          "data": {
+            "adminAccountId": "ADM-2026-001",
+            "level": "super"
+          }
+        },
+        {
+          "type": "test-account.assigned",
+          "data": {
+            "testAccountId": "TST-2026-001",
+            "scope": "integration",
+            "expiryDate": "2026-12-31T00:00:00Z"
+          }
+        },
+        {
+          "type": "employee.offboarded",
+          "data": {
+            "reason": "Befoerderung in anderes Unternehmen"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "accept",
+        "endState": "archived"
+      }
+    },
+    {
+      "id": "happy-external-minimal",
+      "name": "Minimal – External mit nur Primary",
+      "seed": 102,
+      "steps": [
+        {
+          "type": "employee.created",
+          "subject": "/employees/E-2026-002",
+          "data": {
+            "firstName": "Erika",
+            "lastName": "Mustermann",
+            "department": "HR",
+            "type": "external"
+          }
+        },
+        {
+          "type": "primary-account.assigned",
+          "data": {
+            "primaryAccountId": "PUA-2026-002",
+            "username": "emustermann",
+            "status": "active"
+          }
+        },
+        {
+          "type": "employee.offboarded",
+          "data": {
+            "reason": "Projektende"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "accept",
+        "endState": "archived"
+      }
+    },
+    {
+      "id": "external-secondary-only",
+      "name": "External mit Primary und Secondary",
+      "seed": 103,
+      "steps": [
+        {
+          "type": "employee.created",
+          "subject": "/employees/E-2026-003",
+          "data": {
+            "firstName": "Hans",
+            "lastName": "Beispiel",
+            "department": "Sales",
+            "type": "external"
+          }
+        },
+        {
+          "type": "primary-account.assigned",
+          "data": {
+            "primaryAccountId": "PUA-2026-003",
+            "username": "hbeispiel",
+            "status": "active"
+          }
+        },
+        {
+          "type": "secondary-account.linked",
+          "data": {
+            "secondaryAccountId": "SUA-2026-002",
+            "ownerPrimaryAccountId": "PUA-2026-003",
+            "purpose": "support"
+          }
+        },
+        {
+          "type": "employee.offboarded",
+          "data": {
+            "reason": "Vertragsverletzung"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "accept",
+        "endState": "archived"
+      }
+    },
+    {
+      "id": "reject-secondary-ohne-primary",
+      "name": "Verletzung – Secondary ohne Primary",
+      "seed": 201,
+      "steps": [
+        {
+          "type": "employee.created",
+          "subject": "/employees/E-2026-004",
+          "data": {
+            "firstName": "Sneaky",
+            "lastName": "Hacker",
+            "department": "Operations",
+            "type": "internal"
+          }
+        },
+        {
+          "type": "secondary-account.linked",
+          "data": {
+            "secondaryAccountId": "SUA-2026-999",
+            "ownerPrimaryAccountId": "PUA-2026-999",
+            "purpose": "automation"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "reject"
+      }
+    },
+    {
+      "id": "reject-admin-ohne-primary",
+      "name": "Verletzung – Admin ohne Primary",
+      "seed": 202,
+      "steps": [
+        {
+          "type": "employee.created",
+          "subject": "/employees/E-2026-005",
+          "data": {
+            "firstName": "Rogue",
+            "lastName": "Admin",
+            "department": "Finance",
+            "type": "internal"
+          }
+        },
+        {
+          "type": "admin-account.assigned",
+          "data": {
+            "adminAccountId": "ADM-2026-999",
+            "level": "regional"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "reject"
+      }
+    },
+    {
+      "id": "reject-test-ohne-primary",
+      "name": "Verletzung – Test Account ohne Primary",
+      "seed": 203,
+      "steps": [
+        {
+          "type": "employee.created",
+          "subject": "/employees/E-2026-006",
+          "data": {
+            "firstName": "Bob",
+            "lastName": "Tester",
+            "department": "Engineering",
+            "type": "external"
+          }
+        },
+        {
+          "type": "test-account.assigned",
+          "data": {
+            "testAccountId": "TST-2026-999",
+            "scope": "e2e",
+            "expiryDate": "2026-11-01T00:00:00Z"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "reject"
+      }
+    },
+    {
+      "id": "reject-unclassified-type",
+      "name": "Payload-Fehler – ungueltiger Employee-Typ",
+      "seed": 204,
+      "steps": [
+        {
+          "type": "employee.created",
+          "subject": "/employees/E-2026-007",
+          "data": {
+            "firstName": "Otto",
+            "lastName": "Normal",
+            "department": "Engineering",
+            "type": "consultant"
+          }
+        }
+      ],
+      "expect": {
+        "outcome": "reject"
+      }
+    }
+  ]
+}
