@@ -666,12 +666,6 @@ html, body {
   0%   { r: 3;  opacity: 0.9;  stroke-width: 2.4; }
   100% { r: 24; opacity: 0;    stroke-width: 0.3; }
 }
-/* the whole subject row lights up briefly, so a hit is visible far from focus */
-.dot-rowflash { pointer-events: none; animation: dot-rowflash 0.7s ease-out 1 forwards; }
-@keyframes dot-rowflash {
-  0%   { opacity: 0.22; }
-  100% { opacity: 0; }
-}
 /* a "now" beacon flares at the live insertion edge on every arrival */
 .dot-beacon { stroke: var(--neon); stroke-width: 1.4; pointer-events: none; animation: dot-beacon 0.6s ease-out 1 forwards; }
 @keyframes dot-beacon {
@@ -679,7 +673,7 @@ html, body {
   100% { opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .dot-live, .dot-ripple, .dot-rowflash, .dot-beacon { animation-duration: 0.01ms !important; }
+  .dot-live, .dot-ripple, .dot-beacon { animation-duration: 0.01ms !important; }
 }
 
 /* density overview — an aggregated heat-grid for huge scopes (docs/SPACE-LOD.md).
