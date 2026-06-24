@@ -795,6 +795,10 @@ html, body {
 .lg-toggle.off { opacity: 0.38; }
 .lg-toggle.off:hover { opacity: 0.85; }
 
+/* bulk "all / none" toggles: one click to chart every type or clear them */
+.lg-bulk { display: inline-flex; align-items: center; gap: 4px; }
+.lg-bulk-btn { border-color: var(--neon-dim); text-transform: uppercase; }
+
 /* rich hover card — event metadata + payload */
 .dot-card {
   position: absolute;

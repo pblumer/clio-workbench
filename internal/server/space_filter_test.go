@@ -105,6 +105,63 @@ func TestSpaceFilterToggleAndString(t *testing.T) {
 	}
 }
 
+// The "show none" selection (type:-) is an explicit empty whitelist: it parses
+// back, rejects every event, and round-trips through String().
+func TestSpaceFilterShowNone(t *testing.T) {
+	f := parseSpaceFilter("type:-")
+	if !f.showsNoTypes() {
+		t.Fatalf("type:- should be an explicit show-none selection")
+	}
+	if f.empty() {
+		t.Errorf("show-none is a real constraint, not empty")
+	}
+	if !f.typeSelectionActive() {
+		t.Errorf("show-none should count as an active type selection")
+	}
+	if f.match(eventKey{Subject: "/orders/1", Type: "created", ID: "001"}) {
+		t.Errorf("show-none must reject every event")
+	}
+	if got := f.String(); got != "type:-" {
+		t.Errorf("String() = %q, want type:-", got)
+	}
+
+	// A concrete pin wins over a contradictory show-none token.
+	mixed := parseSpaceFilter("type:- type:created")
+	if mixed.showsNoTypes() {
+		t.Errorf("a pinned type should override show-none")
+	}
+	if !mixed.match(eventKey{Type: "created"}) {
+		t.Errorf("the pinned type should still match")
+	}
+}
+
+// The legend's bulk buttons clear or empty the type whitelist while leaving the
+// other filter dimensions in place.
+func TestSpaceFilterBulkTypes(t *testing.T) {
+	f := parseSpaceFilter("subject:/orders type:created foo")
+
+	all := f.withAllTypes()
+	if all.typeSelectionActive() {
+		t.Errorf("withAllTypes should drop the type selection")
+	}
+	if got := all.String(); got != "subject:/orders foo" {
+		t.Errorf("withAllTypes String() = %q", got)
+	}
+
+	none := f.withNoTypes()
+	if !none.showsNoTypes() {
+		t.Errorf("withNoTypes should select the empty set")
+	}
+	if got := none.String(); got != "subject:/orders type:- foo" {
+		t.Errorf("withNoTypes String() = %q", got)
+	}
+
+	// The receiver is untouched by either copy.
+	if !f.hasType("created") || f.noTypes {
+		t.Errorf("bulk helpers mutated the receiver: %+v", f)
+	}
+}
+
 func TestBuildTypeChips(t *testing.T) {
 	events := []clio.Event{
 		{ID: "1", Subject: "/o/1", Type: "created"},
@@ -160,6 +217,41 @@ func TestHandleSpaceFilteredByType(t *testing.T) {
 	}
 	if strings.Contains(body, "/orders/1") {
 		t.Errorf("orders rows should be filtered out")
+	}
+}
+
+// The legend offers one-click "all" and "none" buttons; "none" (type:-) charts
+// nothing yet keeps the chips so types can be clicked back on.
+func TestHandleSpaceBulkTypeToggles(t *testing.T) {
+	s := newTestServer(t, defaultCfg())
+	f := newFakeClio(t)
+	f.ndjson = fakeEventsBody() // created, shipped, created, login
+	f.connect(s)
+
+	// Unfiltered: both bulk buttons render, "all" marked active.
+	body := s.do(http.MethodGet, "/space", nil).Body.String()
+	if !strings.Contains(body, "lg-bulk-btn") {
+		t.Fatalf("expected the all/none bulk buttons, got:\n%s", body)
+	}
+	if !strings.Contains(body, `"q":"type:-"`) {
+		t.Errorf("the none button should apply the type:- selection")
+	}
+
+	// type:- charts nothing but keeps the chips visible for recovery.
+	rec := s.do(http.MethodGet, "/space?q=type:-", nil)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	none := rec.Body.String()
+	if !strings.Contains(none, "No events match this filter") {
+		t.Errorf("show-none should yield the empty-chart note, got:\n%s", none)
+	}
+	if !strings.Contains(none, "lg-toggle") {
+		t.Errorf("type chips should remain so types can be clicked back on")
+	}
+	// The "none" bulk button is now the active selection.
+	if !strings.Contains(none, "lg-bulk-btn on") {
+		t.Errorf("the none button should render active under a show-none filter")
 	}
 }
 
