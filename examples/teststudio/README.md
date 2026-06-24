@@ -15,6 +15,10 @@ Studio data model. It contains:
 - **exercises/** — ready-to-run practice artifacts for the learning path:
   per-event-type payload sets and a runnable exercise suite with the lesson
   solutions. See [`exercises/README.md`](exercises/README.md).
+- **draft-employee-identity.json** / **suite-employee-identity-tests.json** — a
+  focused demo of **per-subject cardinality** (`once` vs `many`): why firing
+  `…new.v2` twice on one subject is a deviation, while a sensor-style event may
+  recur. See [`README-cardinality.md`](README-cardinality.md).
 
 New here? Follow the learning path ([German](LEARNING-PATH.md) ·
 [English](LEARNING-PATH.en.md)) — it takes you from a single payload check all
@@ -114,6 +118,11 @@ Test-Studio-Datenmodells. Es enthält:
 - **exercises/** — lauffähige Übungs-Artefakte zum Lernpfad: Payload-Sätze je
   Event-Typ und eine importierbare Übungs-Suite mit den Lektions-Lösungen. Siehe
   [`exercises/README.md`](exercises/README.md).
+- **draft-employee-identity.json** / **suite-employee-identity-tests.json** — eine
+  fokussierte Demo der **Kardinalität pro Subject** (`once` vs. `many`): warum ein
+  zweimaliges `…new.v2` auf demselben Subject eine Abweichung ist, ein
+  fühler-artiges Event aber wiederkehren darf. Siehe
+  [`README-cardinality.md`](README-cardinality.md).
 
 Neu hier? Folge dem Lernpfad ([Deutsch](LEARNING-PATH.md) ·
 [English](LEARNING-PATH.en.md)) — er führt dich vom Prüfen einer einzelnen

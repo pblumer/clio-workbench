@@ -4,7 +4,9 @@
 //
 //   - Transition / sequence validation (§6.2): walk a sequence of event types
 //     through the draft graph (start nodes, edges as event types, terminal
-//     nodes) and report the first deviation.
+//     nodes) and report the first deviation. Per-subject cardinality (§6.3) is
+//     enforced here too: an edge marked model.CardinalityOnce may be taken at
+//     most once per walk, even where the topology would otherwise permit it.
 //   - Payload validation (§6.1): check an event's data payload against the
 //     authored fields (model.Field) — required, type, enum and light format.
 //
@@ -40,8 +42,9 @@ type Machine struct {
 }
 
 type edge struct {
-	typ string
-	to  string
+	typ  string
+	to   string
+	card model.Cardinality
 }
 
 // NewMachine builds the transition machine from a draft's graph (nodes + edges).
@@ -68,7 +71,7 @@ func NewMachine(d model.Draft) *Machine {
 		}
 	}
 	for _, e := range d.Edges {
-		m.out[e.From] = append(m.out[e.From], edge{typ: e.Type, to: e.To})
+		m.out[e.From] = append(m.out[e.From], edge{typ: e.Type, to: e.To, card: e.Cardinality})
 	}
 	return m
 }
@@ -122,8 +125,9 @@ func (m *Machine) CheckSequence(types []string) SeqOutcome {
 func (m *Machine) walk(start string, types []string) SeqOutcome {
 	cur := start
 	path := []string{cur}
+	seenOnce := map[string]bool{} // event types already taken via a "once" edge
 	for i, t := range types {
-		next, ok := m.step(cur, t)
+		e, ok := m.step(cur, t)
 		if !ok {
 			return SeqOutcome{
 				Path:   path,
@@ -131,7 +135,17 @@ func (m *Machine) walk(start string, types []string) SeqOutcome {
 				Reason: fmt.Sprintf("no transition from state %q via event type %q", m.labels[cur], t),
 			}
 		}
-		cur = next
+		if e.card == model.CardinalityOnce {
+			if seenOnce[e.typ] {
+				return SeqOutcome{
+					Path:   path,
+					FailIx: i,
+					Reason: fmt.Sprintf("event type %q may occur at most once per subject", t),
+				}
+			}
+			seenOnce[e.typ] = true
+		}
+		cur = e.to
 		path = append(path, cur)
 	}
 	if len(m.end) > 0 && !m.end[cur] {
@@ -144,14 +158,14 @@ func (m *Machine) walk(start string, types []string) SeqOutcome {
 	return SeqOutcome{OK: true, Path: path, FailIx: -1}
 }
 
-// step returns the target of the first outgoing edge of typ from node.
-func (m *Machine) step(node, typ string) (string, bool) {
+// step returns the first outgoing edge of typ from node.
+func (m *Machine) step(node, typ string) (edge, bool) {
 	for _, e := range m.out[node] {
 		if e.typ == typ {
-			return e.to, true
+			return e, true
 		}
 	}
-	return "", false
+	return edge{}, false
 }
 
 // FieldError is one payload validation failure, located at a field.

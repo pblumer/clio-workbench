@@ -214,7 +214,7 @@ Das Fundament. Reines Go, **keine** externe Abhängigkeit.
 
 ## Querschnitt / später
 
-- **Invarianten / CEL** (`TESTSTUDIO.md` §6.3, offene Frage §12.2): erst nach
+- **Invarianten / CEL** (`TESTSTUDIO.md` §6.4, offene Frage §12.2): erst nach
   Klärung der Abhängigkeitsfrage; v1 bleibt bei Schema + Übergang.
 - **Akkumulierter Aggregatzustand** (offene Frage §12.3): nötig, sobald
   Invarianten über *Werte* prüfen sollen.

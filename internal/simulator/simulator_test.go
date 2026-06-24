@@ -78,6 +78,53 @@ func TestGeneratedStreamsAreValid(t *testing.T) {
 	}
 }
 
+// A "once" self-loop must be emitted at most once per stream even when its
+// weight dominates — and every resulting stream must still be a valid walk.
+func TestGenerateRespectsCardinality(t *testing.T) {
+	d := model.Draft{
+		Nodes: []model.Node{
+			{ID: "none", Start: true},
+			{ID: "active"},
+			{ID: "closed", End: true},
+		},
+		Edges: []model.Edge{
+			{ID: "e1", Type: "new.v2", From: "none", To: "active", Cardinality: model.CardinalityOnce},
+			{ID: "e2", Type: "verified", From: "active", To: "active", Cardinality: model.CardinalityOnce}, // self-loop
+			{ID: "e3", Type: "done", From: "active", To: "closed", Cardinality: model.CardinalityMany},
+		},
+	}
+	m := validate.NewMachine(d)
+	// Bias hard toward the once self-loop so a naive walk would repeat it.
+	streams, err := GenerateN(d, 40, Options{Seed: 5, Weights: map[string]int{"e2": 50, "e3": 1}})
+	if err != nil {
+		t.Fatalf("generateN: %v", err)
+	}
+	sawVerified := false
+	for i, s := range streams {
+		if !s.Complete {
+			t.Fatalf("stream %d did not complete: %+v", i, s)
+		}
+		counts := map[string]int{}
+		types := make([]string, len(s.Events))
+		for j, e := range s.Events {
+			counts[e.Type]++
+			types[j] = e.Type
+		}
+		if counts["new.v2"] > 1 || counts["verified"] > 1 {
+			t.Fatalf("stream %d emitted a once-type more than once: %+v", i, counts)
+		}
+		if counts["verified"] == 1 {
+			sawVerified = true
+		}
+		if out := m.CheckSequence(types); !out.OK {
+			t.Fatalf("stream %d invalid despite cardinality filter: %s (%v)", i, out.Reason, types)
+		}
+	}
+	if !sawVerified {
+		t.Fatalf("the once self-loop was never exercised — test is not meaningful")
+	}
+}
+
 func TestGenerateNoStart(t *testing.T) {
 	d := model.Draft{Nodes: []model.Node{{ID: "a"}}, Edges: []model.Edge{{ID: "e", Type: "t", From: "a", To: "a"}}}
 	if _, err := Generate(d, Options{}); err == nil {

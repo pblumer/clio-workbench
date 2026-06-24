@@ -283,6 +283,13 @@ func TestDraftRevAndDrift(t *testing.T) {
 		t.Fatalf("field change must move rev")
 	}
 
+	// Cardinality is outcome-relevant, so annotating an edge MUST move the rev.
+	d4 := sampleDraft()
+	d4.Edges[0].Cardinality = model.CardinalityOnce
+	if DraftRev(d4) == rev {
+		t.Fatalf("cardinality change must move rev")
+	}
+
 	// Drift: empty rev never drifts; matching rev doesn't; stale rev does.
 	if Drift(Suite{DraftRev: ""}, d) {
 		t.Fatalf("empty rev must not drift")
