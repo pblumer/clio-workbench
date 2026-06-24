@@ -101,7 +101,29 @@ type dottedView struct {
 	AfterID          string // newest id shown — the live stream resumes past it
 	Query            string // the raw space-filter expression (echoed into the input)
 	Filtered         bool   // a space filter is narrowing the charted events
-	TypeFilterOn     bool   // the filter pins one or more event types (chip selection)
+	TypeFilterOn     bool   // an explicit type selection is in force (chips render on/off)
+	TypeBulk         bool   // there is at least one togglable chip → show the all/none buttons
+	ShowAllQ         string // filter expression the "all" button applies (every type charted)
+	ShowNoneQ        string // filter expression the "none" button applies (no type charted)
+	AllActive        bool   // no type selection is active — every type already shown
+	NoneActive       bool   // the explicit "show none" selection is active
+}
+
+// setTypeControls fills in the legend's all/none bulk-toggle state from the
+// current filter. The two buttons sit beside the per-type chips and share their
+// query-driven mechanics: each carries the filter expression a click applies.
+func (v *dottedView) setTypeControls(f spaceFilter, chips []typeLegendItem) {
+	for _, c := range chips {
+		if c.Chip {
+			v.TypeBulk = true
+			break
+		}
+	}
+	v.ShowAllQ = f.withAllTypes().String()
+	v.ShowNoneQ = f.withNoTypes().String()
+	v.AllActive = !f.typeSelectionActive()
+	v.NoneActive = f.showsNoTypes()
+	v.TypeFilterOn = f.typeSelectionActive()
 }
 
 // handleSpace renders the "event space" as a dotted chart: one row per subject,
@@ -163,16 +185,17 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	// The filter matched nothing: keep the filter chrome on screen (so the user
 	// can adjust it) but show a note in place of the chart.
 	if len(events) == 0 {
-		s.render(w, "space.html", dottedView{
-			State:        "filtered-empty",
-			Cap:          sc.Limit,
-			Truncated:    truncated,
-			Frame:        frame,
-			Legend:       chips,
-			Query:        filter.String(),
-			Filtered:     true,
-			TypeFilterOn: len(filter.lens.Types) > 0,
-		})
+		v := dottedView{
+			State:     "filtered-empty",
+			Cap:       sc.Limit,
+			Truncated: truncated,
+			Frame:     frame,
+			Legend:    chips,
+			Query:     filter.String(),
+			Filtered:  true,
+		}
+		v.setTypeControls(filter, chips)
+		s.render(w, "space.html", v)
 		return
 	}
 
@@ -193,7 +216,7 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	v.Legend = chips
 	v.Query = filter.String()
 	v.Filtered = !filter.empty()
-	v.TypeFilterOn = len(filter.lens.Types) > 0
+	v.setTypeControls(filter, chips)
 	s.render(w, "space.html", v)
 }
 
@@ -210,7 +233,13 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 type spaceFilter struct {
 	lens    queryStage
 	needles []string // lower-cased substrings; an event must contain them all
+	noTypes bool     // an explicit "show no types" selection (empty whitelist on purpose)
 }
+
+// noTypeToken is the value of a `type:` token that means "no type is allowed" —
+// the serialised form of an explicit empty selection ("show none"). A bare dash
+// can never be a real Clio event type, so it round-trips without collisions.
+const noTypeToken = "-"
 
 // parseSpaceFilter reads a space-separated filter expression. Recognised keys
 // are subject/type(s)/from/to/source (with a few aliases); every other token is
@@ -231,7 +260,13 @@ func parseSpaceFilter(raw string) spaceFilter {
 		case "subject", "subj", "s":
 			f.lens.Subject = val
 		case "type", "types", "t":
-			f.lens.Types = append(f.lens.Types, splitTypes(val)...)
+			for _, ty := range splitTypes(val) {
+				if ty == noTypeToken {
+					f.noTypes = true
+					continue
+				}
+				f.lens.Types = append(f.lens.Types, ty)
+			}
 		case "from", "after", "lower", "min":
 			f.lens.LowerBound = val
 		case "to", "before", "upper", "max":
@@ -247,7 +282,21 @@ func parseSpaceFilter(raw string) spaceFilter {
 
 // empty reports whether the filter carries no constraint (a no-op).
 func (f spaceFilter) empty() bool {
-	return f.lens.empty() && len(f.needles) == 0
+	return f.lens.empty() && len(f.needles) == 0 && !f.noTypes
+}
+
+// showsNoTypes reports whether the filter is an explicit "show none" selection:
+// the empty whitelist was chosen on purpose, not left blank. A pinned type wins,
+// so a contradictory `type:- type:x` still shows x.
+func (f spaceFilter) showsNoTypes() bool {
+	return f.noTypes && len(f.lens.Types) == 0
+}
+
+// typeSelectionActive reports whether any explicit type selection is in force —
+// either a non-empty whitelist or the deliberate "show none". When true, chips
+// outside the selection render dimmed ("off").
+func (f spaceFilter) typeSelectionActive() bool {
+	return len(f.lens.Types) > 0 || f.noTypes
 }
 
 // hasType reports whether t is currently pinned by the filter.
@@ -276,15 +325,21 @@ func (f spaceFilter) matchNeedles(subject, typ string) bool {
 }
 
 // match reports whether an event survives the whole filter: the structured
-// lens (via the shared matcher) and the free-text needles.
+// lens (via the shared matcher) and the free-text needles. An explicit "show
+// none" selection rejects every event.
 func (f spaceFilter) match(k eventKey) bool {
+	if f.showsNoTypes() {
+		return false
+	}
 	return matchStage(k, f.lens) && f.matchNeedles(k.Subject, k.Type)
 }
 
 // withTypeToggled returns a copy of the filter with type t flipped in or out of
-// the pinned-type set — the effect of clicking a type chip.
+// the pinned-type set — the effect of clicking a type chip. Pinning a concrete
+// type leaves the "show none" mode behind.
 func (f spaceFilter) withTypeToggled(t string) spaceFilter {
 	nf := f
+	nf.noTypes = false
 	types := make([]string, 0, len(f.lens.Types)+1)
 	found := false
 	for _, x := range f.lens.Types {
@@ -301,12 +356,35 @@ func (f spaceFilter) withTypeToggled(t string) spaceFilter {
 	return nf
 }
 
+// withAllTypes returns a copy with the whole type selection dropped, so every
+// type is charted again — the effect of the legend's "all" button. Other filter
+// dimensions (subject, needles, bounds, source) are left untouched.
+func (f spaceFilter) withAllTypes() spaceFilter {
+	nf := f
+	nf.lens.Types = nil
+	nf.noTypes = false
+	return nf
+}
+
+// withNoTypes returns a copy whose type selection is the explicit empty set, so
+// nothing is charted — the effect of the legend's "none" button, the blank
+// slate to then click types back on one by one.
+func (f spaceFilter) withNoTypes() spaceFilter {
+	nf := f
+	nf.lens.Types = nil
+	nf.noTypes = true
+	return nf
+}
+
 // String renders the filter back to its canonical expression, so a parsed
 // filter round-trips and the input always shows a normalised form.
 func (f spaceFilter) String() string {
 	var parts []string
 	if f.lens.Subject != "" {
 		parts = append(parts, "subject:"+f.lens.Subject)
+	}
+	if f.showsNoTypes() {
+		parts = append(parts, "type:"+noTypeToken)
 	}
 	for _, t := range f.lens.Types {
 		parts = append(parts, "type:"+t)

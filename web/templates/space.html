@@ -96,6 +96,18 @@
     <span class="lg"><span class="lg-swatch" style="background:{{if .Color}}{{.Color}}{{else}}transparent{{end}}"></span>{{.Type}}{{if .Count}} <small>{{.Count}}</small>{{end}}</span>
     {{end}}
     {{end}}
+    {{if .TypeBulk}}
+    <span class="lg-bulk" role="group" aria-label="Show all or no event types">
+      <button type="button" class="lg lg-toggle lg-bulk-btn{{if .AllActive}} on{{end}}"
+              title="Chart every event type"
+              hx-get="/space" hx-vals='{"q":"{{.ShowAllQ}}"}' hx-include="#space-frame-size"
+              hx-target="#events-slot" hx-swap="innerHTML">all</button>
+      <button type="button" class="lg lg-toggle lg-bulk-btn{{if .NoneActive}} on{{end}}"
+              title="Chart no event type — then click types back on"
+              hx-get="/space" hx-vals='{"q":"{{.ShowNoneQ}}"}' hx-include="#space-frame-size"
+              hx-target="#events-slot" hx-swap="innerHTML">none</button>
+    </span>
+    {{end}}
     <span class="lg lg-hint">✋ drag · scroll to zoom · hover a dot · click a type to filter</span>
   </div>
 {{else if eq .State "empty"}}
