@@ -13,6 +13,7 @@
 
 {{if or (eq .State "ok") (eq .State "filtered-empty")}}
   <form class="space-frame" id="space-frame" onsubmit="return false">
+    <input type="hidden" name="group" value="{{.Group}}">
     <label class="frame-pick">Frame
       <select name="frame" id="space-frame-size" hx-get="/space" hx-include="#space-frame"
               hx-target="#events-slot" hx-swap="innerHTML">
@@ -42,6 +43,14 @@
             hx-include="#space-frame" hx-target="#events-slot" hx-swap="innerHTML"
             title="{{if eq .Mode "density"}}Switch to the per-event detail view (slower on large scopes){{else}}Switch to the aggregated density overview{{end}}">
       {{if eq .Mode "density"}}⊙ detail{{else}}⊞ overview{{end}}</button>
+
+    {{if eq .Mode "density"}}
+    <button type="button" class="mode-toggle{{if eq .Group "variant"}} on{{end}}"
+            hx-get="/space" hx-vals='{"group":"{{if eq .Group "variant"}}subject{{else}}variant{{end}}"}'
+            hx-include="#space-frame" hx-target="#events-slot" hx-swap="innerHTML"
+            title="Group rows by subject order or by process variant (same behaviour shares a row)">
+      {{if eq .Group "variant"}}rows: variant{{else}}rows: subject{{end}}</button>
+    {{end}}
 
     {{if ne .Mode "density"}}
     <button type="button" class="live-toggle" data-after="{{.AfterID}}"

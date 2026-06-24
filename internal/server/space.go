@@ -104,6 +104,7 @@ type dottedView struct {
 	State            string // ok, empty, offline, unauthorized, error
 	Message          string
 	Mode             string // "dots" (default) or "density"
+	Group            string // density row roll-up: "" (subject) or "variant"
 	W, H             float64
 	PlotL, PlotW     float64
 	LabelX           float64
@@ -236,7 +237,17 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 		(mode != "dots" && (distinctSubjects(events) > dMaxRows || len(events) > dMaxDots))
 	var v dottedView
 	if dense {
-		v = buildDensityView(process.BuildDensity(in, dMaxRows, dCols))
+		// Two roll-up strategies: contiguous subject bands (default) or grouping
+		// subjects by their process variant (docs/SPACE-LOD.md §3).
+		group := r.URL.Query().Get("group")
+		var bands []process.Band
+		if group == "variant" {
+			bands = process.VariantBands(in, dMaxRows)
+		} else {
+			bands = process.SubjectBands(in, dMaxRows)
+		}
+		v = buildDensityView(process.BuildDensity(in, bands, dCols))
+		v.Group = group
 	} else {
 		v = buildDottedView(process.BuildDotted(in, dMaxRows))
 	}

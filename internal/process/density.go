@@ -24,10 +24,10 @@ type Density struct {
 	Max    int
 }
 
-// DensityRow is one horizontal band: a contiguous group of subjects. Prefix is
-// the band's common subject path-prefix when it has one (so a click can drill in
-// via the subject filter); it is empty when the band's subjects share no path
-// segment. Subjects/Count report how much the band rolls up.
+// DensityRow is one horizontal band: a group of subjects. Prefix is the band's
+// common subject path-prefix when it has one (so a click can drill in via the
+// subject filter); it is empty when the band's subjects share no path segment.
+// Subjects/Count report how much the band rolls up.
 type DensityRow struct {
 	Label    string
 	Prefix   string
@@ -49,24 +49,29 @@ type DensityCell struct {
 	MaxID string
 }
 
+// Band is one row of the density grid: a group of subjects shown together. Label
+// names the row; Prefix is the subjects' common path segment when they share one
+// (so a click can drill by subject), otherwise empty. Bands come from a strategy
+// (SubjectBands or VariantBands) so the caller decides how subjects roll up.
+type Band struct {
+	Subjects []string
+	Label    string
+	Prefix   string
+}
+
 // phaseOrder is the tie-break when two phases are equally frequent in a cell:
 // the more attention-worthy phase wins, so a cell that is half errors never
 // hides them behind an equal count of completes.
 var phaseOrder = []Phase{PhaseError, PhaseActive, PhaseInfo, PhaseComplete}
 
-// BuildDensity bins events into a maxRows × cols grid. Subjects are ordered like
-// the dotted chart (first event, then name) and, when there are more than
-// maxRows, grouped into maxRows equal-sized bands; with maxRows or fewer each
-// subject is its own band. The X axis uses real timestamps when all parse and
-// span, else sequence order — the same rule as BuildDotted, so the two views
-// agree on what "time" means.
-func BuildDensity(events []TimedEvent, maxRows, cols int) Density {
+// BuildDensity bins events into a len(bands) × cols grid: each band is a row, the
+// X axis a time (or sequence) bucket. The axis rule matches BuildDotted, so both
+// levels of detail agree on what "time" means. Subjects not covered by a band
+// are skipped.
+func BuildDensity(events []TimedEvent, bands []Band, cols int) Density {
 	n := len(events)
-	if n == 0 {
+	if n == 0 || len(bands) == 0 {
 		return Density{}
-	}
-	if maxRows < 1 {
-		maxRows = 60
 	}
 	if cols < 1 {
 		cols = 1
@@ -75,55 +80,22 @@ func BuildDensity(events []TimedEvent, maxRows, cols int) Density {
 	val, useTime := axisValues(events)
 	min, span := minSpan(val)
 
-	// Per-subject aggregates drive the row order and the banding.
-	type agg struct {
-		count int
-		first float64
-	}
-	subs := map[string]*agg{}
-	for i, e := range events {
-		a := subs[e.Subject]
-		if a == nil {
-			a = &agg{first: val[i]}
-			subs[e.Subject] = a
-		}
-		a.count++
-		if val[i] < a.first {
-			a.first = val[i]
-		}
-	}
-	names := make([]string, 0, len(subs))
-	for s := range subs {
-		names = append(names, s)
-	}
-	sort.Slice(names, func(i, j int) bool {
-		if subs[names[i]].first != subs[names[j]].first {
-			return subs[names[i]].first < subs[names[j]].first
-		}
-		return names[i] < names[j]
-	})
-
-	total := len(names)
-	bands := bandSubjects(names, maxRows)
-	rowOf := make(map[string]int, len(names))
+	rowOf := make(map[string]int)
+	total := 0
 	for r, band := range bands {
-		for _, s := range band {
+		for _, s := range band.Subjects {
 			rowOf[s] = r
+			total++
 		}
 	}
 
 	d := Density{Cols: cols, Events: n, ByTime: useTime, Total: total}
 	d.Rows = make([]DensityRow, len(bands))
 	for r, band := range bands {
-		cnt := 0
-		for _, s := range band {
-			cnt += subs[s].count
-		}
 		d.Rows[r] = DensityRow{
-			Label:    bandLabel(band),
-			Prefix:   bandPrefix(band),
-			Subjects: len(band),
-			Count:    cnt,
+			Label:    band.Label,
+			Prefix:   band.Prefix,
+			Subjects: len(band.Subjects),
 		}
 	}
 
@@ -137,7 +109,11 @@ func BuildDensity(events []TimedEvent, maxRows, cols int) Density {
 	}
 	grid := map[[2]int]*acc{}
 	for i, e := range events {
-		row := rowOf[e.Subject]
+		row, ok := rowOf[e.Subject]
+		if !ok {
+			continue
+		}
+		d.Rows[row].Count++
 		col := int((val[i] - min) / span * float64(cols))
 		if col >= cols {
 			col = cols - 1
@@ -181,6 +157,123 @@ func BuildDensity(events []TimedEvent, maxRows, cols int) Density {
 		return d.Cells[i].Col < d.Cells[j].Col
 	})
 	return d
+}
+
+// SubjectBands groups subjects into at most maxRows contiguous bands ordered by
+// first event, then name — the same order the dotted chart uses. With maxRows or
+// fewer subjects each subject is its own band. A band exposes its common subject
+// path-prefix for drill-down when it has one.
+func SubjectBands(events []TimedEvent, maxRows int) []Band {
+	if maxRows < 1 {
+		maxRows = 60
+	}
+	val, _ := axisValues(events)
+	first := map[string]float64{}
+	for i, e := range events {
+		if f, ok := first[e.Subject]; !ok || val[i] < f {
+			first[e.Subject] = val[i]
+		}
+	}
+	names := make([]string, 0, len(first))
+	for s := range first {
+		names = append(names, s)
+	}
+	sort.Slice(names, func(i, j int) bool {
+		if first[names[i]] != first[names[j]] {
+			return first[names[i]] < first[names[j]]
+		}
+		return names[i] < names[j]
+	})
+	groups := chunk(names, maxRows)
+	bands := make([]Band, len(groups))
+	for i, g := range groups {
+		bands[i] = Band{Subjects: g, Label: bandLabel(g), Prefix: bandPrefix(g)}
+	}
+	return bands
+}
+
+// VariantBands groups subjects by their behavioural signature — the sequence of
+// event types they received — so subjects that ran the same way share a row.
+// Bands are ordered by size (the most common variant first). When there are more
+// distinct variants than maxRows, the smallest are merged into one trailing
+// "more variants" band so nothing is dropped (docs/SPACE-LOD.md §3).
+func VariantBands(events []TimedEvent, maxRows int) []Band {
+	if maxRows < 1 {
+		maxRows = 60
+	}
+	// Per-subject type sequence, in encounter order.
+	order := make([]string, 0)
+	seqs := map[string][]string{}
+	for _, e := range events {
+		if _, ok := seqs[e.Subject]; !ok {
+			order = append(order, e.Subject)
+		}
+		seqs[e.Subject] = append(seqs[e.Subject], e.Type)
+	}
+	// Group subjects by signature, keeping a representative sequence per group.
+	members := map[string][]string{}
+	seqOf := map[string][]string{}
+	for _, s := range order {
+		key := strings.Join(seqs[s], "\x00")
+		if _, ok := seqOf[key]; !ok {
+			seqOf[key] = seqs[s]
+		}
+		members[key] = append(members[key], s)
+	}
+	keys := make([]string, 0, len(members))
+	for k := range members {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if len(members[keys[i]]) != len(members[keys[j]]) {
+			return len(members[keys[i]]) > len(members[keys[j]])
+		}
+		return keys[i] < keys[j]
+	})
+
+	// Below the cap every variant is its own band; above it, keep the busiest
+	// maxRows-1 and fold the rest into a single trailing band.
+	head := keys
+	var tail []string
+	if len(keys) > maxRows {
+		head = keys[:maxRows-1]
+		tail = keys[maxRows-1:]
+	}
+	bands := make([]Band, 0, len(head)+1)
+	for _, k := range head {
+		bands = append(bands, variantBand(members[k], seqOf[k]))
+	}
+	if len(tail) > 0 {
+		var rest []string
+		for _, k := range tail {
+			rest = append(rest, members[k]...)
+		}
+		bands = append(bands, Band{
+			Subjects: rest,
+			Label:    fmt.Sprintf("+%d more variants · %d", len(tail), len(rest)),
+			Prefix:   bandPrefix(rest),
+		})
+	}
+	return bands
+}
+
+func variantBand(subjects, seq []string) Band {
+	return Band{Subjects: subjects, Label: variantLabel(seq, len(subjects)), Prefix: bandPrefix(subjects)}
+}
+
+// variantLabel renders a trace signature compactly: the type chain, abbreviated
+// when long, plus how many subjects share it.
+func variantLabel(seq []string, n int) string {
+	var chain string
+	switch {
+	case len(seq) == 0:
+		chain = "—"
+	case len(seq) <= 3:
+		chain = strings.Join(seq, " → ")
+	default:
+		chain = fmt.Sprintf("%s → … → %s (%d)", seq[0], seq[len(seq)-1], len(seq))
+	}
+	return fmt.Sprintf("%s · %d", chain, n)
 }
 
 // axisValues maps each event to its X value and reports whether that axis is
@@ -241,10 +334,9 @@ func minSpan(v []float64) (min, span float64) {
 	return min, span
 }
 
-// bandSubjects groups an ordered subject list into at most maxRows contiguous
-// bands of as-equal-as-possible size. With maxRows or fewer subjects every
-// subject is its own band.
-func bandSubjects(names []string, maxRows int) [][]string {
+// chunk splits an ordered list into at most maxRows contiguous near-equal parts.
+// With maxRows or fewer items each item is its own part.
+func chunk(names []string, maxRows int) [][]string {
 	if len(names) <= maxRows {
 		out := make([][]string, len(names))
 		for i, s := range names {
@@ -253,11 +345,10 @@ func bandSubjects(names []string, maxRows int) [][]string {
 		return out
 	}
 	out := make([][]string, 0, maxRows)
-	nb := maxRows
-	base := len(names) / nb
-	rem := len(names) % nb
+	base := len(names) / maxRows
+	rem := len(names) % maxRows
 	start := 0
-	for r := 0; r < nb; r++ {
+	for r := 0; r < maxRows; r++ {
 		size := base
 		if r < rem { // spread the remainder over the first bands
 			size++
@@ -300,8 +391,8 @@ func commonPrefix(a, b string) string {
 	return a[:i]
 }
 
-// bandLabel names a band for the row gutter: the single subject when it stands
-// alone, otherwise the subject range and how many it rolls up.
+// bandLabel names a subject band for the row gutter: the single subject when it
+// stands alone, otherwise the subject range and how many it rolls up.
 func bandLabel(band []string) string {
 	if len(band) == 1 {
 		return band[0]

@@ -136,11 +136,18 @@ die Automatik zu überstimmen.
 
 Nicht alles auf einmal. Größter Hebel zuerst:
 
-1. **Stufe-1-Dichte-Modus** (Go-Aggregation + Canvas + log/Perzentil-Farbe),
-   Zeilen erst per **Präfix-Rollup**, Drill-down über den bestehenden `q`-Filter.
-   Löst beide Explosionen in einem Schritt.
-2. **Varianten-Rollup** der Zeilen (über `internal/process`).
-3. **Konfigurierbare Schwellen** und Override-Toggle-Feinschliff.
+1. **Erledigt — Stufe-1-Dichte-Modus.** Go-Aggregation (`process.BuildDensity`)
+   als server-gerendertes SVG (statt Canvas — die Zellenzahl ist durchs Raster
+   begrenzt, nicht durch die Eventzahl, und so funktioniert die Sicht *ohne JS*),
+   log-skalierte Farbe, Zeilen per **Subject-Banding** (`SubjectBands`),
+   Drill-down über den bestehenden `q`-Filter (`density.js`).
+2. **Erledigt — Varianten-Rollup.** `process.VariantBands` gruppiert Subjects
+   nach ihrer Trace-Signatur (Event-Typ-Sequenz); ein „rows: subject | variant"-
+   Umschalter (`?group=`) wählt die Strategie. Das Banding ist über den
+   `Band`-Typ austauschbar, ohne `BuildDensity` zu berühren.
+3. **Offen — konfigurierbare Schwellen** (`dMaxRows`/`dMaxDots`/`dCols`) und
+   ein **Subject-Range-Drill**, damit auch flache Subject-Namensräume per
+   Band-Klick verfeinerbar werden (heute drillt der Klick dort nur die Zeit-Achse).
 
 Tests tabellengetrieben, nur Standardbibliothek; die Aggregation ist reine
 Go-Funktion (wie `BuildDotted`) und damit direkt testbar.

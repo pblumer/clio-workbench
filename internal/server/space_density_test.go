@@ -71,6 +71,26 @@ func TestHandleSpaceModeOverride(t *testing.T) {
 	}
 }
 
+// In density mode ?group=variant rolls rows up by process variant; the chosen
+// grouping is echoed into the hidden form field so it survives later requests.
+func TestHandleSpaceGroupVariant(t *testing.T) {
+	s := newTestServer(t, defaultCfg())
+	f := newFakeClio(t)
+	f.ndjson = manySubjectsBody(dMaxRows + 30)
+	f.connect(s)
+
+	body := s.do(http.MethodGet, "/space?mode=density&group=variant", nil).Body.String()
+	if !strings.Contains(body, "class=\"dcell") {
+		t.Fatalf("expected a density grid, got:\n%s", body)
+	}
+	if !strings.Contains(body, `name="group" value="variant"`) {
+		t.Errorf("group choice not persisted into the form")
+	}
+	if !strings.Contains(body, "rows: variant") {
+		t.Errorf("group toggle missing its active label")
+	}
+}
+
 // buildDensityView maps a process.Density onto the shared chart frame: a row per
 // band, a rect per non-empty cell, the time axis label and the density mode.
 func TestBuildDensityView(t *testing.T) {

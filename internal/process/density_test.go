@@ -1,9 +1,12 @@
 package process
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestBuildDensityEmpty(t *testing.T) {
-	d := BuildDensity(nil, 70, 10)
+	d := BuildDensity(nil, nil, 10)
 	if d.Events != 0 || len(d.Cells) != 0 || len(d.Rows) != 0 {
 		t.Fatalf("empty input must yield empty density, got %+v", d)
 	}
@@ -15,7 +18,7 @@ func TestBuildDensityByTime(t *testing.T) {
 		{ID: "b", Subject: "/o/2", Type: "placed", Time: "2026-01-01T10:00:00Z"},
 		{ID: "c", Subject: "/o/1", Type: "shipping.failed", Time: "2026-01-01T11:00:00Z"},
 	}
-	d := BuildDensity(evs, 70, 2)
+	d := BuildDensity(evs, SubjectBands(evs, 70), 2)
 
 	if !d.ByTime {
 		t.Fatal("ByTime = false, want true (all timestamps parse and span)")
@@ -50,7 +53,7 @@ func TestBuildDensityDominantPhaseAndDrillBounds(t *testing.T) {
 		{ID: "z", Subject: "/o/1", Type: "step.failed", Time: "2026-01-01T09:00:01Z"},
 		{ID: "a", Subject: "/o/1", Type: "other.failed", Time: "2026-01-01T09:00:02Z"},
 	}
-	d := BuildDensity(evs, 70, 1)
+	d := BuildDensity(evs, SubjectBands(evs, 70), 1)
 	if len(d.Cells) != 1 {
 		t.Fatalf("want one cell, got %d", len(d.Cells))
 	}
@@ -75,7 +78,7 @@ func TestBuildDensityBandsAndPrefix(t *testing.T) {
 		{ID: "3", Subject: "/team/c", Type: "x", Time: "2026-01-01T09:00:02Z"},
 		{ID: "4", Subject: "/team/d", Type: "x", Time: "2026-01-01T09:00:03Z"},
 	}
-	d := BuildDensity(evs, 2, 4)
+	d := BuildDensity(evs, SubjectBands(evs, 2), 4)
 	if len(d.Rows) != 2 {
 		t.Fatalf("want 2 bands, got %d", len(d.Rows))
 	}
@@ -100,7 +103,7 @@ func TestBuildDensitySequenceFallback(t *testing.T) {
 		{ID: "1", Subject: "/o/1", Type: "x", Time: "nope"},
 		{ID: "2", Subject: "/o/1", Type: "x", Time: ""},
 	}
-	d := BuildDensity(evs, 70, 2)
+	d := BuildDensity(evs, SubjectBands(evs, 70), 2)
 	if d.ByTime {
 		t.Error("ByTime = true, want false (timestamps do not parse)")
 	}
@@ -113,12 +116,77 @@ func TestBuildDensityAllSameInstant(t *testing.T) {
 		{ID: "1", Subject: "/o/1", Type: "x", Time: "2026-01-01T09:00:00Z"},
 		{ID: "2", Subject: "/o/2", Type: "x", Time: "2026-01-01T09:00:00Z"},
 	}
-	d := BuildDensity(evs, 70, 3)
+	d := BuildDensity(evs, SubjectBands(evs, 70), 3)
 	if d.ByTime {
 		t.Error("ByTime = true, want false (no span between identical instants)")
 	}
 	if d.Total != 2 || len(d.Cells) == 0 {
 		t.Errorf("expected 2 subjects and some cells, got total=%d cells=%d", d.Total, len(d.Cells))
+	}
+}
+
+func TestVariantBandsGroupBehaviour(t *testing.T) {
+	// Two subjects ran created→done, one ran created→failed: two variant bands,
+	// the busier one first.
+	evs := []TimedEvent{
+		{ID: "1", Subject: "/o/1", Type: "created", Time: "2026-01-01T09:00:00Z"},
+		{ID: "2", Subject: "/o/1", Type: "done", Time: "2026-01-01T09:00:01Z"},
+		{ID: "3", Subject: "/o/2", Type: "created", Time: "2026-01-01T09:00:02Z"},
+		{ID: "4", Subject: "/o/2", Type: "done", Time: "2026-01-01T09:00:03Z"},
+		{ID: "5", Subject: "/o/3", Type: "created", Time: "2026-01-01T09:00:04Z"},
+		{ID: "6", Subject: "/o/3", Type: "failed", Time: "2026-01-01T09:00:05Z"},
+	}
+	bands := VariantBands(evs, 70)
+	if len(bands) != 2 {
+		t.Fatalf("variants = %d, want 2", len(bands))
+	}
+	if len(bands[0].Subjects) != 2 {
+		t.Errorf("busiest band has %d subjects, want 2", len(bands[0].Subjects))
+	}
+	if !strings.Contains(bands[0].Label, "created → done") {
+		t.Errorf("band label = %q, want the created → done chain", bands[0].Label)
+	}
+	if bands[0].Prefix != "/o" {
+		t.Errorf("band prefix = %q, want /o", bands[0].Prefix)
+	}
+	// All three subjects must be represented across the bands — nothing dropped.
+	d := BuildDensity(evs, bands, 4)
+	if d.Total != 3 {
+		t.Errorf("total subjects = %d, want 3", d.Total)
+	}
+}
+
+func TestVariantBandsMergesTail(t *testing.T) {
+	// More distinct variants than rows: the smallest fold into one trailing band.
+	evs := []TimedEvent{
+		{ID: "1", Subject: "/o/1", Type: "a", Time: "2026-01-01T09:00:00Z"},
+		{ID: "2", Subject: "/o/2", Type: "b", Time: "2026-01-01T09:00:01Z"},
+		{ID: "3", Subject: "/o/3", Type: "c", Time: "2026-01-01T09:00:02Z"},
+	}
+	bands := VariantBands(evs, 2)
+	if len(bands) != 2 {
+		t.Fatalf("bands = %d, want 2 (one head + a merged tail)", len(bands))
+	}
+	tail := bands[len(bands)-1]
+	if !strings.Contains(tail.Label, "more variants") {
+		t.Errorf("tail label = %q, want a merged-variants summary", tail.Label)
+	}
+	got := 0
+	for _, b := range bands {
+		got += len(b.Subjects)
+	}
+	if got != 3 {
+		t.Errorf("subjects across bands = %d, want all 3", got)
+	}
+}
+
+func TestVariantLabelAbbreviates(t *testing.T) {
+	long := variantLabel([]string{"a", "b", "c", "d", "e"}, 7)
+	if !strings.Contains(long, "a → … → e (5)") || !strings.Contains(long, "· 7") {
+		t.Errorf("long label = %q, want abbreviated chain with step + subject counts", long)
+	}
+	if got := variantLabel(nil, 1); !strings.HasPrefix(got, "—") {
+		t.Errorf("empty-sequence label = %q, want a dash", got)
 	}
 }
 
