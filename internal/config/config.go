@@ -25,15 +25,20 @@ type Config struct {
 	ClioToken string
 	// Servers are preset Clio URLs offered for quick selection in the UI.
 	Servers []string
-	// EventCap bounds how many events the analysis panels read from Clio.
+	// EventCap optionally bounds how many events the analysis panels read from
+	// Clio. The default is 0 — no cap, every event is loaded. A positive
+	// WORKBENCH_EVENT_CAP (or a per-environment limit) opts into a read limit
+	// to protect against over-reads on very large stores.
 	EventCap int
 }
 
 // Defaults mirror docs/WORKBENCH.md §3.3.
 const (
-	defaultAddr     = ":8080"
-	defaultDataDir  = "./workbench-data"
-	defaultEventCap = 50000
+	defaultAddr    = ":8080"
+	defaultDataDir = "./workbench-data"
+	// defaultEventCap is 0: no read cap by default. The cap is opt-in via a
+	// positive WORKBENCH_EVENT_CAP or an environment limit.
+	defaultEventCap = 0
 )
 
 // defaultServers are offered in the connect menu when WORKBENCH_SERVERS is unset.

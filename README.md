@@ -48,14 +48,16 @@ The full architecture and idea paper lives in [`docs/WORKBENCH.md`](docs/WORKBEN
   configured (see below).
 - **A layered scope concept** (`docs/SCOPE.md`): every analysis panel reads
   events through three composed layers — a global, persistent **Environment**
-  (server + base scope + read limit), the shared session **Queries** pipeline,
-  and a per-panel **discipline lens**. Global to define, local to shape; each
-  layer only narrows, and only the Environment reaches Clio and sets the limit.
+  (server + base scope + optional read limit), the shared session **Queries**
+  pipeline, and a per-panel **discipline lens**. Global to define, local to
+  shape; each layer only narrows, and only the Environment reaches Clio and sets
+  the limit.
 - **Environments**: saved, switchable working contexts — a server plus a data
-  scope (subject prefix, event types, lower/upperBound, per-env event limit).
-  The active scope applies to all analysis panels; the token is never stored.
-  Limits are shown prominently and the header blinks a warning when the store
-  holds more events than the active limit.
+  scope (subject prefix, event types, lower/upperBound, optional per-env event
+  limit). The active scope applies to all analysis panels; the token is never
+  stored. By default every event is loaded (no cap); when a limit is set it is
+  shown prominently and the header blinks a warning if the store holds more
+  events than the limit loads.
 - A rudimentary **events view**: the event types written to Clio
   (`read-event-types`) rendered as BPMN **send tasks** with an attached data
   object, a per-type count bubble, and a header bubble summing all occurrences.
@@ -169,7 +171,7 @@ CLIO_URL=http://localhost:3999 CLIO_API_TOKEN=x go run ./cmd/clio-workbench
 | `WORKBENCH_ADDR`  | no       | `:8080`            | Listen address                            |
 | `WORKBENCH_DATA`  | no       | `./workbench-data` | Where drafts are stored                   |
 | `WORKBENCH_SERVERS` | no     | `https://clio.blumer.cloud` | Preset Clio URLs for the connect menu |
-| `WORKBENCH_EVENT_CAP` | no   | `50000`            | Max events the analysis panels read from Clio |
+| `WORKBENCH_EVENT_CAP` | no   | `0` (no cap)       | Optional max events the analysis panels read from Clio; `0`/unset loads all |
 
 \* Without `CLIO_URL`/token the Workbench works offline on the draft; only push
 and the Gegenprobe need an instance.

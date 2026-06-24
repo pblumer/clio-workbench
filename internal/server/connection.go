@@ -62,7 +62,7 @@ func (s *Server) connectionView(ctx context.Context, res clio.Result) connection
 			v.HasInfo = true
 			v.EventsTotal = info.EventsTotal
 			v.Limit = s.effectiveLimit()
-			v.LimitHit = info.EventsTotal > int64(v.Limit)
+			v.LimitHit = v.Limit > 0 && info.EventsTotal > int64(v.Limit)
 			if v.LimitHit {
 				v.NotLoaded = info.EventsTotal - int64(v.Limit)
 			}

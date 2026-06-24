@@ -613,6 +613,7 @@ html, body {
 .env-pick { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); letter-spacing: 1px; }
 .env-pick select { background: rgb(var(--rgb-inset) / 0.8); border: 1px solid var(--edge); border-radius: 7px; padding: 7px 10px; color: var(--text); font: inherit; font-size: 13px; }
 .env-limit { font-size: 11px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--neon-dim); color: var(--neon); letter-spacing: 1px; }
+.env-limit-off { border-color: var(--edge); color: var(--text-dim); }
 .env-scope { font-size: 12px; color: var(--text-dim); }
 .env-scope code { color: var(--text); }
 .env-new { margin: 6px 0 12px; }

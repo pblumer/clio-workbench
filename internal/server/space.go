@@ -122,7 +122,7 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 		s.render(w, "space.html", v)
 		return
 	}
-	truncated := len(events) >= sc.Limit
+	truncated := sc.Limit > 0 && len(events) >= sc.Limit
 
 	// Nothing in scope at all: a genuine empty state — there is nothing to
 	// filter, so skip the filter chrome entirely.
