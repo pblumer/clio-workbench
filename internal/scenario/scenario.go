@@ -116,7 +116,12 @@ func DraftRev(d model.Draft) string {
 		Name   string
 		Fields []revField
 	}
-	type revEdge struct{ Type, From, To string }
+	type revEdge struct {
+		Type, From, To string
+		// omitempty so cardinality-free edges keep the historical fingerprint;
+		// a "once"/"many" annotation changes the rev because it changes outcomes.
+		Cardinality model.Cardinality `json:",omitempty"`
+	}
 	type proj struct {
 		Edges  []revEdge
 		Events []revEvent
@@ -124,7 +129,7 @@ func DraftRev(d model.Draft) string {
 
 	var p proj
 	for _, e := range d.Edges {
-		p.Edges = append(p.Edges, revEdge{Type: e.Type, From: e.From, To: e.To})
+		p.Edges = append(p.Edges, revEdge{Type: e.Type, From: e.From, To: e.To, Cardinality: e.Cardinality})
 	}
 	for _, st := range d.Steps {
 		if st.Kind != model.StepEvent {

@@ -119,6 +119,23 @@ type Node struct {
 	Y float64 `json:"y"`
 }
 
+// Cardinality bounds how often an event type may carry a single subject across
+// that subject's lifetime (docs/TESTSTUDIO.md §6.3). It is a property of the
+// transition (edge), authored — like DataSchema and Preconditions — via the
+// draft JSON. The empty value means *unconstrained* (the same as CardinalityMany)
+// so existing drafts keep their behaviour.
+type Cardinality string
+
+const (
+	// CardinalityMany places no limit: the type may recur on a subject as often
+	// as the graph allows — e.g. a sensor reading or a profile update.
+	CardinalityMany Cardinality = "many"
+	// CardinalityOnce restricts the type to at most one occurrence per subject —
+	// e.g. a creation/lifecycle event like "…new.v2". A second occurrence is a
+	// deviation even where the graph topology would otherwise permit it.
+	CardinalityOnce Cardinality = "once"
+)
+
 // Edge is an event type: a directed transition between two nodes.
 type Edge struct {
 	ID string `json:"id"`
@@ -127,6 +144,10 @@ type Edge struct {
 	Description string `json:"description,omitempty"`
 	From        string `json:"from"`
 	To          string `json:"to"`
+	// Cardinality optionally bounds how often this type may occur per subject
+	// (default: unconstrained). Enforced by the shared engine in
+	// internal/validate, so both the Test Studio and the Gegenprobe honour it.
+	Cardinality Cardinality `json:"cardinality,omitempty"`
 	// DataSchema is the JSON Schema of the event's data payload. It is kept
 	// as raw JSON so the editor round-trips it untouched; nil/empty means the
 	// schema has not been authored yet (flagged by validation, §5.4).
@@ -178,6 +199,11 @@ func (d *Draft) Validate() error {
 		}
 		if _, ok := nodeIDs[e.To]; !ok {
 			return fmt.Errorf("edge %q references unknown target node %q", e.ID, e.To)
+		}
+		switch e.Cardinality {
+		case "", CardinalityOnce, CardinalityMany:
+		default:
+			return fmt.Errorf("edge %q has invalid cardinality %q", e.ID, e.Cardinality)
 		}
 	}
 	return nil

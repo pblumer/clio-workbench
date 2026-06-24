@@ -188,7 +188,8 @@ Artefakt ab:
 2. **Zeichnen** — Zustände/Schritte als Knoten, Event-Typen als gerichtete Kanten
    dazwischen (Abschnitt 5).
 3. **Event-Typen ausgestalten** — pro Kante: Name, Beschreibung, JSON-Schema der
-   `data`-Payload, optional Preconditions/Invarianten.
+   `data`-Payload, optional Kardinalität pro Subject (`once`/`many`) und
+   Preconditions/Invarianten.
 4. **Validieren** — das Modell auf Konsistenz prüfen (erreichbare Zustände,
    Sackgassen, fehlende Schemas) — siehe 5.4.
 5. **Exportieren** — Clio-Schemas und Dokumentation generieren (Abschnitt 6).
@@ -210,7 +211,8 @@ Egal welche Sicht, intern ist der Entwurf ein gerichteter Graph:
   (Prozess-Sicht). Mit Start- und Endmarkierungen.
 - **Kanten** = **Event-Typen**. Eine Kante von Zustand A nach B bedeutet: das
   Event dieses Typs führt die Entität von A nach B. Hier hängen Name,
-  `data`-Schema und Preconditions.
+  `data`-Schema, Kardinalität pro Subject (`TESTSTUDIO.md` §6.3) und
+  Preconditions.
 
 Diese Entkopplung — ein Datenmodell, zwei Renderings — ist die zentrale
 Designentscheidung. Sie macht den „umschaltbar"-Wunsch billig.
