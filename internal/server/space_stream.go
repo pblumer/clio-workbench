@@ -88,7 +88,7 @@ func (s *Server) handleSpaceStream(w http.ResponseWriter, r *http.Request) {
 // currentMaxID reads the active scope once and returns the highest event id, so
 // a freshly opened stream resumes from the present rather than the past.
 func (s *Server) currentMaxID(ctx context.Context) string {
-	rctx, cancel := context.WithTimeout(ctx, connectionTimeout)
+	rctx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 	events, err := s.clio.ReadScoped(rctx, s.activeScope())
 	if err != nil {
@@ -108,7 +108,7 @@ func (s *Server) currentMaxID(ctx context.Context) string {
 // them as stream dots plus the new high-water id. It scopes the Clio read with
 // lowerBound = after so only fresh events come back.
 func (s *Server) readSince(ctx context.Context, after string, filter spaceFilter) ([]streamDot, string) {
-	rctx, cancel := context.WithTimeout(ctx, connectionTimeout)
+	rctx, cancel := context.WithTimeout(ctx, readTimeout)
 	defer cancel()
 
 	sc := s.activeScope()

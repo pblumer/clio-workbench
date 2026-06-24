@@ -130,7 +130,7 @@ func (v *dottedView) setTypeControls(f spaceFilter, chips []typeLegendItem) {
 // X = time (or sequence), each event a dot coloured by lifecycle phase. It
 // reveals bursts, gaps, variants and outliers across all subjects at a glance.
 func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), readTimeout)
 	defer cancel()
 
 	sc := s.activeScope()

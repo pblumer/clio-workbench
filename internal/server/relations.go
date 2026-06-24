@@ -24,7 +24,7 @@ type relationsView struct {
 // the subject hierarchy (/orders/{id}/items/{id}) plus references inferred from
 // data payloads (FK fields → 1:1/1:n/n:1, association events → n:m).
 func (s *Server) handleRelations(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), readTimeout)
 	defer cancel()
 
 	sc := s.activeScope()

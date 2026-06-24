@@ -203,7 +203,7 @@ type queriesView struct {
 // handleQueries renders the pipeline panel: the environment's base count and,
 // per stage, how many events/subjects survive — the exploration funnel.
 func (s *Server) handleQueries(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), readTimeout)
 	defer cancel()
 
 	events, err := s.clio.ReadScoped(ctx, s.activeScope())
