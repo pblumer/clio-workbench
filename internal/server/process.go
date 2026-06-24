@@ -99,7 +99,7 @@ type processView struct {
 // handleProcess discovers the process from real Clio events and renders the
 // directly-follows graph plus the top variants.
 func (s *Server) handleProcess(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), readTimeout)
 	defer cancel()
 
 	subject := strings.TrimSpace(r.URL.Query().Get("subject"))

@@ -45,7 +45,7 @@ func (s *Server) handleNodeEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), connectionTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), readTimeout)
 	defer cancel()
 
 	var events []clio.FullEvent

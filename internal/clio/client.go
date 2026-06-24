@@ -49,8 +49,16 @@ const (
 // in one request (see package doc and docs/WORKBENCH.md §6.1).
 const probePath = "/api/v1/read-event-types"
 
-// defaultTimeout bounds a single connection probe.
-const defaultTimeout = 5 * time.Second
+// defaultTimeout is the HTTP client's overall wall-clock backstop. It covers
+// the *entire* request including streaming the response body, so it must stay
+// generous: a scoped read of a large environment streams tens of thousands of
+// NDJSON lines and legitimately takes many seconds. The real operational bound
+// is the per-request context deadline every call already carries — a quick one
+// for the connection probe, a roomier one for data reads (see the server's
+// connectionTimeout vs readTimeout). A too-tight client timeout here would
+// silently abort large reads regardless of the caller's context, surfacing as
+// "could not read events from Clio".
+const defaultTimeout = 60 * time.Second
 
 // maxDrain caps how much of the probe response body we read so the connection
 // can be reused without slurping a potentially long NDJSON stream.
