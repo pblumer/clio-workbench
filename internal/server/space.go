@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -45,6 +46,39 @@ const (
 	dDotR    = 3.4
 )
 
+// Level-of-detail switch (docs/SPACE-LOD.md): beyond either budget the Event
+// Space draws an aggregated density grid instead of one dot per event, so the
+// whole population stays visible rather than being capped to the busiest rows.
+// These are the built-in defaults; each is overridable via a positive
+// WORKBENCH_SPACE_* env var (see spaceMaxRows/spaceMaxDots/spaceCols).
+const (
+	dMaxDots = 6000 // point budget — more charted events than this flips to density
+	dCols    = 120  // density grid: number of time columns
+)
+
+// spaceMaxRows/spaceMaxDots/spaceCols return the configured level-of-detail
+// budgets, falling back to the built-in defaults when unset (config value 0).
+func (s *Server) spaceMaxRows() int {
+	if s.cfg.SpaceMaxRows > 0 {
+		return s.cfg.SpaceMaxRows
+	}
+	return dMaxRows
+}
+
+func (s *Server) spaceMaxDots() int {
+	if s.cfg.SpaceMaxDots > 0 {
+		return s.cfg.SpaceMaxDots
+	}
+	return dMaxDots
+}
+
+func (s *Server) spaceCols() int {
+	if s.cfg.SpaceCols > 0 {
+		return s.cfg.SpaceCols
+	}
+	return dCols
+}
+
 type dotPoint struct {
 	X, Y    float64
 	Phase   string
@@ -77,9 +111,27 @@ type dotRow struct {
 
 type gridLine struct{ X float64 }
 
+// dcell is one rendered density bucket: a coloured rectangle whose opacity
+// encodes how many events fell into it. The data-* carriers let a click drill
+// into exactly this slice — Prefix narrows the subject, MinID/MaxID the event-id
+// range (from:/to:).
+type dcell struct {
+	X, Y, W, H float64
+	Phase      string // lifecycle class → themed colour
+	Opacity    string // intensity (log-scaled), as a fill-opacity string
+	Count      int
+	Prefix     string
+	SFrom      string // band subject range → drill bound (subject:From..To)
+	STo        string
+	MinID      string
+	MaxID      string
+}
+
 type dottedView struct {
 	State            string // ok, empty, offline, unauthorized, error
 	Message          string
+	Mode             string // "dots" (default) or "density"
+	Group            string // density row roll-up: "" (subject) or "variant"
 	W, H             float64
 	PlotL, PlotW     float64
 	LabelX           float64
@@ -87,6 +139,7 @@ type dottedView struct {
 	AxisX, AxisY     float64
 	Rows             []dotRow
 	Dots             []dotPoint
+	Cells            []dcell // density buckets (Mode == "density")
 	Grid             []gridLine
 	Axis             string
 	Shown            int
@@ -203,7 +256,29 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 	for i, e := range events {
 		in[i] = process.TimedEvent{ID: e.ID, Subject: e.Subject, Type: e.Type, Time: e.Time}
 	}
-	v := buildDottedView(process.BuildDotted(in, dMaxRows))
+	// Pick the level of detail (docs/SPACE-LOD.md): one dot per event while it
+	// stays within budget, an aggregated density grid beyond it. ?mode= overrides
+	// the automatic choice so the user can force either view.
+	maxRows := s.spaceMaxRows()
+	mode := r.URL.Query().Get("mode")
+	dense := mode == "density" ||
+		(mode != "dots" && (distinctSubjects(events) > maxRows || len(events) > s.spaceMaxDots()))
+	var v dottedView
+	if dense {
+		// Two roll-up strategies: contiguous subject bands (default) or grouping
+		// subjects by their process variant (docs/SPACE-LOD.md §3).
+		group := r.URL.Query().Get("group")
+		var bands []process.Band
+		if group == "variant" {
+			bands = process.VariantBands(in, maxRows)
+		} else {
+			bands = process.SubjectBands(in, maxRows)
+		}
+		v = buildDensityView(process.BuildDensity(in, bands, s.spaceCols()))
+		v.Group = group
+	} else {
+		v = buildDottedView(process.BuildDotted(in, maxRows))
+	}
 	v.Truncated = truncated
 	v.Cap = sc.Limit
 	v.Frame = frame
@@ -231,9 +306,11 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 // clicked together from the type chips or typed by hand (e.g.
 // `type:order.created subject:/orders orders`).
 type spaceFilter struct {
-	lens    queryStage
-	needles []string // lower-cased substrings; an event must contain them all
-	noTypes bool     // an explicit "show no types" selection (empty whitelist on purpose)
+	lens     queryStage
+	needles  []string // lower-cased substrings; an event must contain them all
+	noTypes  bool     // an explicit "show no types" selection (empty whitelist on purpose)
+	subjFrom string   // inclusive lower bound on the subject string (lexicographic)
+	subjTo   string   // inclusive upper bound on the subject string (lexicographic)
 }
 
 // noTypeToken is the value of a `type:` token that means "no type is allowed" —
@@ -258,7 +335,13 @@ func parseSpaceFilter(raw string) spaceFilter {
 		}
 		switch strings.ToLower(key) {
 		case "subject", "subj", "s":
-			f.lens.Subject = val
+			// A "A..B" value is a lexicographic subject range (the density band
+			// drill, docs/SPACE-LOD.md §6); a plain value stays a segment prefix.
+			if lo, hi, ok := strings.Cut(val, ".."); ok {
+				f.subjFrom, f.subjTo = lo, hi
+			} else {
+				f.lens.Subject = val
+			}
 		case "type", "types", "t":
 			for _, ty := range splitTypes(val) {
 				if ty == noTypeToken {
@@ -282,7 +365,8 @@ func parseSpaceFilter(raw string) spaceFilter {
 
 // empty reports whether the filter carries no constraint (a no-op).
 func (f spaceFilter) empty() bool {
-	return f.lens.empty() && len(f.needles) == 0 && !f.noTypes
+	return f.lens.empty() && len(f.needles) == 0 && !f.noTypes &&
+		f.subjFrom == "" && f.subjTo == ""
 }
 
 // showsNoTypes reports whether the filter is an explicit "show none" selection:
@@ -329,6 +413,12 @@ func (f spaceFilter) matchNeedles(subject, typ string) bool {
 // none" selection rejects every event.
 func (f spaceFilter) match(k eventKey) bool {
 	if f.showsNoTypes() {
+		return false
+	}
+	if f.subjFrom != "" && k.Subject < f.subjFrom {
+		return false
+	}
+	if f.subjTo != "" && k.Subject > f.subjTo {
 		return false
 	}
 	return matchStage(k, f.lens) && f.matchNeedles(k.Subject, k.Type)
@@ -382,6 +472,9 @@ func (f spaceFilter) String() string {
 	var parts []string
 	if f.lens.Subject != "" {
 		parts = append(parts, "subject:"+f.lens.Subject)
+	}
+	if f.subjFrom != "" || f.subjTo != "" {
+		parts = append(parts, "subject:"+f.subjFrom+".."+f.subjTo)
 	}
 	if f.showsNoTypes() {
 		parts = append(parts, "type:"+noTypeToken)
@@ -560,6 +653,79 @@ func buildDottedView(d process.Dotted) dottedView {
 		}
 	}
 	v.Legend = buildTypeLegend(d.Dots)
+	return v
+}
+
+// buildDensityView lays a process.Density out as an SVG heat-grid: one row band
+// per subject group, one column per time bucket, each cell a rectangle whose
+// opacity is the log-scaled event count. It reuses the dotted chart's frame so
+// the two levels of detail share gutters, labels and axis (docs/SPACE-LOD.md).
+func buildDensityView(d process.Density) dottedView {
+	if len(d.Rows) == 0 {
+		return dottedView{State: "empty", Message: "Clio is connected, but there are no events to chart yet."}
+	}
+	v := dottedView{
+		State:  "ok",
+		Mode:   "density",
+		W:      dW,
+		PlotL:  dGutter,
+		Shown:  len(d.Rows),
+		Total:  d.Total,
+		Events: d.Events,
+	}
+	v.Axis = "sequence →"
+	if d.ByTime {
+		v.Axis = "time →"
+	}
+	v.H = dTop + float64(len(d.Rows))*dRowH + dBottom
+	plotW := dW - dGutter - dRight
+	v.PlotW = plotW
+	v.LabelX = dGutter - 10
+	v.GridTop = dTop
+	v.GridBot = v.H - dBottom
+	v.AxisX = dW - dRight
+	v.AxisY = v.H - 12
+
+	for i, row := range d.Rows {
+		label := row.Label
+		if len(label) > 26 {
+			label = "…" + label[len(label)-25:]
+		}
+		v.Rows = append(v.Rows, dotRow{
+			Label: label,
+			BandY: dTop + float64(i)*dRowH,
+			TextY: dTop + (float64(i)+0.5)*dRowH,
+			Count: row.Count,
+		})
+	}
+	for _, frac := range []float64{0, 0.25, 0.5, 0.75, 1} {
+		v.Grid = append(v.Grid, gridLine{X: dGutter + frac*plotW})
+	}
+
+	cellW := plotW / float64(d.Cols)
+	denom := math.Log1p(float64(d.Max))
+	for _, c := range d.Cells {
+		// Log-scale the count to a [floor,1] opacity so the long tail of quiet
+		// cells stays visible next to a few busy ones (docs/SPACE-LOD.md §3).
+		t := 1.0
+		if denom > 0 {
+			t = math.Log1p(float64(c.Count)) / denom
+		}
+		v.Cells = append(v.Cells, dcell{
+			X:       dGutter + float64(c.Col)*cellW,
+			Y:       dTop + float64(c.Row)*dRowH + 1,
+			W:       cellW,
+			H:       dRowH - 2,
+			Phase:   string(c.Phase),
+			Opacity: fmt.Sprintf("%.3f", 0.14+0.86*t),
+			Count:   c.Count,
+			Prefix:  d.Rows[c.Row].Prefix,
+			SFrom:   d.Rows[c.Row].From,
+			STo:     d.Rows[c.Row].To,
+			MinID:   c.MinID,
+			MaxID:   c.MaxID,
+		})
+	}
 	return v
 }
 
