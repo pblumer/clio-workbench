@@ -1,7 +1,7 @@
 {{define "space.html" -}}
 <div class="events-head">
   <h2 class="panel-title">Event space
-    {{- if eq .State "ok"}} <span class="proc-stat" title="{{if .Capped}}top {{.Shown}} of {{thousands .Total}} subjects shown · {{else}}{{.Shown}} subjects · {{end}}{{thousands .Events}} events charted">{{thousands .Shown}}{{if .Capped}} / {{thousands .Total}}{{end}} subjects · {{thousands .Events}} events{{if .Framed}} · last {{thousands .Frame}}{{end}}{{if .Filtered}} · filtered{{end}} · {{.Axis}}</span>{{end -}}
+    {{- if eq .State "ok"}} <span class="proc-stat" title="{{if eq .Mode "density"}}all {{thousands .Total}} subjects rolled up into {{.Shown}} bands · {{else if .Capped}}top {{.Shown}} of {{thousands .Total}} subjects shown · {{else}}{{.Shown}} subjects · {{end}}{{thousands .Events}} events charted">{{if eq .Mode "density"}}{{thousands .Total}} subjects in {{thousands .Shown}} bands · {{thousands .Events}} events · density{{else}}{{thousands .Shown}}{{if .Capped}} / {{thousands .Total}}{{end}} subjects · {{thousands .Events}} events{{end}}{{if .Framed}} · last {{thousands .Frame}}{{end}}{{if .Filtered}} · filtered{{end}} · {{.Axis}}</span>{{end -}}
   </h2>
   <button class="reconnect" type="button"
           hx-get="/space" hx-include="#space-frame"
@@ -37,6 +37,13 @@
             hx-target="#events-slot" hx-swap="innerHTML">× clear</button>
     {{end}}
 
+    <button type="button" class="mode-toggle{{if eq .Mode "density"}} on{{end}}"
+            hx-get="/space" hx-vals='{"mode":"{{if eq .Mode "density"}}dots{{else}}density{{end}}"}'
+            hx-include="#space-frame" hx-target="#events-slot" hx-swap="innerHTML"
+            title="{{if eq .Mode "density"}}Switch to the per-event detail view (slower on large scopes){{else}}Switch to the aggregated density overview{{end}}">
+      {{if eq .Mode "density"}}⊙ detail{{else}}⊞ overview{{end}}</button>
+
+    {{if ne .Mode "density"}}
     <button type="button" class="live-toggle" data-after="{{.AfterID}}"
             aria-pressed="false" title="Stream new events live">● live</button>
     <span class="live-state" hidden></span>
@@ -49,11 +56,35 @@
     <button type="button" class="replay-stop" hidden title="Exit replay">⏹</button>
     <button type="button" class="sound-toggle" aria-pressed="false"
             title="Blip on each new event (live &amp; replay) — click to cycle the volume">♪ off</button>
+    {{end}}
   </form>
 
   {{if .Truncated}}<p class="trunc-note">⚠ loaded the first {{thousands .Cap}} events (oldest first) — newer events may be missing. Raise the environment limit or <code>WORKBENCH_EVENT_CAP</code>.</p>{{end}}
 
   {{if eq .State "ok"}}
+  {{if eq .Mode "density"}}
+  <div class="density-graph">
+    <svg viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Density grid of events per subject band over time">
+      <g class="dotted-viewport">
+        {{range .Rows}}
+        <rect class="dot-row" x="{{$.PlotL}}" y="{{.BandY}}" width="{{$.PlotW}}" height="20"/>
+        <text class="dot-label" x="{{$.LabelX}}" y="{{.TextY}}" text-anchor="end" dominant-baseline="central" title="{{.Label}}">{{.Label}}</text>
+        {{end}}
+        {{range .Grid}}
+        <line class="dot-grid" x1="{{.X}}" y1="{{$.GridTop}}" x2="{{.X}}" y2="{{$.GridBot}}"/>
+        {{end}}
+        <text class="dot-axis" x="{{.AxisX}}" y="{{.AxisY}}" text-anchor="end">{{.Axis}}</text>
+        {{range .Cells}}
+        <rect class="dcell dcell-{{.Phase}}" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}"
+              fill-opacity="{{.Opacity}}" data-count="{{.Count}}" data-prefix="{{.Prefix}}"
+              data-min="{{.MinID}}" data-max="{{.MaxID}}"/>
+        {{end}}
+      </g>
+    </svg>
+    <button type="button" class="proc-reset" title="Reset view">⤢</button>
+    <div class="dot-card" hidden></div>
+  </div>
+  {{else}}
   <div class="dotted-graph" data-after="{{.AfterID}}">
     <svg viewBox="0 0 {{.W}} {{.H}}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Dotted chart of events per subject over time">
       <g class="dotted-viewport">
@@ -77,6 +108,7 @@
     <button type="button" class="proc-reset" title="Reset view">⤢</button>
     <div class="dot-card" hidden></div>
   </div>
+  {{end}}
   {{else}}
   <p class="panel-hint dot-nomatch">No events match this filter. Toggle a type back on or <button type="button" class="linklike"
         hx-get="/space" hx-vals='{"q":""}' hx-include="#space-frame-size"
@@ -108,7 +140,7 @@
               hx-target="#events-slot" hx-swap="innerHTML">none</button>
     </span>
     {{end}}
-    <span class="lg lg-hint">✋ drag · scroll to zoom · hover a dot · click a type to filter</span>
+    <span class="lg lg-hint">{{if eq .Mode "density"}}✋ drag · scroll to zoom · hover a cell · click to drill in{{else}}✋ drag · scroll to zoom · hover a dot · click a type to filter{{end}}</span>
   </div>
 {{else if eq .State "empty"}}
   <p class="panel-hint">{{.Message}}</p>
