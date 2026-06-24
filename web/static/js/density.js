@@ -41,8 +41,9 @@
       apply();
     }, { passive: false, signal: sig });
 
-    var pan = null, moved = false;
+    var pan = null, moved = false, downCell = null;
     svg.addEventListener("pointerdown", function (evt) {
+      downCell = (evt.target.classList && evt.target.classList.contains("dcell")) ? evt.target : null;
       pan = { sx: evt.clientX, sy: evt.clientY, tx: view.tx, ty: view.ty };
       moved = false;
       graph.classList.add("panning");
@@ -61,7 +62,16 @@
       pan = null; graph.classList.remove("panning");
       try { svg.releasePointerCapture(evt.pointerId); } catch (e) { /* ignore */ }
     }
-    svg.addEventListener("pointerup", endPan, { signal: sig });
+    svg.addEventListener("pointerup", function (evt) {
+      var tap = pan && !moved && downCell; // a click, not the end of a drag
+      endPan(evt);
+      // Pointer capture (set on pointerdown for panning) retargets the synthetic
+      // click event to the <svg>, so a plain click listener never sees the cell.
+      // Drill straight from pointerup, guarded by the pan/move bookkeeping so a
+      // drag isn't mistaken for a tap.
+      if (tap) drill(graph, subjectToken(downCell),
+        downCell.getAttribute("data-min"), downCell.getAttribute("data-max"));
+    }, { signal: sig });
     svg.addEventListener("pointercancel", endPan, { signal: sig });
 
     // ---- hover card: the cell's aggregate ----
@@ -102,14 +112,6 @@
       if (evt.target.classList && evt.target.classList.contains("dcell")) {
         hideTimer = setTimeout(hideCard, 120);
       }
-    }, { signal: sig });
-
-    // ---- click to drill: refine the filter to this cell's slice ----
-    svg.addEventListener("click", function (evt) {
-      var cell = evt.target;
-      if (moved || !cell.classList || !cell.classList.contains("dcell")) return;
-      drill(graph, subjectToken(cell),
-        cell.getAttribute("data-min"), cell.getAttribute("data-max"));
     }, { signal: sig });
 
     var reset = graph.querySelector(".proc-reset");
