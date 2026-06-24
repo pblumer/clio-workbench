@@ -24,7 +24,7 @@
       </select>
     </label>
 
-    <label class="space-filter" title="Refine which events are charted. Keys: subject: type: from: to: source: — anything else matches the type or subject. Or click a type below.">
+    <label class="space-filter" title="Refine which events are charted. Keys: subject: (a prefix, or a range a..b) type: from: to: source: — anything else matches the type or subject. Or click a type below.">
       <span class="space-filter-icon" aria-hidden="true">⌕</span>
       <input type="search" name="q" value="{{.Query}}" autocomplete="off" spellcheck="false"
              placeholder="filter… press ⏎ — e.g. type:order.created subject:/orders"
@@ -86,7 +86,7 @@
         {{range .Cells}}
         <rect class="dcell dcell-{{.Phase}}" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}"
               fill-opacity="{{.Opacity}}" data-count="{{.Count}}" data-prefix="{{.Prefix}}"
-              data-min="{{.MinID}}" data-max="{{.MaxID}}"/>
+              data-sfrom="{{.SFrom}}" data-sto="{{.STo}}" data-min="{{.MinID}}" data-max="{{.MaxID}}"/>
         {{end}}
       </g>
     </svg>

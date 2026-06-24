@@ -108,7 +108,7 @@
     svg.addEventListener("click", function (evt) {
       var cell = evt.target;
       if (moved || !cell.classList || !cell.classList.contains("dcell")) return;
-      drill(graph, cell.getAttribute("data-prefix"),
+      drill(graph, subjectToken(cell),
         cell.getAttribute("data-min"), cell.getAttribute("data-max"));
     }, { signal: sig });
 
@@ -121,11 +121,21 @@
     svg._densStop = function () { ac.abort(); svg._densStop = null; };
   }
 
+  // subjectToken picks the most precise subject narrowing a band offers: an exact
+  // lexicographic range (From..To) for a name-contiguous band, falling back to a
+  // shared path prefix, or "" when the band is scattered (e.g. a variant band) —
+  // then the drill narrows by time alone (docs/SPACE-LOD.md §6).
+  function subjectToken(cell) {
+    var from = cell.getAttribute("data-sfrom"), to = cell.getAttribute("data-sto");
+    if (from && to) return from === to ? from : from + ".." + to;
+    return cell.getAttribute("data-prefix") || "";
+  }
+
   // drill rebuilds the space filter so it narrows to one cell: the band's subject
-  // prefix plus the cell's event-id range (from:/to:). Other filter tokens are
-  // kept. Re-requesting without mode lets the server auto-pick detail once the
-  // slice is small enough — the overview→detail hand-off (docs/SPACE-LOD.md §4).
-  function drill(graph, prefix, min, max) {
+  // (range or prefix) plus the cell's event-id range (from:/to:). Other filter
+  // tokens are kept. Re-requesting without mode lets the server auto-pick detail
+  // once the slice is small enough — the overview→detail hand-off (§4).
+  function drill(graph, subject, min, max) {
     var panel = graph.closest(".events-panel") || document;
     var input = panel.querySelector('.space-filter input[name="q"]');
     var frameSel = panel.querySelector("#space-frame-size");
@@ -139,7 +149,7 @@
         kept.push(tok);
       });
     }
-    if (prefix) kept.push("subject:" + prefix);
+    if (subject) kept.push("subject:" + subject);
     if (min) kept.push("from:" + min);
     if (max) kept.push("to:" + max);
     var q = kept.join(" ");

@@ -145,9 +145,13 @@ Nicht alles auf einmal. Größter Hebel zuerst:
    nach ihrer Trace-Signatur (Event-Typ-Sequenz); ein „rows: subject | variant"-
    Umschalter (`?group=`) wählt die Strategie. Das Banding ist über den
    `Band`-Typ austauschbar, ohne `BuildDensity` zu berühren.
-3. **Offen — konfigurierbare Schwellen** (`dMaxRows`/`dMaxDots`/`dCols`) und
-   ein **Subject-Range-Drill**, damit auch flache Subject-Namensräume per
-   Band-Klick verfeinerbar werden (heute drillt der Klick dort nur die Zeit-Achse).
+3. **Erledigt — Subject-Range-Drill.** Der `q`-Filter versteht jetzt
+   `subject:A..B` als lexikografischen Range (zusätzlich zum Präfix). Da
+   `SubjectBands` die Subjects name-sortiert chunkt, entspricht jedes Band genau
+   einem `[From,To]`-Range — der Band-Klick verengt damit auch in *flachen*
+   Namensräumen exakt, nicht nur über die Zeit-Achse. Variantenbänder bleiben
+   verstreut und drillen weiterhin nur die Zeit.
+4. **Offen — konfigurierbare Schwellen** (`dMaxRows`/`dMaxDots`/`dCols`).
 
 Tests tabellengetrieben, nur Standardbibliothek; die Aggregation ist reine
 Go-Funktion (wie `BuildDotted`) und damit direkt testbar.

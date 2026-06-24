@@ -31,6 +31,8 @@ type Density struct {
 type DensityRow struct {
 	Label    string
 	Prefix   string
+	From     string // inclusive subject range bounds (set for name-contiguous
+	To       string // bands) so a click can drill to exactly this band's subjects
 	Subjects int
 	Count    int
 }
@@ -57,6 +59,8 @@ type Band struct {
 	Subjects []string
 	Label    string
 	Prefix   string
+	From     string // inclusive subject range [From,To] when the band is a
+	To       string // contiguous slice of the name-sorted subjects, else empty
 }
 
 // phaseOrder is the tie-break when two phases are equally frequent in a cell:
@@ -95,6 +99,8 @@ func BuildDensity(events []TimedEvent, bands []Band, cols int) Density {
 		d.Rows[r] = DensityRow{
 			Label:    band.Label,
 			Prefix:   band.Prefix,
+			From:     band.From,
+			To:       band.To,
 			Subjects: len(band.Subjects),
 		}
 	}
@@ -160,34 +166,33 @@ func BuildDensity(events []TimedEvent, bands []Band, cols int) Density {
 }
 
 // SubjectBands groups subjects into at most maxRows contiguous bands ordered by
-// first event, then name — the same order the dotted chart uses. With maxRows or
-// fewer subjects each subject is its own band. A band exposes its common subject
-// path-prefix for drill-down when it has one.
+// subject name. With maxRows or fewer subjects each subject is its own band.
+// Because the bands are slices of the name-sorted subjects, each one is an exact
+// lexicographic [From,To] range — the handle a click drills through even in flat
+// namespaces where no path prefix is selective (docs/SPACE-LOD.md §6).
 func SubjectBands(events []TimedEvent, maxRows int) []Band {
 	if maxRows < 1 {
 		maxRows = 60
 	}
-	val, _ := axisValues(events)
-	first := map[string]float64{}
-	for i, e := range events {
-		if f, ok := first[e.Subject]; !ok || val[i] < f {
-			first[e.Subject] = val[i]
+	seen := map[string]bool{}
+	names := make([]string, 0, len(events))
+	for _, e := range events {
+		if !seen[e.Subject] {
+			seen[e.Subject] = true
+			names = append(names, e.Subject)
 		}
 	}
-	names := make([]string, 0, len(first))
-	for s := range first {
-		names = append(names, s)
-	}
-	sort.Slice(names, func(i, j int) bool {
-		if first[names[i]] != first[names[j]] {
-			return first[names[i]] < first[names[j]]
-		}
-		return names[i] < names[j]
-	})
+	sort.Strings(names)
 	groups := chunk(names, maxRows)
 	bands := make([]Band, len(groups))
 	for i, g := range groups {
-		bands[i] = Band{Subjects: g, Label: bandLabel(g), Prefix: bandPrefix(g)}
+		bands[i] = Band{
+			Subjects: g,
+			Label:    bandLabel(g),
+			Prefix:   bandPrefix(g),
+			From:     g[0],
+			To:       g[len(g)-1],
+		}
 	}
 	return bands
 }

@@ -77,6 +77,42 @@ func TestSpaceFilterMatch(t *testing.T) {
 	}
 }
 
+func TestSpaceFilterSubjectRange(t *testing.T) {
+	ek := func(subject string) eventKey { return eventKey{Subject: subject, Type: "x", ID: "1"} }
+
+	// "A..B" parses as a lexicographic subject range, not a prefix.
+	f := parseSpaceFilter("subject:/e/EMP-0100../e/EMP-0200")
+	if f.lens.Subject != "" {
+		t.Errorf("range must not set the prefix dimension, got %q", f.lens.Subject)
+	}
+	if f.subjFrom != "/e/EMP-0100" || f.subjTo != "/e/EMP-0200" {
+		t.Fatalf("range bounds = %q..%q", f.subjFrom, f.subjTo)
+	}
+	if f.empty() {
+		t.Errorf("a range filter is not empty")
+	}
+	// Inclusive on both ends; outside is rejected.
+	for _, in := range []string{"/e/EMP-0100", "/e/EMP-0150", "/e/EMP-0200"} {
+		if !f.match(ek(in)) {
+			t.Errorf("%s should fall inside the range", in)
+		}
+	}
+	for _, out := range []string{"/e/EMP-0099", "/e/EMP-0201"} {
+		if f.match(ek(out)) {
+			t.Errorf("%s should fall outside the range", out)
+		}
+	}
+	// The range round-trips through String()/parse unchanged.
+	if rt := parseSpaceFilter(f.String()).String(); rt != f.String() {
+		t.Errorf("round-trip drift: %q -> %q", f.String(), rt)
+	}
+
+	// A plain subject value still parses as a segment prefix.
+	if p := parseSpaceFilter("subject:/orders"); p.lens.Subject != "/orders" || p.subjFrom != "" {
+		t.Errorf("plain subject must stay a prefix, got prefix=%q from=%q", p.lens.Subject, p.subjFrom)
+	}
+}
+
 func TestSpaceFilterToggleAndString(t *testing.T) {
 	f := parseSpaceFilter("subject:/orders type:created foo")
 

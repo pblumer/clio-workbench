@@ -41,9 +41,13 @@ func TestHandleSpaceDensityAuto(t *testing.T) {
 	if !strings.Contains(body, "events · density") {
 		t.Errorf("expected the density header, got:\n%s", body)
 	}
-	// Drill carriers must be present so a click can refine the filter.
+	// Drill carriers must be present so a click can refine the filter: the time
+	// id-range and — for these flat subjects — the exact subject range.
 	if !strings.Contains(body, "data-min=") || !strings.Contains(body, "data-max=") {
-		t.Errorf("density cells missing drill bounds")
+		t.Errorf("density cells missing time drill bounds")
+	}
+	if !strings.Contains(body, `data-sfrom="/employees/EMP-`) {
+		t.Errorf("subject-grouped cells missing the exact subject-range drill bound")
 	}
 }
 
@@ -96,8 +100,8 @@ func TestHandleSpaceGroupVariant(t *testing.T) {
 func TestBuildDensityView(t *testing.T) {
 	d := process.Density{
 		Rows: []process.DensityRow{
-			{Label: "/e/1", Prefix: "/e/1", Subjects: 1, Count: 2},
-			{Label: "/e/2 … /e/9 · 8", Prefix: "/e", Subjects: 8, Count: 5},
+			{Label: "/e/1", Prefix: "/e/1", From: "/e/1", To: "/e/1", Subjects: 1, Count: 2},
+			{Label: "/e/2 … /e/9 · 8", Prefix: "/e", From: "/e/2", To: "/e/9", Subjects: 8, Count: 5},
 		},
 		Cols:   4,
 		ByTime: true,
@@ -129,6 +133,9 @@ func TestBuildDensityView(t *testing.T) {
 	}
 	if busy.Prefix != "/e" || busy.MinID != "c" || busy.MaxID != "d" {
 		t.Errorf("drill carriers = %q/%q/%q, want /e/c/d", busy.Prefix, busy.MinID, busy.MaxID)
+	}
+	if busy.SFrom != "/e/2" || busy.STo != "/e/9" {
+		t.Errorf("subject range = %q..%q, want /e/2../e/9", busy.SFrom, busy.STo)
 	}
 	if busy.Phase != "error" {
 		t.Errorf("phase class = %q, want error", busy.Phase)

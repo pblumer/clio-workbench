@@ -125,6 +125,36 @@ func TestBuildDensityAllSameInstant(t *testing.T) {
 	}
 }
 
+func TestSubjectBandsNameRangeIsExact(t *testing.T) {
+	// Subjects arrive out of name order; bands must be name-sorted contiguous
+	// slices whose [From,To] selects exactly that band — and nothing else.
+	evs := []TimedEvent{
+		{ID: "1", Subject: "/e/d", Type: "x", Time: "2026-01-01T09:00:00Z"},
+		{ID: "2", Subject: "/e/a", Type: "x", Time: "2026-01-01T09:00:01Z"},
+		{ID: "3", Subject: "/e/c", Type: "x", Time: "2026-01-01T09:00:02Z"},
+		{ID: "4", Subject: "/e/b", Type: "x", Time: "2026-01-01T09:00:03Z"},
+	}
+	bands := SubjectBands(evs, 2)
+	if len(bands) != 2 {
+		t.Fatalf("bands = %d, want 2", len(bands))
+	}
+	// Name order a,b | c,d → exact ranges.
+	if bands[0].From != "/e/a" || bands[0].To != "/e/b" {
+		t.Errorf("band 0 range = %q..%q, want /e/a../e/b", bands[0].From, bands[0].To)
+	}
+	if bands[1].From != "/e/c" || bands[1].To != "/e/d" {
+		t.Errorf("band 1 range = %q..%q, want /e/c../e/d", bands[1].From, bands[1].To)
+	}
+	// Every subject lands in exactly the band whose range contains it.
+	for _, b := range bands {
+		for _, s := range b.Subjects {
+			if s < b.From || s > b.To {
+				t.Errorf("subject %q outside its band range [%s,%s]", s, b.From, b.To)
+			}
+		}
+	}
+}
+
 func TestVariantBandsGroupBehaviour(t *testing.T) {
 	// Two subjects ran created→done, one ran created→failed: two variant bands,
 	// the busier one first.

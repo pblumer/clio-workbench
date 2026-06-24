@@ -96,6 +96,8 @@ type dcell struct {
 	Opacity    string // intensity (log-scaled), as a fill-opacity string
 	Count      int
 	Prefix     string
+	SFrom      string // band subject range → drill bound (subject:From..To)
+	STo        string
 	MinID      string
 	MaxID      string
 }
@@ -278,9 +280,11 @@ func (s *Server) handleSpace(w http.ResponseWriter, r *http.Request) {
 // clicked together from the type chips or typed by hand (e.g.
 // `type:order.created subject:/orders orders`).
 type spaceFilter struct {
-	lens    queryStage
-	needles []string // lower-cased substrings; an event must contain them all
-	noTypes bool     // an explicit "show no types" selection (empty whitelist on purpose)
+	lens     queryStage
+	needles  []string // lower-cased substrings; an event must contain them all
+	noTypes  bool     // an explicit "show no types" selection (empty whitelist on purpose)
+	subjFrom string   // inclusive lower bound on the subject string (lexicographic)
+	subjTo   string   // inclusive upper bound on the subject string (lexicographic)
 }
 
 // noTypeToken is the value of a `type:` token that means "no type is allowed" —
@@ -305,7 +309,13 @@ func parseSpaceFilter(raw string) spaceFilter {
 		}
 		switch strings.ToLower(key) {
 		case "subject", "subj", "s":
-			f.lens.Subject = val
+			// A "A..B" value is a lexicographic subject range (the density band
+			// drill, docs/SPACE-LOD.md §6); a plain value stays a segment prefix.
+			if lo, hi, ok := strings.Cut(val, ".."); ok {
+				f.subjFrom, f.subjTo = lo, hi
+			} else {
+				f.lens.Subject = val
+			}
 		case "type", "types", "t":
 			for _, ty := range splitTypes(val) {
 				if ty == noTypeToken {
@@ -329,7 +339,8 @@ func parseSpaceFilter(raw string) spaceFilter {
 
 // empty reports whether the filter carries no constraint (a no-op).
 func (f spaceFilter) empty() bool {
-	return f.lens.empty() && len(f.needles) == 0 && !f.noTypes
+	return f.lens.empty() && len(f.needles) == 0 && !f.noTypes &&
+		f.subjFrom == "" && f.subjTo == ""
 }
 
 // showsNoTypes reports whether the filter is an explicit "show none" selection:
@@ -376,6 +387,12 @@ func (f spaceFilter) matchNeedles(subject, typ string) bool {
 // none" selection rejects every event.
 func (f spaceFilter) match(k eventKey) bool {
 	if f.showsNoTypes() {
+		return false
+	}
+	if f.subjFrom != "" && k.Subject < f.subjFrom {
+		return false
+	}
+	if f.subjTo != "" && k.Subject > f.subjTo {
 		return false
 	}
 	return matchStage(k, f.lens) && f.matchNeedles(k.Subject, k.Type)
@@ -429,6 +446,9 @@ func (f spaceFilter) String() string {
 	var parts []string
 	if f.lens.Subject != "" {
 		parts = append(parts, "subject:"+f.lens.Subject)
+	}
+	if f.subjFrom != "" || f.subjTo != "" {
+		parts = append(parts, "subject:"+f.subjFrom+".."+f.subjTo)
 	}
 	if f.showsNoTypes() {
 		parts = append(parts, "type:"+noTypeToken)
@@ -674,6 +694,8 @@ func buildDensityView(d process.Density) dottedView {
 			Opacity: fmt.Sprintf("%.3f", 0.14+0.86*t),
 			Count:   c.Count,
 			Prefix:  d.Rows[c.Row].Prefix,
+			SFrom:   d.Rows[c.Row].From,
+			STo:     d.Rows[c.Row].To,
 			MinID:   c.MinID,
 			MaxID:   c.MaxID,
 		})
