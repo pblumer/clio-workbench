@@ -44,6 +44,33 @@ type RefGraph struct {
 
 var fkRe = regexp.MustCompile(`(?i)^(.+?)(ids|id|refs|ref)$`)
 
+// ReferenceCollection reports whether a payload field name looks like a
+// foreign-key reference (employeeId, customerId, tagIds, productRef, …) and, if
+// so, the collection it points at — the best-effort plural of the stem
+// (employeeId → "employees"). It exposes the same fkRe heuristic BuildReferences
+// uses, so a payload value can be linked to the referenced subject.
+//
+// The plural is naive (stem, or stem already ending in "s") and is NOT resolved
+// against actually-written collections — matching this package's stance that
+// these references are a starting point a developer refines, not authoritative.
+// A field whose stem only resembles a suffix (e.g. "valid" → "val"+"id") is a
+// known false positive; the worst case is a link to an empty event list.
+func ReferenceCollection(field string) (string, bool) {
+	lk := strings.ToLower(strings.TrimSpace(field))
+	if lk == "" || lk == "id" {
+		return "", false
+	}
+	m := fkRe.FindStringSubmatch(lk)
+	if m == nil {
+		return "", false
+	}
+	stem := m[1] // fkRe's (.+?) guarantees a non-empty stem
+	if !strings.HasSuffix(stem, "s") {
+		stem += "s"
+	}
+	return stem, true
+}
+
 func firstSegment(subject string) string {
 	for _, s := range strings.Split(strings.Trim(subject, "/"), "/") {
 		if s != "" {

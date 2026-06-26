@@ -855,6 +855,12 @@ html, body {
 }
 .evcard-note { margin: 4px 0 0; color: var(--text-dim); font-style: italic; }
 
+/* Clickable foreign-key value inside a payload (employeeId, tagIds, …): jumps
+   to the referenced subject's events. Lives in both the hover card and the
+   inspector list, so it is styled once here. Colour comes from a token. */
+.ev-ref { color: var(--accent); cursor: pointer; text-decoration: none; border-radius: 2px; }
+.ev-ref:hover, .ev-ref:focus-visible { text-decoration: underline; outline: none; }
+
 /* query pipeline — the exploration funnel */
 .q-funnel { list-style: none; margin: 10px 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .q-step {

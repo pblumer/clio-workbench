@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"html/template"
 	"net/http"
 	"strings"
 	"time"
@@ -176,7 +177,7 @@ type spaceEventView struct {
 	Source  string
 	ID      string
 	Phase   string
-	Data    string
+	Data    template.HTML
 }
 
 // handleSpaceEvent returns the rich hover card for a single dot: it reads the

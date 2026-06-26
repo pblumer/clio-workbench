@@ -158,7 +158,7 @@ func TestHandleSpaceEventUnauthorized(t *testing.T) {
 
 func TestPrettyJSONComplex(t *testing.T) {
 	in := json.RawMessage(`{"arr":[1,2.5,true,false,null,"s"],"obj":{"nested":[]}}`)
-	out := prettyJSON(in)
+	out := string(prettyJSON(in))
 	for _, want := range []string{"arr", "nested", "true", "false", "null", "2.5"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("prettyJSON output missing %q:\n%s", want, out)
